@@ -60,7 +60,7 @@ private:
   Ticker _publishTicker;
   bool _publishedStoveConnected = false;
   bool _needPublishHassDiscovery = false;
-    bool _needPublishUpdate = false;
+  bool _needPublishUpdate = false;
   Ticker _publishUpdateTicker;
 
   int myOpenSerial(uint32_t baudrate);
@@ -78,6 +78,7 @@ private:
   void mqttPublishStoveConnected(bool stoveConnected);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   bool mqttPublishHassDiscovery();
+  bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, String &strJson, bool publish = false);
 
   void publishTick();

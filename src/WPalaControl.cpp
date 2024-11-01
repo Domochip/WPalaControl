@@ -185,7 +185,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   JsonDocument jsonDoc;
   String device, availability, payload;
   String baseTopic;
-  String uniqueIdPrefixWPalaControl, uniqueIdPrefixStove;
+  String uniqueIdPrefix, uniqueIdPrefixStove;
   String uniqueId;
   String topic;
 
@@ -193,31 +193,31 @@ bool WPalaControl::mqttPublishHassDiscovery()
   baseTopic = _ha.mqtt.generic.baseTopic;
   MQTTMan::prepareTopic(baseTopic);
 
-  // ---------- WPalaControl Device ----------
+  // ---------- Device ----------
 
-  // prepare unique id prefix for WPalaControl
-  uniqueIdPrefixWPalaControl = F("WPalaControl_");
-  uniqueIdPrefixWPalaControl += WiFi.macAddress();
-  uniqueIdPrefixWPalaControl.replace(":", "");
+  // prepare unique id prefix
+  uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+  uniqueIdPrefix += WiFi.macAddress();
+  uniqueIdPrefix.replace(":", "");
 
-  // prepare WPalaControl device JSON
-  jsonDoc[F("configuration_url")] = F("http://wpalacontrol.local");
-  jsonDoc[F("identifiers")][0] = uniqueIdPrefixWPalaControl;
-  jsonDoc[F("manufacturer")] = F("Domochip");
-  jsonDoc[F("model")] = F("WPalaControl");
+  // prepare device JSON
+  jsonDoc[F("configuration_url")] = F("http://" CUSTOM_APP_MODEL ".local");
+  jsonDoc[F("identifiers")][0] = uniqueIdPrefix;
+  jsonDoc[F("manufacturer")] = F(CUSTOM_APP_MANUFACTURER);
+  jsonDoc[F("model")] = F(CUSTOM_APP_MODEL);
   jsonDoc[F("name")] = WiFi.getHostname();
   jsonDoc[F("sw_version")] = VERSION;
   serializeJson(jsonDoc, device); // serialize to device String
   jsonDoc.clear();                // clean jsonDoc
 
-  // ----- WPalaControl Entities -----
+  // ----- Entities -----
 
   //
   // Connectivity entity
   //
 
-  // prepare uniqueId, topic and payload for WPalaControl connectivity sensor
-  uniqueId = uniqueIdPrefixWPalaControl;
+  // prepare uniqueId, topic and payload for connectivity sensor
+  uniqueId = uniqueIdPrefix;
   uniqueId += F("_Connectivity");
 
   topic = _ha.mqtt.hassDiscoveryPrefix;
@@ -225,7 +225,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic += uniqueId;
   topic += F("/config");
 
-  // prepare payload for WPalaControl connectivity sensor
+  // prepare payload for connectivity sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
@@ -291,7 +291,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // ---------- Stove Device ----------
 
   // prepare unique id prefix for Stove
-  uniqueIdPrefixStove = F("WPalaControl_");
+  uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
   uniqueIdPrefixStove += SN;
 
   // prepare availability JSON for Stove entities
@@ -306,7 +306,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("model")] = String(MOD);
   jsonDoc[F("name")] = F("Stove");
   jsonDoc[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
-  jsonDoc[F("via_device")] = uniqueIdPrefixWPalaControl;
+  jsonDoc[F("via_device")] = uniqueIdPrefix;
   serializeJson(jsonDoc, device); // serialize to device String
   jsonDoc.clear();                // clean jsonDoc
 
@@ -847,6 +847,113 @@ bool WPalaControl::mqttPublishHassDiscovery()
   }
 
   // TODO
+  return true;
+}
+
+bool WPalaControl::mqttPublishUpdate()
+{
+  if (!_mqttMan.connected())
+    return false;
+
+  // get update info from Core
+  String updateInfo = getLatestUpdateInfoJson();
+
+  String baseTopic;
+  String topic;
+
+  // prepare base topic
+  baseTopic = _ha.mqtt.generic.baseTopic;
+  MQTTMan::prepareTopic(baseTopic);
+
+  // This part of code is necessary because "payload_install" is not a template
+  // and we need to get the version to install pushed from Home Assistant
+  // so it is mandatory to update the Update entity each time we publish the update
+  // parse JSON
+  if (_ha.mqtt.hassDiscoveryEnabled)
+  {
+    JsonDocument doc;
+    JsonVariant jv;
+    DeserializationError error = deserializeJson(doc, updateInfo);
+    // if there is no error and latest_version is available
+    if (!error && (jv = doc[F("latest_version")]).is<const char *>())
+    {
+      // get version
+      char version[10] = {0};
+      strlcpy(version, jv.as<const char *>(), sizeof(version));
+
+      doc.clear(); // clean doc
+
+      // then publish updated Update autodiscovery
+
+      // variables
+      JsonDocument jsonDoc;
+      String device, availability, payload;
+
+      String uniqueIdPrefix;
+      String uniqueId;
+
+      // prepare unique id prefix
+      uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+      uniqueIdPrefix += WiFi.macAddress();
+      uniqueIdPrefix.replace(":", "");
+
+      // ---------- Device ----------
+
+      // prepare device JSON
+      jsonDoc[F("configuration_url")] = F("http://" CUSTOM_APP_MODEL ".local");
+      jsonDoc[F("identifiers")][0] = uniqueIdPrefix;
+      jsonDoc[F("manufacturer")] = F(CUSTOM_APP_MANUFACTURER);
+      jsonDoc[F("model")] = F(CUSTOM_APP_MODEL);
+      jsonDoc[F("name")] = WiFi.getHostname();
+      jsonDoc[F("sw_version")] = VERSION;
+      serializeJson(jsonDoc, device); // serialize to device String
+      jsonDoc.clear();                // clean jsonDoc
+
+      // prepare availability JSON for entities
+      jsonDoc[F("topic")] = F("~/connected");
+      jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
+      serializeJson(jsonDoc, availability); // serialize to availability String
+      jsonDoc.clear();                      // clean jsonDoc
+
+      // ----- Entities -----
+
+      //
+      // Update entity
+      //
+
+      // prepare uniqueId, topic and payload for update sensor
+      uniqueId = uniqueIdPrefix;
+      uniqueId += F("_Update");
+
+      topic = _ha.mqtt.hassDiscoveryPrefix;
+      topic += F("/update/");
+      topic += uniqueId;
+      topic += F("/config");
+
+      // prepare payload for update sensor
+      jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+      jsonDoc[F("availability")] = serialized(availability);
+      jsonDoc[F("command_topic")] = F("~/update/install");
+      jsonDoc[F("device")] = serialized(device);
+      jsonDoc[F("device_class")] = F("firmware");
+      jsonDoc[F("entity_category")] = F("config");
+      jsonDoc[F("object_id")] = F(CUSTOM_APP_MODEL);
+      jsonDoc[F("payload_install")] = version;
+      jsonDoc[F("state_topic")] = F("~/update");
+      jsonDoc[F("unique_id")] = uniqueId;
+
+      jsonDoc.shrinkToFit();
+      serializeJson(jsonDoc, payload);
+
+      // publish
+      _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+    }
+  }
+
+  // publish update info
+  topic = baseTopic + F("update");
+  _mqttMan.publish(topic.c_str(), updateInfo.c_str(), true);
+
   return true;
 }
 
