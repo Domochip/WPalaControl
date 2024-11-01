@@ -91,27 +91,84 @@ void WPalaControl::mqttDisconnectedCallback()
 
 void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
-  // if topic is basetopic/cmd
-  // commented because only this topic is subscribed
+  // calculate command topic
+  String cmdTopic = _ha.mqtt.generic.baseTopic;
+  MQTTMan::prepareTopic(cmdTopic);
 
-  String cmd;
-  String strJson;
+  switch (_ha.mqtt.type) // switch on MQTT type
+  {
+  case HA_MQTT_GENERIC:
+  case HA_MQTT_GENERIC_JSON:
+  case HA_MQTT_GENERIC_CATEGORIZED:
+    cmdTopic += F("cmd");
+    break;
+  }
+  // if topic is command one
+  if (cmdTopic == topic)
+  {
+    String cmd;
+    String strJson;
 
-  // convert payload to String cmd
-  cmd.concat((char *)payload, length);
+    // convert payload to String cmd
+    cmd.concat((char *)payload, length);
 
-  // replace '+' by ' '
-  cmd.replace('+', ' ');
+    // replace '+' by ' '
+    cmd.replace('+', ' ');
 
-  // execute Palazzetti command
-  executePalaCmd(cmd, strJson, true);
+    // execute Palazzetti command
+    executePalaCmd(cmd, strJson, true);
 
-  // publish json result to MQTT
-  String baseTopic = _ha.mqtt.generic.baseTopic;
-  MQTTMan::prepareTopic(baseTopic);
-  String resTopic(baseTopic);
-  resTopic += F("result");
-  _mqttMan.publish(resTopic.c_str(), strJson.c_str());
+    // publish json result to MQTT
+    String baseTopic = _ha.mqtt.generic.baseTopic;
+    MQTTMan::prepareTopic(baseTopic);
+    String resTopic(baseTopic);
+    resTopic += F("result");
+    _mqttMan.publish(resTopic.c_str(), strJson.c_str());
+  }
+
+  // if topic ends with "/update/install"
+  if (String(topic).endsWith(F("/update/install")))
+  {
+    String version;
+    String retMsg;
+    unsigned long lastProgressPublish = 0;
+
+    // result topic is topic without the last 8 characters ("/install")
+    String resTopic(topic);
+    resTopic.remove(resTopic.length() - 8);
+
+    if (length > 10)
+      retMsg = F("Version is too long");
+    else
+    {
+      // convert payload to String
+      version.concat((char *)payload, length);
+
+      // Define the progress callback function
+      std::function<void(size_t, size_t)> progressCallback = [this, &resTopic, &lastProgressPublish](size_t progress, size_t total)
+      {
+        // if last progress publish is less than 1 second ago then return
+        if (millis() - lastProgressPublish < 1000)
+          return;
+        lastProgressPublish = millis();
+
+        uint8_t percent = (progress * 100) / total;
+        LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
+        String payload = String(F("{\"progress\":\"")) + percent + F("%\"}");
+        _mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
+      };
+
+      SystemState::shouldReboot = updateFirmware(version.c_str(), retMsg, progressCallback);
+    }
+
+    if (SystemState::shouldReboot)
+      retMsg = F("{\"progress\":\"Update successful\"}");
+    else
+      retMsg = String(F("{\"progress\":\"Update failed: ")) + retMsg + F("\"}");
+
+    // publish result
+    _mqttMan.publish(resTopic.c_str(), retMsg.c_str(), true);
+  }
 }
 
 void WPalaControl::mqttPublishStoveConnected(bool stoveConnected)
