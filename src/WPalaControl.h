@@ -60,6 +60,8 @@ private:
   Ticker _publishTicker;
   bool _publishedStoveConnected = false;
   bool _needPublishHassDiscovery = false;
+    bool _needPublishUpdate = false;
+  Ticker _publishUpdateTicker;
 
   int myOpenSerial(uint32_t baudrate);
   void myCloseSerial();
