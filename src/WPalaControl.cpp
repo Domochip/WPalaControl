@@ -77,6 +77,12 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
     mqttMan->publish(subscribeTopic.c_str(), ""); // make empty publish only for firstConnection
   mqttMan->subscribe(subscribeTopic.c_str());
 
+  // subscribe to update/install topic
+  String topic(_ha.mqtt.generic.baseTopic);
+  MQTTMan::prepareTopic(topic);
+  topic += F("update/install");
+  mqttMan->subscribe(topic.c_str());
+
   // raise flag to publish Home Assistant discovery data
   _needPublishHassDiscovery = true;
 }
