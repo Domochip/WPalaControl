@@ -2610,15 +2610,15 @@ void WPalaControl::appRun()
   {
     _mqttMan.loop();
 
-    // if Home Assistant discovery enabled and publish is needed
-    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery)
+    // if Home Assistant discovery enabled and publish is needed (and publish is successful)
+    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery && mqttPublishHassDiscovery())
     {
-      if (mqttPublishHassDiscovery()) // publish discovery
-      {
-        _needPublishHassDiscovery = false;
-        _needPublish = true; // force publishTick after discovery
-      }
+      _needPublishHassDiscovery = false;
+      _needPublish = true; // force publishTick after discovery
     }
+
+    if (_needPublishUpdate && mqttPublishUpdate())
+      _needPublishUpdate = false;
   }
 
   if (_needPublish)
