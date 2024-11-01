@@ -36,26 +36,29 @@ If you have this control panel and/or controller in your stove, it's compatible.
 
 ## Connect
 
-⚠️ **You need to use a crossed RJ11 phone cable like this:** ⚠️  
+⚠️ **You need to use a crossed RJ11 phone cable to connect WPalaControl:** ⚠️  
 ![WPalaControl rj11](img/rj11-pinout.png)
 
-Most of stove have an RJ11/RJ12 connector for PalaControl connection.  
-If you don't have it, you need to cable it using a splitter to connect screen and PalaControl at the same time :  
-![WPalaControl cabling](img/cabling.png)
+If your stove has an accessible RJ12 connector from the outisde:  
+✅ You just need to connect the cable
 
-Splitter and additional cable can be found on Aliexpress (search for "6p6c splitter" and "rj12 cable").  
-The splitter should correspond to this small schematic :  
-![WPalaControl schematic-splitter](img/schematic-splitter.png)
+If there no visible RJ12 connector:  
+🔍 You'll need an additional cable and a splitter  
+➡️ More details in [Splitter Cabling documentation](SPLITTERCABLING.md)
 
 ## First Boot
 
-During First Boot, the ESP boot in Access Point Mode
+During First Boot, the WPalaControl creates its own wifi network (AP mode)  
 
+For latest firmware version:  
+- Network SSID : `WPalaControl`
+- Password : `password`
+
+For version 3.1.x and lower:  
 - Network SSID : `WirelessPalaControlXXXX`
 - Password : `PasswordPalaControl`
-- ESP URL : 👉 http://wpalacontrol.local 👈
 
-Connect to this network and then configure it.
+Connect to the network and then go to 👉 http://wpalacontrol.local 👈
 
 ## Configuration pages
 
