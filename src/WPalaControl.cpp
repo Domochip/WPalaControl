@@ -56,32 +56,28 @@ void WPalaControl::myUSleep(unsigned long usecond) { delayMicroseconds(usecond);
 
 void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 {
-
-  // Subscribe to needed topic
-  // prepare topic subscription
-  String subscribeTopic = _ha.mqtt.generic.baseTopic;
-
-  // Replace placeholders
-  MQTTMan::prepareTopic(subscribeTopic);
+  // Subscribe command topic --------------------------------
+  String cmdTopic = _ha.mqtt.generic.baseTopic;
+  MQTTMan::prepareTopic(cmdTopic);
 
   switch (_ha.mqtt.type) // switch on MQTT type
   {
   case HA_MQTT_GENERIC:
   case HA_MQTT_GENERIC_JSON:
   case HA_MQTT_GENERIC_CATEGORIZED:
-    subscribeTopic += F("cmd");
+    cmdTopic += F("cmd");
     break;
   }
 
   if (firstConnection)
-    mqttMan->publish(subscribeTopic.c_str(), ""); // make empty publish only for firstConnection
-  mqttMan->subscribe(subscribeTopic.c_str());
+    mqttMan->publish(cmdTopic.c_str(), ""); // make empty publish only for firstConnection
+  mqttMan->subscribe(cmdTopic.c_str());
 
-  // subscribe to update/install topic
-  String topic(_ha.mqtt.generic.baseTopic);
-  MQTTMan::prepareTopic(topic);
-  topic += F("update/install");
-  mqttMan->subscribe(topic.c_str());
+  // Subscribe to update/install topic -----------------------
+  String updateInstalltopic(_ha.mqtt.generic.baseTopic);
+  MQTTMan::prepareTopic(updateInstalltopic);
+  updateInstalltopic += F("update/install");
+  mqttMan->subscribe(updateInstalltopic.c_str());
 
   // raise flag to publish Home Assistant discovery data
   _needPublishHassDiscovery = true;
