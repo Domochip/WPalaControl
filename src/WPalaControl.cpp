@@ -2388,6 +2388,18 @@ bool WPalaControl::appInit(bool reInit)
                                      { palaControl->_needPublish = true; }, this);
 #endif
 
+  // flag to force publish update (init and reinit)
+  _needPublishUpdate = true;
+
+  // start publish update Ticker
+#ifdef ESP8266
+  _publishUpdateTicker.attach(86400, [this]()
+                              { this->_needPublishUpdate = true; });
+#else
+  _publishUpdateTicker.attach<typeof this>(86400, [](typeof this palaSensor)
+                                           { palaSensor->_needPublishUpdate = true; }, this);
+#endif
+
   // Start UDP Server
   _udpServer.begin(54549);
 
