@@ -289,7 +289,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("object_id")] = F("wpalacontrol_connectivity");
+  jsonDoc[F("object_id")] = F(CUSTOM_APP_MODEL "_connectivity");
   jsonDoc[F("state_topic")] = F("~/connected");
   jsonDoc[F("unique_id")] = uniqueId;
   jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'ON', 'OFF') }}");
