@@ -50,11 +50,11 @@ If there no visible RJ12 connector:
 
 During First Boot, the WPalaControl creates its own wifi network (AP mode)  
 
-For latest firmware version:  
+For firmware version **3.2.0 and higher**:  
 - Network SSID : `WPalaControl`
 - Password : `password`
 
-For version 3.1.x and lower:  
+For version **3.1.x and lower**:  
 - Network SSID : `WirelessPalaControlXXXX`
 - Password : `PasswordPalaControl`
 
@@ -99,7 +99,7 @@ It returns you useful informations about the module and the stove.
 
 ### Firmware
 
-It allows you to flash a new firmware version using `WPalaControl.*.bin` file:  
+It allows you to flash a new firmware version using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
 ![firmware screenshot](img/firmware.png)
 
 ## Use it
