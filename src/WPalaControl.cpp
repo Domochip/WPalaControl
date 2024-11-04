@@ -2522,6 +2522,15 @@ bool WPalaControl::appInit(bool reInit)
 
   LOG_SERIAL_PRINTLN(F("Connecting to Stove..."));
 
+// Initialize hw version detection
+#ifdef ESP8266
+  uint8_t hwDetectPin = 5;
+#else
+  uint8_t hwDetectPin = 22;
+#endif
+  pinMode(hwDetectPin, INPUT_PULLUP);
+  delay(1);
+
   Palazzetti::CommandResult cmdRes;
   cmdRes = _Pala.initialize(
       std::bind(&WPalaControl::myOpenSerial, this, std::placeholders::_1),
@@ -2532,7 +2541,7 @@ bool WPalaControl::appInit(bool reInit)
       std::bind(&WPalaControl::myDrainSerial, this),
       std::bind(&WPalaControl::myFlushSerial, this),
       std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1),
-      true);
+      digitalRead(hwDetectPin) == HIGH);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
