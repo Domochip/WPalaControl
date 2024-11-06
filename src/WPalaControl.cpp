@@ -10,8 +10,10 @@
 int WPalaControl::myOpenSerial(uint32_t baudrate)
 {
 #ifdef ESP8266
+  LOG_SERIAL.flush();
   PALA_SERIAL.begin(baudrate);
   PALA_SERIAL.pins(15, 13); // swap ESP8266 pins to alternative positions (D7(GPIO13)(RX)/D8(GPIO15)(TX))
+  pinMode(1, INPUT);
 #else
   PALA_SERIAL.begin(baudrate, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
 #endif
@@ -2520,7 +2522,7 @@ bool WPalaControl::appInit(bool reInit)
     _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
   }
 
-  LOG_SERIAL_PRINTLN(F("Connecting to Stove..."));
+  LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
 // Initialize hw version detection
 #ifdef ESP8266
@@ -2530,6 +2532,11 @@ bool WPalaControl::appInit(bool reInit)
 #endif
   pinMode(hwDetectPin, INPUT_PULLUP);
   delay(1);
+
+  if (digitalRead(hwDetectPin) == HIGH)
+    LOG_SERIAL_PRINT(F("HW1..."));
+  else
+    LOG_SERIAL_PRINT(F("HW2..."));
 
   Palazzetti::CommandResult cmdRes;
   cmdRes = _Pala.initialize(
