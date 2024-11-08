@@ -147,14 +147,14 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
       // Define the progress callback function
       std::function<void(size_t, size_t)> progressCallback = [this, &resTopic, &lastProgressPublish](size_t progress, size_t total)
       {
-        // if last progress publish is less than 1 second ago then return
-        if (millis() - lastProgressPublish < 1000)
+        // if last progress publish is less than 500ms ago then return
+        if (millis() - lastProgressPublish < 500)
           return;
         lastProgressPublish = millis();
 
         uint8_t percent = (progress * 100) / total;
         LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
-        String payload = String(F("{\"progress\":\"")) + percent + F("%\"}");
+        String payload = String(F("{\"update_percentage\":")) + percent + '}';
         _mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
       };
 
@@ -162,9 +162,12 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     }
 
     if (SystemState::shouldReboot)
-      retMsg = F("{\"progress\":\"Update successful\"}");
+      retMsg = F("{\"update_percentage\":null,\"in_progress\":true}");
     else
-      retMsg = String(F("{\"progress\":\"Update failed: ")) + retMsg + F("\"}");
+    {
+      _mqttMan.publish(topic, (String(F("Update failed: ")) + retMsg).c_str(), true);
+      retMsg = F("{\"in_progress\":false}");
+    }
 
     // publish result
     _mqttMan.publish(resTopic.c_str(), retMsg.c_str(), true);
@@ -1009,8 +1012,16 @@ bool WPalaControl::mqttPublishUpdate()
     }
   }
 
-  // publish update info
+  // calculate topic
   topic = baseTopic + F("update");
+
+  // publish install in_progress (new in 2024.11)
+  // I keep it here because I want to separate the two publish for retrocompatibility
+  // if "in_progress" is in the same payload, Home Assistant 2024.10 and lower will ignore the payload
+  // (to be moved to WBase around 2025-05)
+  _mqttMan.publish(topic.c_str(), (String(F("{\"in_progress\":")) + (Update.isRunning() ? F("true") : F("false")) + '}').c_str(), true);
+
+  // publish update info
   _mqttMan.publish(topic.c_str(), updateInfo.c_str(), true);
 
   return true;
