@@ -127,10 +127,8 @@ void loop(void)
   // Handle WebServer
   server.handleClient();
 
-  if (!SystemState::pauseCustomApp)
-  {
+  if (!SystemState::pauseCustomApp && !SystemState::shouldReboot)
     custom.run();
-  }
 
   wifiMan.run();
 

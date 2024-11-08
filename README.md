@@ -1,5 +1,5 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Domochip/WPalaControl)
-![Home Assistant](https://img.shields.io/badge/home_assistant-2021.11-blue.svg?logo=homeassistant)
+![Home Assistant](https://img.shields.io/badge/home_assistant-2024.11-blue.svg?logo=homeassistant)
 
 # WPalaControl
 
@@ -22,8 +22,9 @@ If you have this control panel and/or controller in your stove, it's compatible.
 
 ## Home Automation compatibility
 
-| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) | ![hacard](img/hacard.jpg) |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) <br> Most options and fans control | ![hacard](img/hacard.jpg) |
 | ------------- | ------------- | ------------- |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br> (2024.11 minimum) <br> Basic implementation for now | ![hacard-pala-integ](img/hacard-pala-integ.png)  ![hacard-pala-integ2](img/hacard-pala-integ2.png) |
 | ![Logo Jeedom](https://www.jeedom.com/logo.png) | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
 
 ## Make/Get your adapter
