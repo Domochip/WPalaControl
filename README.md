@@ -1,5 +1,5 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Domochip/WPalaControl)
-![Home Assistant](https://img.shields.io/badge/home_assistant-2021.11-blue.svg?logo=homeassistant)
+![Home Assistant](https://img.shields.io/badge/home_assistant-2024.11-blue.svg?logo=homeassistant)
 
 # WPalaControl
 
