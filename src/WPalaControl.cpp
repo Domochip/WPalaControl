@@ -319,11 +319,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   uint16_t MOD, VER;
   char FWDATE[11];
   uint16_t FLUID;
+  uint16_t SPLMIN, SPLMAX;
   byte MAINTPROBE;
   byte STOVETYPE;
   byte FAN2TYPE;
   byte FAN2MODE;
-  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(&SN, &SNCHK, nullptr, &MOD, &VER, nullptr, &FWDATE, &FLUID, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, nullptr, nullptr, nullptr, nullptr, nullptr))
+  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(&SN, &SNCHK, nullptr, &MOD, &VER, nullptr, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, nullptr, nullptr, nullptr, nullptr, nullptr))
     return false;
 
   // read all status from stove
@@ -348,6 +349,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
   bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
   bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
+  bool isFluidType = (FLUID == 1);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
   // ---------- Stove Device ----------
@@ -481,45 +483,93 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Room temperature entity
   //
-
-  uniqueId = uniqueIdPrefixStove;
-  uniqueId += F("_RoomTemp");
-
-  topic = _ha.mqtt.hassDiscoveryPrefix;
-  topic += F("/sensor/");
-  topic += uniqueId;
-  topic += F("/config");
-
-  // prepare payload for Stove room temperature sensor
-  jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-  jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("temperature");
-  jsonDoc[F("name")] = F("Room Temperature");
-  jsonDoc[F("object_id")] = F("stove_roomtemp");
-  jsonDoc[F("suggested_display_precision")] = 1;
-  jsonDoc[F("state_class")] = F("measurement");
-  jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("unit_of_measurement")] = F("°C");
-  if (_ha.mqtt.type == HA_MQTT_GENERIC)
-    jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (!isFluidType)
   {
-    jsonDoc[F("state_topic")] = F("~/TMPS");
-    jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
+    uniqueId = uniqueIdPrefixStove;
+    uniqueId += F("_RoomTemp");
+
+    topic = _ha.mqtt.hassDiscoveryPrefix;
+    topic += F("/sensor/");
+    topic += uniqueId;
+    topic += F("/config");
+
+    // prepare payload for Stove room temperature sensor
+    jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("device")] = serialized(device);
+    jsonDoc[F("device_class")] = F("temperature");
+    jsonDoc[F("name")] = F("Room Temperature");
+    jsonDoc[F("object_id")] = F("stove_roomtemp");
+    jsonDoc[F("suggested_display_precision")] = 1;
+    jsonDoc[F("state_class")] = F("measurement");
+    jsonDoc[F("unique_id")] = uniqueId;
+    jsonDoc[F("unit_of_measurement")] = F("°C");
+    if (_ha.mqtt.type == HA_MQTT_GENERIC)
+      jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    {
+      jsonDoc[F("state_topic")] = F("~/TMPS");
+      jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
+    }
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+      jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
+
+    jsonDoc.shrinkToFit();
+    serializeJson(jsonDoc, payload);
+
+    // publish
+    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+
+    // clean
+    jsonDoc.clear();
+    payload = "";
   }
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-    jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
 
-  jsonDoc.shrinkToFit();
-  serializeJson(jsonDoc, payload);
+  //
+  // Water temperature entity
+  //
 
-  // publish
-  _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+  if (isFluidType)
+  {
+    uniqueId = uniqueIdPrefixStove;
+    uniqueId += F("_WaterTemp");
 
-  // clean
-  jsonDoc.clear();
-  payload = "";
+    topic = _ha.mqtt.hassDiscoveryPrefix;
+    topic += F("/sensor/");
+    topic += uniqueId;
+    topic += F("/config");
+
+    // prepare payload for Stove water temperature sensor
+    jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("device")] = serialized(device);
+    jsonDoc[F("device_class")] = F("temperature");
+    jsonDoc[F("name")] = F("Water Temperature");
+    jsonDoc[F("object_id")] = F("stove_watertemp");
+    jsonDoc[F("suggested_display_precision")] = 1;
+    jsonDoc[F("state_class")] = F("measurement");
+    jsonDoc[F("unique_id")] = uniqueId;
+    jsonDoc[F("unit_of_measurement")] = F("°C");
+    if (_ha.mqtt.type == HA_MQTT_GENERIC)
+      jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    {
+      jsonDoc[F("state_topic")] = F("~/TMPS");
+      jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
+    }
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+      jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
+
+    jsonDoc.shrinkToFit();
+    serializeJson(jsonDoc, payload);
+
+    // publish
+    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+
+    // clean
+    jsonDoc.clear();
+    payload = "";
+  }
 
   //
   // Pellet consumption entity
@@ -625,8 +675,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("command_topic")] = F("~/cmd");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
-    jsonDoc[F("min")] = 17;
-    jsonDoc[F("max")] = 23;
+    jsonDoc[F("min")] = SPLMIN > 0 ? SPLMIN : 17;
+    jsonDoc[F("max")] = SPLMAX > 0 ? SPLMAX : 23;
     jsonDoc[F("mode")] = F("slider");
     jsonDoc[F("name")] = F("SetPoint");
     jsonDoc[F("object_id")] = F("stove_setp");
@@ -2678,7 +2728,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
           JsonArray PARM = doc[F("PARM")].to<JsonArray>();
           for (byte i = 0; i < 0x6A; i++)
             PARM.add(params[i]);
-          
+
           serializeJson(doc, toReturn);
 
           SERVER_KEEPALIVE_FALSE()
