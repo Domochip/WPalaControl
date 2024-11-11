@@ -18,7 +18,7 @@ All files are inside `schematic` subfolder and has been designed with KiCad (fre
 <img src="img/3boards.png" alt="WPalaControl 3boards"  width="334">  
 
 *I'm producing small batches of this adapter.*  
-*If you are interested, you can find it here: [WPalacontrol on tindie](https://www.tindie.com/products/35770/)* 🛍️
+*If you are interested, you can find it here: [WPalaControl on tindie](https://www.tindie.com/products/35770/)* 🛍️
 
 ### Box
 
