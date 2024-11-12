@@ -484,93 +484,45 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Room temperature entity
   //
-  if (!isFluidType)
+
+  uniqueId = uniqueIdPrefixStove;
+  uniqueId += F("_RoomTemp");
+
+  topic = _ha.mqtt.hassDiscoveryPrefix;
+  topic += F("/sensor/");
+  topic += uniqueId;
+  topic += F("/config");
+
+  // prepare payload for Stove room temperature sensor
+  jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("device")] = serialized(device);
+  jsonDoc[F("device_class")] = F("temperature");
+  jsonDoc[F("name")] = F("Room Temperature");
+  jsonDoc[F("object_id")] = F("stove_roomtemp");
+  jsonDoc[F("suggested_display_precision")] = 1;
+  jsonDoc[F("state_class")] = F("measurement");
+  jsonDoc[F("unique_id")] = uniqueId;
+  jsonDoc[F("unit_of_measurement")] = F("°C");
+  if (_ha.mqtt.type == HA_MQTT_GENERIC)
+    jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
+  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
   {
-    uniqueId = uniqueIdPrefixStove;
-    uniqueId += F("_RoomTemp");
-
-    topic = _ha.mqtt.hassDiscoveryPrefix;
-    topic += F("/sensor/");
-    topic += uniqueId;
-    topic += F("/config");
-
-    // prepare payload for Stove room temperature sensor
-    jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-    jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("device_class")] = F("temperature");
-    jsonDoc[F("name")] = F("Room Temperature");
-    jsonDoc[F("object_id")] = F("stove_roomtemp");
-    jsonDoc[F("suggested_display_precision")] = 1;
-    jsonDoc[F("state_class")] = F("measurement");
-    jsonDoc[F("unique_id")] = uniqueId;
-    jsonDoc[F("unit_of_measurement")] = F("°C");
-    if (_ha.mqtt.type == HA_MQTT_GENERIC)
-      jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-    {
-      jsonDoc[F("state_topic")] = F("~/TMPS");
-      jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
-    }
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-      jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
-
-    jsonDoc.shrinkToFit();
-    serializeJson(jsonDoc, payload);
-
-    // publish
-    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
-
-    // clean
-    jsonDoc.clear();
-    payload = "";
+    jsonDoc[F("state_topic")] = F("~/TMPS");
+    jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
   }
+  else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
 
-  //
-  // Water temperature entity
-  //
+  jsonDoc.shrinkToFit();
+  serializeJson(jsonDoc, payload);
 
-  if (isFluidType)
-  {
-    uniqueId = uniqueIdPrefixStove;
-    uniqueId += F("_WaterTemp");
+  // publish
+  _mqttMan.publish(topic.c_str(), payload.c_str(), true);
 
-    topic = _ha.mqtt.hassDiscoveryPrefix;
-    topic += F("/sensor/");
-    topic += uniqueId;
-    topic += F("/config");
-
-    // prepare payload for Stove water temperature sensor
-    jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-    jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("device_class")] = F("temperature");
-    jsonDoc[F("name")] = F("Water Temperature");
-    jsonDoc[F("object_id")] = F("stove_watertemp");
-    jsonDoc[F("suggested_display_precision")] = 1;
-    jsonDoc[F("state_class")] = F("measurement");
-    jsonDoc[F("unique_id")] = uniqueId;
-    jsonDoc[F("unit_of_measurement")] = F("°C");
-    if (_ha.mqtt.type == HA_MQTT_GENERIC)
-      jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-    {
-      jsonDoc[F("state_topic")] = F("~/TMPS");
-      jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
-    }
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-      jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
-
-    jsonDoc.shrinkToFit();
-    serializeJson(jsonDoc, payload);
-
-    // publish
-    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
-
-    // clean
-    jsonDoc.clear();
-    payload = "";
-  }
+  // clean
+  jsonDoc.clear();
+  payload = "";
 
   //
   // Pellet consumption entity
