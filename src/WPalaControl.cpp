@@ -349,7 +349,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
   bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
   bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
-  bool isFluidType = (FLUID == 1);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
   // ---------- Stove Device ----------
