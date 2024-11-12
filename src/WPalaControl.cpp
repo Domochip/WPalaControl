@@ -485,10 +485,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Main temperature sensor entity
   //
 
-  const __FlashStringHelper *tempSensorNameList[] = {F("Ambiant"), F("Tank Water"), F("Flow Water"), F("Return Water")};
+  const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Tank Water"), F("Flow Water"), F("Return Water")};
 
   // find the name
-  byte tempSensorNameIndex = 0; // default to Ambiant
+  byte tempSensorNameIndex = 0; // default to Room
   if (isHydroType)
   {
     if (UICONFIG == 1)
