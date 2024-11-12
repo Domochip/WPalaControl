@@ -498,20 +498,26 @@ bool WPalaControl::mqttPublishHassDiscovery()
   }
 
   uniqueId = uniqueIdPrefixStove;
-  uniqueId += F("_RoomTemp");
+  uniqueId += '_';
+  uniqueId += tempSensorNameList[tempSensorNameIndex];
+  uniqueId.replace(F(" "), "");
+  uniqueId += F("Temp");
 
   topic = _ha.mqtt.hassDiscoveryPrefix;
   topic += F("/sensor/");
   topic += uniqueId;
   topic += F("/config");
 
-  // prepare payload for Stove room temperature sensor
+  // prepare payload for Stove main temperature sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("temperature");
-  jsonDoc[F("name")] = F("Room Temperature");
-  jsonDoc[F("object_id")] = F("stove_roomtemp");
+  jsonDoc[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
+  String objectIdSuffix = tempSensorNameList[tempSensorNameIndex];
+  objectIdSuffix.replace(F(" "), "");
+  objectIdSuffix.toLowerCase();
+  jsonDoc[F("object_id")] = String(F("stove_")) + objectIdSuffix;
   jsonDoc[F("suggested_display_precision")] = 1;
   jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("unique_id")] = uniqueId;
