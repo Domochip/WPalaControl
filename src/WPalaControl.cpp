@@ -320,11 +320,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   char FWDATE[11];
   uint16_t FLUID;
   uint16_t SPLMIN, SPLMAX;
+  byte UICONFIG;
   byte MAINTPROBE;
   byte STOVETYPE;
   byte FAN2TYPE;
   byte FAN2MODE;
-  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(&SN, &SNCHK, nullptr, &MOD, &VER, nullptr, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, nullptr, nullptr, nullptr, nullptr, nullptr))
+  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(&SN, &SNCHK, nullptr, &MOD, &VER, nullptr, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, nullptr, nullptr, nullptr, nullptr, nullptr))
     return false;
 
   // read all status from stove
@@ -349,6 +350,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
   bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
   bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
+  bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
   // ---------- Stove Device ----------
