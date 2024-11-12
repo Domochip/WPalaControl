@@ -482,8 +482,20 @@ bool WPalaControl::mqttPublishHassDiscovery()
   payload = "";
 
   //
-  // Room temperature entity
+  // Main temperature sensor entity
   //
+
+  const __FlashStringHelper *tempSensorNameList[] = {F("Ambiant"), F("Tank Water"), F("Flow Water"), F("Return Water")};
+
+  // find the name
+  byte tempSensorNameIndex = 0; // default to Ambiant
+  if (isHydroType)
+  {
+    if (UICONFIG == 1)
+      tempSensorNameIndex = 3; // Return
+    else if (UICONFIG == 3 || UICONFIG == 4)
+      tempSensorNameIndex = 1; // Tank
+  }
 
   uniqueId = uniqueIdPrefixStove;
   uniqueId += F("_RoomTemp");
