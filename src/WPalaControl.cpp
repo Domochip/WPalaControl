@@ -702,8 +702,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("command_topic")] = F("~/cmd");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
-    jsonDoc[F("min")] = SPLMAX > 51 ? SPLMIN : 17;
-    jsonDoc[F("max")] = SPLMAX > 51 ? SPLMAX : 23;
+    jsonDoc[F("min")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMIN : 17; // use stove limit if it is an hydro one and config use water temp
+    jsonDoc[F("max")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMAX : 23;
     jsonDoc[F("mode")] = F("slider");
     jsonDoc[F("name")] = F("SetPoint");
     jsonDoc[F("object_id")] = F("stove_setp");
