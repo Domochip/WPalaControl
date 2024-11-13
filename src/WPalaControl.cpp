@@ -481,20 +481,76 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc.clear();
   payload = "";
 
+  // T1 probe config is fixed for hydro type stove
+  if (isHydroType)
+  {
+    //
+    // Supply Water temperature entity
+    //
+
+    uniqueId = uniqueIdPrefixStove;
+    uniqueId += F("_SupplyWaterTemp");
+
+    topic = _ha.mqtt.hassDiscoveryPrefix;
+    topic += F("/sensor/");
+    topic += uniqueId;
+    topic += F("/config");
+
+    // prepare payload for Stove supply water temperature sensor
+    jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("device")] = serialized(device);
+    jsonDoc[F("device_class")] = F("temperature");
+    jsonDoc[F("name")] = F("Supply Water Temperature");
+    jsonDoc[F("object_id")] = F("stove_supplywatertemp");
+    jsonDoc[F("suggested_display_precision")] = 1;
+    jsonDoc[F("state_class")] = F("measurement");
+    jsonDoc[F("unique_id")] = uniqueId;
+    jsonDoc[F("unit_of_measurement")] = F("°C");
+    if (_ha.mqtt.type == HA_MQTT_GENERIC)
+      jsonDoc[F("state_topic")] = F("~/T1");
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    {
+      jsonDoc[F("state_topic")] = F("~/TMPS");
+      jsonDoc[F("value_template")] = F("{{ value_json.T1 }}");
+    }
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+      jsonDoc[F("state_topic")] = F("~/TMPS/T1");
+
+    jsonDoc.shrinkToFit();
+    serializeJson(jsonDoc, payload);
+
+    // publish
+    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+
+    // clean
+    jsonDoc.clear();
+    payload = "";
+  }
+
   //
-  // Main temperature sensor entity
+  // Room/Tank Water/Return Water temperature entity
   //
 
-  const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Storage Tank"), F("Flow Water"), F("Return Water")};
-
-  // find the name
-  byte tempSensorNameIndex = 0; // default to Room
+  // define probe number
+  byte probeNumber = MAINTPROBE; // default case covering AirType and other HydroType
   if (isHydroType)
   {
     if (UICONFIG == 1)
-      tempSensorNameIndex = 3; // Return Water
+      probeNumber = 1; // T2
+    else if (UICONFIG == 10)
+      probeNumber = 4; // T5
+  }
+
+  // define sensor name
+  const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
+  byte tempSensorNameIndex = 0; // default case covering AirType
+  if (isHydroType)
+  {
+    if (UICONFIG == 1)
+      tempSensorNameIndex = 1; // Return Water
     else if (UICONFIG == 3 || UICONFIG == 4)
-      tempSensorNameIndex = 1; // Tank Water
+      tempSensorNameIndex = 2; // Tank Water
   }
 
   uniqueId = uniqueIdPrefixStove;
@@ -523,14 +579,14 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("unique_id")] = uniqueId;
   jsonDoc[F("unit_of_measurement")] = F("°C");
   if (_ha.mqtt.type == HA_MQTT_GENERIC)
-    jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + MAINTPROBE);
+    jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + probeNumber);
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
   {
     jsonDoc[F("state_topic")] = F("~/TMPS");
-    jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + MAINTPROBE) + F(" }}");
+    jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   }
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-    jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + MAINTPROBE);
+    jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + probeNumber);
 
   jsonDoc.shrinkToFit();
   serializeJson(jsonDoc, payload);
@@ -541,96 +597,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // clean
   jsonDoc.clear();
   payload = "";
-
-  // // additionnal entities for Hydro type
-  // if (isHydroType)
-  // {
-  //   //
-  //   // Flow water temperature sensor entity
-  //   //
-
-  //   uniqueId = uniqueIdPrefixStove;
-  //   uniqueId += F("_FlowWaterTemp");
-
-  //   topic = _ha.mqtt.hassDiscoveryPrefix;
-  //   topic += F("/sensor/");
-  //   topic += uniqueId;
-  //   topic += F("/config");
-
-  //   // prepare payload for Stove flow water temperature sensor
-  //   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-  //   jsonDoc[F("availability")] = serialized(availability);
-  //   jsonDoc[F("device")] = serialized(device);
-  //   jsonDoc[F("device_class")] = F("temperature");
-  //   jsonDoc[F("name")] = F("Flow Water Temperature");
-  //   jsonDoc[F("object_id")] = F("stove_flowwatertemp");
-  //   jsonDoc[F("suggested_display_precision")] = 1;
-  //   jsonDoc[F("state_class")] = F("measurement");
-  //   jsonDoc[F("unique_id")] = uniqueId;
-  //   jsonDoc[F("unit_of_measurement")] = F("°C");
-  //   if (_ha.mqtt.type == HA_MQTT_GENERIC)
-  //     jsonDoc[F("state_topic")] = F("~/T1");
-  //   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-  //   {
-  //     jsonDoc[F("state_topic")] = F("~/TMPS");
-  //     jsonDoc[F("value_template")] = F("{{ value_json.T1 }}");
-  //   }
-  //   else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-  //     jsonDoc[F("state_topic")] = F("~/TMPS/T1");
-
-  //   jsonDoc.shrinkToFit();
-  //   serializeJson(jsonDoc, payload);
-
-  //   // publish
-  //   _mqttMan.publish(topic.c_str(), payload.c_str(), true);
-
-  //   // clean
-  //   jsonDoc.clear();
-  //   payload = "";
-
-  //   //
-  //   // Return water temperature sensor entity
-  //   //
-
-  //   uniqueId = uniqueIdPrefixStove;
-  //   uniqueId += F("_ReturnWaterTemp");
-
-  //   topic = _ha.mqtt.hassDiscoveryPrefix;
-  //   topic += F("/sensor/");
-  //   topic += uniqueId;
-  //   topic += F("/config");
-
-  //   // prepare payload for Stove return water temperature sensor
-  //   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-  //   jsonDoc[F("availability")] = serialized(availability);
-  //   jsonDoc[F("device")] = serialized(device);
-  //   jsonDoc[F("device_class")] = F("temperature");
-  //   jsonDoc[F("name")] = F("Return Water Temperature");
-  //   jsonDoc[F("object_id")] = F("stove_returnwatertemp");
-  //   jsonDoc[F("suggested_display_precision")] = 1;
-  //   jsonDoc[F("state_class")] = F("measurement");
-  //   jsonDoc[F("unique_id")] = uniqueId;
-  //   jsonDoc[F("unit_of_measurement")] = F("°C");
-  //   if (_ha.mqtt.type == HA_MQTT_GENERIC)
-  //     jsonDoc[F("state_topic")] = F("~/T2");
-  //   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-  //   {
-  //     jsonDoc[F("state_topic")] = F("~/TMPS");
-  //     jsonDoc[F("value_template")] = F("{{ value_json.T2 }}");
-  //   }
-  //   else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-  //     jsonDoc[F("state_topic")] = F("~/TMPS/T2");
-
-  //   jsonDoc.shrinkToFit();
-  //   serializeJson(jsonDoc, payload);
-
-  //   // publish
-  //   _mqttMan.publish(topic.c_str(), payload.c_str(), true);
-
-  //   // clean
-  //   jsonDoc.clear();
-  //   payload = "";
-  // }
 
   //
   // Pellet consumption entity
