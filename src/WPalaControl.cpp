@@ -516,9 +516,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((intSTATUS > 1 and intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((intSTATUS > 1 and intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
 
   jsonDoc[F("action_topic")] = statusTopicList[_ha.mqtt.type];
   jsonDoc[F("availability")] = serialized(availability);
@@ -1079,7 +1079,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     payload = "";
   }
 
-  // TODO
   return true;
 }
 
