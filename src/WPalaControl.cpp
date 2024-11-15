@@ -526,6 +526,30 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   jsonDoc[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
   jsonDoc[F("device")] = serialized(device);
+
+  if (hasRoomFan)
+  {
+
+    jsonDoc[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
+    jsonDoc[F("fan_mode_command_topic")] = F("~/cmd");
+    if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+      jsonDoc[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
+    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+      jsonDoc[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
+    jsonDoc[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
+
+    JsonArray fan_modes = jsonDoc["fan_modes"].to<JsonArray>();
+    fan_modes.add("0");
+    fan_modes.add("1");
+    fan_modes.add("2");
+    fan_modes.add("3");
+    fan_modes.add("4");
+    fan_modes.add("5");
+    fan_modes.add("6");
+    if (isAirType && hasFanAuto)
+      fan_modes.add("auto");
+  }
+
   jsonDoc[F("max_temp")] = SPLMAX;
   jsonDoc[F("min_temp")] = SPLMIN;
   jsonDoc[F("mode_command_template")] = F("CMD+{{ iif(value == 'off', 'OFF', 'ON') }}");
