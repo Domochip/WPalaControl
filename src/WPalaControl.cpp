@@ -353,9 +353,16 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
-  // ---------- Usefull text for entities ----------
+  // ---------- Usefull variables for entities building ----------
 
   const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
+  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
+      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
+      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
+      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
+      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
+      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
+  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
   const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
   const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
   const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
@@ -626,7 +633,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("name")] = F("Pellet Consumed");
   jsonDoc[F("object_id")] = F("stove_pqt");
   jsonDoc[F("state_class")] = F("total_increasing");
-  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
   jsonDoc[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   jsonDoc[F("unit_of_measurement")] = F("kg");
