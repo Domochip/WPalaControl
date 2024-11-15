@@ -541,10 +541,13 @@ bool WPalaControl::mqttPublishHassDiscovery()
   JsonArray modes = jsonDoc["modes"].to<JsonArray>();
   modes.add("off");
   modes.add("heat");
-  
+
   jsonDoc[F("name")] = F("Thermostat");
   jsonDoc[F("object_id")] = F("stove_thermostat");
   jsonDoc[F("optimistic")] = false;
+  jsonDoc[F("payload_off")] = F("CMD+OFF");
+  jsonDoc[F("payload_on")] = F("CMD+ON");
+  jsonDoc[F("power_command_topic")] = F("~/cmd");
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("temperature_state_template")] = F("{{ value_json.SETP }}");
   jsonDoc[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
