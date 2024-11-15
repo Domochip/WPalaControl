@@ -592,15 +592,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("unique_id")] = uniqueId;
   jsonDoc[F("unit_of_measurement")] = F("°C");
-  if (_ha.mqtt.type == HA_MQTT_GENERIC)
-    jsonDoc[F("state_topic")] = String(F("~/T")) + (char)('1' + probeNumber);
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
-  {
-    jsonDoc[F("state_topic")] = F("~/TMPS");
+  jsonDoc[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
+  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
-  }
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-    jsonDoc[F("state_topic")] = String(F("~/TMPS/T")) + (char)('1' + probeNumber);
 
   jsonDoc.shrinkToFit();
   serializeJson(jsonDoc, payload);
