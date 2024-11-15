@@ -495,6 +495,72 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc.clear();
   payload = "";
 
+  //
+  // Thermostat entity
+  //
+
+  // define probe number
+  byte probeNumber = MAINTPROBE;                                        // default case covering AirType and other HydroType
+  if (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
+    probeNumber = 0;                                                    // T1
+
+  uniqueId = uniqueIdPrefixStove;
+  uniqueId += F("_Thermostat");
+
+  topic = _ha.mqtt.hassDiscoveryPrefix;
+  topic += F("/climate/");
+  topic += uniqueId;
+  topic += F("/config");
+
+  // prepare payload for Stove thermostat
+  jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+
+  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((intSTATUS > 1 and intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((intSTATUS > 1 and intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+
+  jsonDoc[F("action_topic")] = statusTopicList[_ha.mqtt.type];
+  jsonDoc[F("availability")] = serialized(availability);
+  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    jsonDoc[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
+  jsonDoc[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
+  jsonDoc[F("device")] = serialized(device);
+  jsonDoc[F("max_temp")] = SPLMAX;
+  jsonDoc[F("min_temp")] = SPLMIN;
+  jsonDoc[F("mode_command_template")] = F("{{ 'CMD+' ~ iif(value == 'off', 'OFF', 'ON') }}");
+  jsonDoc[F("mode_command_topic")] = F("~/cmd");
+
+  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    jsonDoc[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
+  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    jsonDoc[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
+
+  jsonDoc[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
+
+  JsonArray modes = jsonDoc["modes"].to<JsonArray>();
+  modes.add("off");
+  modes.add("heat");
+  
+  jsonDoc[F("name")] = F("Thermostat");
+  jsonDoc[F("object_id")] = F("stove_thermostat");
+  jsonDoc[F("optimistic")] = false;
+  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    jsonDoc[F("temperature_state_template")] = F("{{ value_json.SETP }}");
+  jsonDoc[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
+  jsonDoc[F("temperature_unit")] = F("C");
+  jsonDoc[F("unique_id")] = uniqueId;
+
+  jsonDoc.shrinkToFit();
+  serializeJson(jsonDoc, payload);
+
+  // publish
+  _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+
+  // clean
+  jsonDoc.clear();
+  payload = "";
+
   // T1 probe config is fixed for hydro type stove
   if (isHydroType)
   {
@@ -547,7 +613,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
 
   // define probe number
-  byte probeNumber = MAINTPROBE; // default case covering AirType and other HydroType
+  probeNumber = MAINTPROBE; // default case covering AirType and other HydroType
   if (isHydroType)
   {
     if (UICONFIG == 1)
