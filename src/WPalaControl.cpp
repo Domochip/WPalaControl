@@ -353,6 +353,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
+  // ---------- Usefull text for entities ----------
+
+  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
+  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
+  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
+  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
+  const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
+  const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
+
   // ---------- Stove Device ----------
 
   // prepare unique id prefix for Stove
@@ -428,7 +437,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("entity_category")] = F("diagnostic");
   jsonDoc[F("name")] = F("Status");
   jsonDoc[F("object_id")] = F("stove_status");
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
   jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -463,7 +471,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("device_class")] = F("enum");
   jsonDoc[F("name")] = F("Status");
   jsonDoc[F("object_id")] = F("stove_status_text");
-  // const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")}; // reuse statusTopicList
   jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -662,7 +669,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("payload_on")] = F("CMD+ON");
     jsonDoc[F("state_off")] = F("OFF");
     jsonDoc[F("state_on")] = F("ON");
-    // const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")}; // reuse statusTopicList
     jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -707,7 +713,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("mode")] = F("slider");
     jsonDoc[F("name")] = F("SetPoint");
     jsonDoc[F("object_id")] = F("stove_setp");
-    const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
     jsonDoc[F("state_topic")] = setpTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     jsonDoc[F("unit_of_measurement")] = F("°C");
@@ -751,7 +756,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("mode")] = F("slider");
     jsonDoc[F("name")] = F("Power");
     jsonDoc[F("object_id")] = F("stove_pwr");
-    const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
     jsonDoc[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -793,7 +797,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     availability_0["value_template"] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
 
     JsonObject availability_1 = availability.add<JsonObject>();
-    const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
     availability_1["topic"] = f2lTopicList[_ha.mqtt.type];
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
       availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
@@ -811,7 +814,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("name")] = F("Room Fan");
     jsonDoc[F("object_id")] = F("stove_rfan");
     jsonDoc[F("payload_reset")] = F("7");
-    // const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")}; //reuse f2lTopicList
     jsonDoc[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -854,7 +856,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("payload_on")] = F("SET+RFAN+7");
     jsonDoc[F("state_off")] = F("OFF");
     jsonDoc[F("state_on")] = F("ON");
-    const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
     jsonDoc[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -896,7 +897,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("icon")] = F("mdi:fan-speed-2");
     jsonDoc[F("name")] = F("Left Fan");
     jsonDoc[F("object_id")] = F("stove_fan3");
-    const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
     jsonDoc[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -952,7 +952,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("icon")] = F("mdi:fan-speed-3");
     jsonDoc[F("name")] = F("Right Fan");
     jsonDoc[F("object_id")] = F("stove_fan4");
-    const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
     jsonDoc[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
