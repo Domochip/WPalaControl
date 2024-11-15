@@ -528,7 +528,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("max_temp")] = SPLMAX;
   jsonDoc[F("min_temp")] = SPLMIN;
-  jsonDoc[F("mode_command_template")] = F("{{ 'CMD+' ~ iif(value == 'off', 'OFF', 'ON') }}");
+  jsonDoc[F("mode_command_template")] = F("CMD+{{ iif(value == 'off', 'OFF', 'ON') }}");
   jsonDoc[F("mode_command_topic")] = F("~/cmd");
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -548,7 +548,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("payload_off")] = F("CMD+OFF");
   jsonDoc[F("payload_on")] = F("CMD+ON");
   jsonDoc[F("power_command_topic")] = F("~/cmd");
-  jsonDoc[F("temperature_command_template")] = F("{{ 'SET+SETP+' ~ value|int }}");
+  jsonDoc[F("temperature_command_template")] = F("SET+SETP+{{ value|int }}");
   jsonDoc[F("temperature_command_topic")] = F("~/cmd");
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("temperature_state_template")] = F("{{ value_json.SETP }}");
