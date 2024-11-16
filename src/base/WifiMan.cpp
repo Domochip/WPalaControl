@@ -6,6 +6,14 @@ void WifiMan::enableAP(bool force = false)
   {
     WiFi.enableAP(true);
     WiFi.softAP(F(DEFAULT_AP_SSID), F(DEFAULT_AP_PSK), _apChannel);
+    // Start DNS server
+    _dnsServer = new DNSServer();
+    _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
+    while (!WiFi.softAPIP().isSet())
+    {
+      delay(10);
+    }
+    _dnsServer->start(53, F("*"), WiFi.softAPIP());
   }
 }
 
@@ -33,7 +41,12 @@ void WifiMan::refreshWiFi()
       // if connection is successfull
       if (WiFi.isConnected())
       {
-        WiFi.enableAP(false); // disable AP
+        // stop DNS server
+        _dnsServer->stop();
+        delete _dnsServer;
+        _dnsServer = nullptr;
+        // disable AP
+        WiFi.enableAP(false);
 #ifdef STATUS_LED_GOOD
         STATUS_LED_GOOD
 #endif
@@ -398,6 +411,10 @@ void WifiMan::appRun()
     _needRefreshWifi = false;
     refreshWiFi();
   }
+
+  if (_dnsServer)
+    _dnsServer->processNextRequest();
+
 #ifdef ESP8266
   MDNS.update();
 #endif

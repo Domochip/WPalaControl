@@ -65,7 +65,8 @@ For version **3.1.x and lower**:
 - Network SSID : `WirelessPalaControlXXXX`
 - Password : `PasswordPalaControl`
 
-Connect to the network and then go to 👉 <http://wpalacontrol.local> 👈
+You should then be automatically redirected to the module page.  
+Otherwise go to 👉 <http://wpalacontrol.local> 👈
 
 ## Configuration pages
 

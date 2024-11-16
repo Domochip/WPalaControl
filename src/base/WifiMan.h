@@ -10,6 +10,7 @@
 #else
 #include <ESPmDNS.h>
 #endif
+#include <DNSServer.h>
 
 #include "data/status1.html.gz.h"
 #include "data/config1.html.gz.h"
@@ -36,6 +37,7 @@ private:
   WiFiEventHandler _staConnectedHandler;
   WiFiEventHandler _staDisconnectedHandler;
 #endif
+  DNSServer *_dnsServer = nullptr;
   int _apChannel = 2;
   bool _needRefreshWifi = false;
   bool _stationConnectedToSoftAP = false;
