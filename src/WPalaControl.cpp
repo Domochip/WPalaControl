@@ -369,6 +369,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
   const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
 
+  const __FlashStringHelper *cmdTopic = F("~/cmd");
+
   // ---------- Stove Device ----------
 
   // prepare unique id prefix for Stove
@@ -531,7 +533,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
 
     jsonDoc[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
-    jsonDoc[F("fan_mode_command_topic")] = F("~/cmd");
+    jsonDoc[F("fan_mode_command_topic")] = cmdTopic;
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
       jsonDoc[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
     else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -553,7 +555,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("max_temp")] = SPLMAX;
   jsonDoc[F("min_temp")] = SPLMIN;
   jsonDoc[F("mode_command_template")] = F("CMD+{{ iif(value == 'off', 'OFF', 'ON') }}");
-  jsonDoc[F("mode_command_topic")] = F("~/cmd");
+  jsonDoc[F("mode_command_topic")] = cmdTopic;
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
@@ -571,9 +573,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("optimistic")] = false;
   jsonDoc[F("payload_off")] = F("CMD+OFF");
   jsonDoc[F("payload_on")] = F("CMD+ON");
-  jsonDoc[F("power_command_topic")] = F("~/cmd");
+  jsonDoc[F("power_command_topic")] = cmdTopic;
   jsonDoc[F("temperature_command_template")] = F("SET+SETP+{{ value|int }}");
-  jsonDoc[F("temperature_command_topic")] = F("~/cmd");
+  jsonDoc[F("temperature_command_topic")] = cmdTopic;
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("temperature_state_template")] = F("{{ value_json.SETP }}");
   jsonDoc[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
@@ -755,7 +757,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // prepare payload for Stove onoff switch
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:power");
     jsonDoc[F("name")] = F("On/Off");
@@ -800,7 +802,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+SETP+{{ value }}");
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
     jsonDoc[F("min")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMIN : 15; // use stove limit if it is an hydro one and config use water temp
@@ -843,7 +845,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+POWR+{{ value }}");
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:signal");
     jsonDoc[F("min")] = 1;
@@ -901,7 +903,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("availability_mode")] = F("all");
 
     jsonDoc[F("command_template")] = F("SET+RFAN+{{ value }}");
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan");
     jsonDoc[F("min")] = 0;
@@ -942,7 +944,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // prepare payload for Stove room fan auto mode
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-auto");
     jsonDoc[F("name")] = F("Room Fan Auto");
@@ -987,7 +989,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // prepare payload for Stove fan3 number
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-speed-2");
     jsonDoc[F("name")] = F("Left Fan");
@@ -1042,7 +1044,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // prepare payload for Stove fan4 number
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("command_topic")] = F("~/cmd");
+    jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-speed-3");
     jsonDoc[F("name")] = F("Right Fan");
