@@ -644,7 +644,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   String objectIdSuffix = tempSensorNameList[tempSensorNameIndex];
   objectIdSuffix.replace(F(" "), "");
   objectIdSuffix.toLowerCase();
-  jsonDoc[F("object_id")] = String(F("stove_")) + objectIdSuffix;
+  jsonDoc[F("object_id")] = String(F("stove_")) + objectIdSuffix + F("temp");
   jsonDoc[F("suggested_display_precision")] = 1;
   jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("unique_id")] = uniqueId;
@@ -731,6 +731,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("unit_of_measurement")] = F("h");
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("value_template")] = F("{{ value_json.SERVICETIME }}");
+
+  // publish
+  publishJson(topic, jsonDoc);
 
   //
   // Feeder entity
