@@ -9,7 +9,7 @@ void WifiMan::enableAP(bool force = false)
     // Start DNS server
     _dnsServer = new DNSServer();
     _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
-    while (!WiFi.softAPIP().isSet())
+    while (WiFi.softAPIP() == INADDR_NONE)
     {
       delay(10);
     }
@@ -84,7 +84,7 @@ void WifiMan::setConfigDefaultValues()
 {
   ssid[0] = 0;
   password[0] = 0;
-  hostname[0] = 0;
+  strcpy_P(hostname, PSTR(CUSTOM_APP_MODEL));
   ip = 0;
   gw = 0;
   mask = 0;

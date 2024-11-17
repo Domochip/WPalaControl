@@ -11,7 +11,7 @@
 #define CUSTOM_APP_MANUFACTURER "Domochip"
 #define CUSTOM_APP_MODEL "WPalaControl"
 #define CUSTOM_APP_CLASS WPalaControl
-#define VERSION_NUMBER "3.3.0"
+#define VERSION_NUMBER "3.4.0"
 
 #define CUSTOM_APP_HEADER TOSTRING(CUSTOM_APP_CLASS.h) // calculated header file "{CUSTOM_APP_CLASS}.h"
 #define DEFAULT_AP_SSID CUSTOM_APP_MODEL               // Default Access Point SSID "{CUSTOM_APP_MODEL}"
