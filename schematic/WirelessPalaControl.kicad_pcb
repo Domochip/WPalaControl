@@ -3356,7 +3356,7 @@
 				)
 			)
 		)
-		(property "Value" "10K"
+		(property "Value" "2K"
 			(at 0 1.65 180)
 			(layer "F.Fab")
 			(uuid "52d2d6c4-1597-4451-be52-bab504b63d6e")
@@ -3406,7 +3406,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17414"
+		(property "LCSC" "C17604"
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -4876,7 +4876,7 @@
 			(justify mirror)
 		)
 	)
-	(gr_text "C1,C2: 100n\nD1,D3: Red Led\nD2: SS34\nR1,R6: 1K\nR2,R7: 220\nR3,R8: 2K\nR4,R5: 10K\nU1: Si8621"
+	(gr_text "C1,C2: 100n\nD1,D3: Red Led\nD2: SS34\nR1,R6: 1K\nR2,R7: 220\nR3,R4,R8: 2K\nR5: 10K\nU1: Si8621"
 		(at 40.64 48.641 0)
 		(layer "B.SilkS")
 		(uuid "b5c642d4-56e3-4d18-8a3a-06dd23ec789a")
