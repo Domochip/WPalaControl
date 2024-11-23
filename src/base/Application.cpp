@@ -76,6 +76,15 @@ bool Application::getLastestUpdateInfo(char (*version)[10], char (*title)[64] /*
   if (!version)
     return false;
 
+  // initialize the output strings
+  *version[0] = 0;
+  if (title)
+    *title[0] = 0;
+  if (releaseDate)
+    *releaseDate[0] = 0;
+  if (summary)
+    *summary[0] = 0;
+
   String githubURL = F("https://api.github.com/repos/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/latest");
 
   WiFiClientSecure clientSecure;
@@ -103,6 +112,10 @@ bool Application::getLastestUpdateInfo(char (*version)[10], char (*title)[64] /*
   bool keyFound = false;    // used to know if we found a key we are looking for
   char *targetArray = nullptr;
   size_t targetArraySize = 0;
+
+  // sometime the stream is not yet ready (no data available yet)
+  for (byte i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
+    ;
 
   // while there is data to read
   while (http.connected() && stream->available())
@@ -207,7 +220,7 @@ bool Application::getLastestUpdateInfo(char (*version)[10], char (*title)[64] /*
 
   http.end();
 
-  return true;
+  return strlen(*version) > 0;
 }
 
 String Application::getLatestUpdateInfoJson(bool forWebPage /* = false */)

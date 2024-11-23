@@ -3,29 +3,28 @@
 
 # WPalaControl
 
-This project uses "Palazzetti library" and a D1 Mini to control Fumis based stove.  
-It allows to power On/Off, change the setPoint, change fans speed, get status/alarms/temperatures of the stove.
+**WPalaControl** is a device designed to control and monitor Fumis-based stoves using a D1 Mini.  
+It allows you to power on/off, adjust the set point, change fan speeds, and retrieve status, alarms, and temperature data from your stove.  
 
-Native HTTP requests are available which make is fully compatible with all existing Palazzetti/Fumis home automation plugins/apps.
+It supports native HTTP requests which makes it fully compatible with all existing Palazzetti/Fumis home automation plugins/apps.  
 
-Additionally, this project add MQTT protocol to monitor/control your stove in a much more efficient way.
+It also integrates with MQTT to monitor/control your stove in a much more efficient way.  
 
 ## Stove Compatibility
 
-Fumis Controller is used by many manufacturer for their stoves.
-Here is a non-exhaustive list:  
+WPalaControl is compatible with stoves using the Fumis Controller, which is used by many manufacturers, including:  
   
 Palazzetti / Jotul / TurboFonte / Godin / Fonte Flamme / Invicta / Casatelli / Alpis / Faizen / HETA / ...
 
-If you have this control panel and/or controller in your stove, it's compatible.  
+To determine if your stove is compatible with WPalaControl, look for the following Control Panel or Motherboard:  
 ![Fumis Controller](img/fumis2.png)![Fumis Controller](img/fumis.png)
 
 ## Home Automation compatibility
 
-| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) <br> Most options and fans control | ![hacard](img/hacard.jpg) |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) <br> Most options and fans control | ![hacard](img/hacard.png) |
 | ------------- | ------------- | ------------- |
-| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br> (2024.11 minimum) <br> Basic implementation for now | ![hacard-pala-integ](img/hacard-pala-integ.png)  ![hacard-pala-integ2](img/hacard-pala-integ2.png) |
-| ![Logo Jeedom](https://www.jeedom.com/logo.png) | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br> (2024.11 minimum) <br> Basic implementation for now | ![hacard-pala-integ](img/hacard-pala-integ.png) |
+| ![Logo Jeedom](https://www.jeedom.com/_next/image?url=%2Fassets%2Fimg%2Flogo.png&w=256&q=75) | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
 
 ## Make/Get your adapter
 
@@ -33,7 +32,8 @@ If you have this control panel and/or controller in your stove, it's compatible.
 
 🔧 If you want to build it yourself, you can find all details here : [BUILD](BUILD.md) 🔧  
 
-🛍️🚀 Otherwise, I'm producing some small batches and offering it ready to use here : [![Tindie product](./img/tindie-mediums.png)](https://www.tindie.com/products/35770/)  
+🛍️🚀 Otherwise, I'm producing some small batches and offering it ready-to-use here :  
+[![Tindie product](./img/tindie-mediums.png)](https://www.tindie.com/products/35770/)  
 
 ## Connect
 
@@ -44,36 +44,34 @@ _(Hardware version is written on the box and on the PCB)_
 
 ![WPalaControl rj11](img/rj11-pinout.png)
 
-If your stove has an accessible RJ12 connector from the outisde:  
-✅ You just need to connect the cable
+✅If your stove has an accessible RJ12 connector, simply connect the cable.  
 
-If there no visible RJ12 connector:  
-🔍 You'll need an additional cable and a splitter  
-➡️ More details in [Splitter Cabling documentation](SPLITTERCABLING.md)
+🔍If not, you'll need an additional cable and a splitter.  
+➡️ More details can be found in the [Splitter Cabling documentation](SPLITTERCABLING.md)
 
 ## First Boot
 
-During First Boot, the WPalaControl creates its own wifi network (AP mode)  
+During the first Boot, the WPalaControl creates its own Wi-Fi network (AP mode)  
 
-For firmware version **3.2.0 and higher**:  
+Firmware version **3.2.0 and higher**:  
 
 - Network SSID : `WPalaControl`
 - Password : `password`
 
-For version **3.1.x and lower**:  
+Version **3.1.x and lower**:  
 
 - Network SSID : `WirelessPalaControlXXXX`
 - Password : `PasswordPalaControl`
 
-You should then be automatically redirected to the module page.  
-Otherwise go to 👉 <http://wpalacontrol.local> 👈
+You should be automatically redirected to the module page.  
+If not, go to 👉 <http://wpalacontrol.local> 👈
 
 ## Configuration pages
 
 ### Status
 
-It returns you useful informations about the module and the stove.  
-**The stove SN appears then 1 minute later, refreshed stove information appears (default upload period)**  
+Provides useful informations about the module and the stove.  
+**The stove SN appears then followed, 1 minute later, by refreshed stove information**  
 <img src="img/status.png" alt="status screenshot" width="400" style="vertical-align: top;"><img src="img/status2.png" alt="status2 screenshot"  width="400">
 
 ### Config
@@ -89,16 +87,16 @@ It returns you useful informations about the module and the stove.
 
 - **ssid & password**: IDs of your Wifi Network  
 - **hostname**: name of ESP on the network  
-- **IP,GW,NetMask,DNS1&2**: Fixed IP configuration  
+- **IP, GW, NetMask, DNS1&2**: Fixed IP configuration  
 
 ![configMQTT screenshot](img/configMQTT.png)
 
 #### PalaControl - Home Automation
 
 - **Type**: enable/disable MQTT communication  
-- **Upload Period**: delay between refresh of stove information (in seconds)  
-- **Hostname,Port,Username,Password**: MQTT server infos (username and password are - optional)  
-- **Base Topic**: prefix used for WPalaControl topic structure  
+- **Upload Period**: set the refresh interval of stove information (in seconds)  
+- **Hostname, Port, Username, Password**: MQTT server details (username and password are - optional)  
+- **Base Topic**: prefix for WPalaControl topic structure  
 - **MQTT Type**: defines MQTT topics and data structure:  
   - **Generic**: publish raw values under the base topic (e.g. "{baseTopic}/T1" = "*20.00*")
   - **Generic JSON**: publish values JSON to "category" topic under base topic (e.g. "{baseTopic}/TMPS" = "*{"INFO":{"CMD":"GET TMPS","RSP":"OK......*")
@@ -107,30 +105,33 @@ It returns you useful informations about the module and the stove.
 
 ### Firmware
 
-It allows you to flash a new firmware version directly from GitHub releases or using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
+Aallows you to flash a new firmware version directly from GitHub releases or using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
 ![firmware screenshot](img/firmware.png)  
-If latest version info doesn't appears, please ensure the module has Internet access and/or DNS configured if IP address is static
+Ensure the module has Internet access and/or DNS configured if IP address is static
 
 ## Use it
 
 ### HTTP
 
 Natively, HTTP GET request can be sent directly to the module.  
-Syntax:  **<http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd={command}>**
+
+```http
+http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd={command}
+```
 
 ### MQTT
 
-Commands can be sent via MQTT to %BaseTopic%**/cmd** topic once MQTT is configured.  
+Send commands via MQTT to `%BaseTopic%/cmd` topic once MQTT is configured.  
 Execution result is:
 
 - published following the configured MQTT Type
-- published on %BaseTopic%**/result** in JSON format
+- published on `%BaseTopic%/result` in JSON format
 
-Module connection status is published to %BaseTopic%**/connected**:
+Module connection status is published to `%BaseTopic%/connected`:
 
 - 0: not connected
-- 1: Module connected but no communication with the stove
-- 2: Module and stove connected
+- 1: connected but no communication with the stove
+- 2: module and stove connected
 
 ### Command List
   
