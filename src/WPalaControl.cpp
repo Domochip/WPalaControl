@@ -91,7 +91,7 @@ void WPalaControl::mqttDisconnectedCallback()
   _publishedStoveConnected = false;
 }
 
-void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
+void WPalaControl::mqttCallback(MQTTClient *client, char *topic, char *payload, int length)
 {
   // calculate command topic
   String cmdTopic = _ha.mqtt.generic.baseTopic;
@@ -2685,7 +2685,7 @@ String WPalaControl::generateStatusJSON()
   {
     doc[F("hamqttstatus")] = _mqttMan.getStateString();
 
-    if (_mqttMan.state() == MQTT_CONNECTED)
+    if (_mqttMan.connected())
       doc[F("hamqttlastpublish")] = (_haSendResult ? F("OK") : F("Failed"));
   }
 
@@ -2717,12 +2717,11 @@ bool WPalaControl::appInit(bool reInit)
     willTopic += F("connected");
 
     // setup MQTT
-    _mqttMan.setBufferSize(1800); // max JSON size (STDT ~1100 but Thermostat HAss discovery ~1800)
-    _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
+    _mqttMan.begin(_ha.hostname, _ha.mqtt.port, _wifiClient);
     _mqttMan.setConnectedAndWillTopic(willTopic.c_str());
     _mqttMan.setConnectedCallback(std::bind(&WPalaControl::mqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
     _mqttMan.setDisconnectedCallback(std::bind(&WPalaControl::mqttDisconnectedCallback, this));
-    _mqttMan.setCallback(std::bind(&WPalaControl::mqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    _mqttMan.onMessageAdvanced(std::bind(&WPalaControl::mqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
     // Connect
     _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
@@ -3034,7 +3033,7 @@ void WPalaControl::appRun()
 
 //------------------------------------------
 // Constructor
-WPalaControl::WPalaControl() : Application(CustomApp)
+WPalaControl::WPalaControl() : Application(CustomApp), _mqttMan(1800, 128) // max JSON size (STDT ~1100 but Thermostat HAss discovery ~1800)
 {
   // TX/GPIO15 is pulled down and so block the stove bus by default...
   pinMode(15, OUTPUT); // set TX PIN to OUTPUT HIGH to unlock bus during WiFi connection

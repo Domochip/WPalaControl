@@ -74,7 +74,7 @@ private:
 
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
   void mqttDisconnectedCallback();
-  void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
+  void mqttCallback(MQTTClient *client, char *topic, char *payload, int length);
   void mqttPublishStoveConnected(bool stoveConnected);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   bool mqttPublishHassDiscovery();
