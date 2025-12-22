@@ -1022,7 +1022,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     uniqueId = uniqueIdPrefixStove + F("_FAN3");
 
     // entity type depends on Min and Max value of FAN3
-    topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan3SwitchEntity ? F("/switch/") : F("/number/"), uniqueId);
+    topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan3 number
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
@@ -1067,7 +1067,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     uniqueId = uniqueIdPrefixStove + F("_FAN4");
 
     // entity type depends on Min and Max value of FAN4
-    topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan4SwitchEntity ? F("/switch/") : F("/number/"), uniqueId);
+    topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan4 number
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
