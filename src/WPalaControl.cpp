@@ -312,7 +312,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for connectivity sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-  jsonDoc[F("default_entity_id")] = F(CUSTOM_APP_MODEL "_connectivity");
+  jsonDoc[F("default_entity_id")] = F("binary_sensor." CUSTOM_APP_MODEL "_connectivity");
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
@@ -427,7 +427,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove connectivity sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
-  jsonDoc[F("default_entity_id")] = F("stove_connectivity");
+  jsonDoc[F("default_entity_id")] = F("binary_sensor.stove_connectivity");
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
@@ -450,7 +450,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove status sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_status");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_status");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
   jsonDoc[F("name")] = F("Status");
@@ -474,7 +474,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove status text sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_status_text");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_status_text");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("enum");
   jsonDoc[F("name")] = F("Status");
@@ -515,7 +515,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   jsonDoc[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  jsonDoc[F("default_entity_id")] = F("stove_thermostat");
+  jsonDoc[F("default_entity_id")] = F("climate.stove_thermostat");
   jsonDoc[F("device")] = serialized(device);
 
   if (hasRoomFan)
@@ -589,7 +589,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // prepare payload for Stove supply water temperature sensor
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
-    jsonDoc[F("default_entity_id")] = F("stove_supplywatertemp");
+    jsonDoc[F("default_entity_id")] = F("sensor.stove_supplywatertemp");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
     jsonDoc[F("name")] = F("Supply Water Temperature");
@@ -648,7 +648,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
   defaultEntityIdSuffix.replace(F(" "), "");
   defaultEntityIdSuffix.toLowerCase();
-  jsonDoc[F("default_entity_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
+  jsonDoc[F("default_entity_id")] = String(F("sensor.stove_")) + defaultEntityIdSuffix + F("temp");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("temperature");
   jsonDoc[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
@@ -675,7 +675,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove flue gas temperature sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_fluegastemp");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_fluegastemp");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("temperature");
   jsonDoc[F("enabled_by_default")] = false;
@@ -703,7 +703,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove pellet consumption sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_pqt");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_pqt");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("weight");
   jsonDoc[F("icon")] = F("mdi:chart-bell-curve-cumulative");
@@ -730,7 +730,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove service time counter sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_servicetimecounter");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_servicetimecounter");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("icon")] = F("mdi:account-wrench-outline");
   jsonDoc[F("name")] = F("Service Time Counter");
@@ -758,7 +758,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove feeder sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_feeder");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_feeder");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("enabled_by_default")] = false;
   jsonDoc[F("entity_category")] = F("diagnostic");
@@ -783,7 +783,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove target differential pressure sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_targetdifferentialpressure");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_targetdifferentialpressure");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("pressure");
   jsonDoc[F("enabled_by_default")] = false;
@@ -813,7 +813,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare payload for Stove differential pressure sensor
   jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
   jsonDoc[F("availability")] = serialized(availability);
-  jsonDoc[F("default_entity_id")] = F("stove_differentialpressure");
+  jsonDoc[F("default_entity_id")] = F("sensor.stove_differentialpressure");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("pressure");
   jsonDoc[F("enabled_by_default")] = false;
@@ -846,7 +846,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_on_off");
+    jsonDoc[F("default_entity_id")] = F("switch.stove_on_off");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:power");
     jsonDoc[F("name")] = F("On/Off");
@@ -881,7 +881,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+SETP+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_setp");
+    jsonDoc[F("default_entity_id")] = F("number.stove_setp");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
     jsonDoc[F("min")] = SPLMIN;
@@ -914,7 +914,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+POWR+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_pwr");
+    jsonDoc[F("default_entity_id")] = F("number.stove_pwr");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:signal");
     jsonDoc[F("min")] = 1;
@@ -962,7 +962,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     jsonDoc[F("command_template")] = F("SET+RFAN+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_rfan");
+    jsonDoc[F("default_entity_id")] = F("number.stove_rfan");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan");
     jsonDoc[F("min")] = 0;
@@ -993,7 +993,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_rfan_auto");
+    jsonDoc[F("default_entity_id")] = F("switch.stove_rfan_auto");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-auto");
     jsonDoc[F("name")] = F("Room Fan Auto");
@@ -1028,7 +1028,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_fan3");
+    jsonDoc[F("default_entity_id")] = ifFan3SwitchEntity ? F("switch.stove_fan3") : F("number.stove_fan3");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-speed-2");
     jsonDoc[F("name")] = F("Left Fan");
@@ -1073,7 +1073,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("stove_fan4");
+    jsonDoc[F("default_entity_id")] = ifFan4SwitchEntity ? F("switch.stove_fan4") : F("number.stove_fan4");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("icon")] = F("mdi:fan-speed-3");
     jsonDoc[F("name")] = F("Right Fan");
@@ -1116,7 +1116,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("command_template")] = F("SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}");
   jsonDoc[F("command_topic")] = cmdTopic;
-  jsonDoc[F("default_entity_id")] = F("stove_set_time");
+  jsonDoc[F("default_entity_id")] = F("button.stove_set_time");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
   jsonDoc[F("icon")] = F("mdi:clock-outline");
@@ -1214,7 +1214,7 @@ bool WPalaControl::mqttPublishUpdate()
       jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
       jsonDoc[F("availability")] = serialized(availability);
       jsonDoc[F("command_topic")] = F("~/update/install");
-      jsonDoc[F("default_entity_id")] = F(CUSTOM_APP_MODEL);
+      jsonDoc[F("default_entity_id")] = F("update." CUSTOM_APP_MODEL);
       jsonDoc[F("device")] = serialized(device);
       jsonDoc[F("device_class")] = F("firmware");
       jsonDoc[F("entity_category")] = F("config");
