@@ -2577,6 +2577,8 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 // Used to initialize configuration properties to default values
 void WPalaControl::setConfigDefaultValues()
 {
+  _hwDetection = HW_AUTODETECT;
+
   _ha.protocol = HA_PROTO_DISABLED;
   _ha.hostname[0] = 0;
   _ha.uploadPeriod = 60;
@@ -2596,6 +2598,10 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
 {
   JsonVariant jv;
   char tempPassword[150 + 1] = {0};
+
+  // parse hardware detection mode
+  if ((jv = doc[F("hwdetection")]).is<JsonVariant>())
+    _hwDetection = jv;
 
   // Parse HA protocol
   if ((jv = doc[F("haproto")]).is<JsonVariant>())
@@ -2663,6 +2669,8 @@ String WPalaControl::generateConfigJSON(bool forSaveFile = false)
 {
   JsonDocument doc;
 
+  doc[F("hwdetection")] = _hwDetection;
+
   doc[F("haproto")] = _ha.protocol;
   doc[F("hahost")] = _ha.hostname;
   doc[F("haupperiod")] = _ha.uploadPeriod;
@@ -2695,6 +2703,9 @@ String WPalaControl::generateConfigJSON(bool forSaveFile = false)
 String WPalaControl::generateStatusJSON()
 {
   JsonDocument doc;
+
+  doc[F("hwversion")] = _detectedHwVersion == HW_V1 ? F("V1.x") : (_detectedHwVersion == HW_V2 ? F("V2.x") : F("Unknown"));
+  doc[F("hwdetection")] = _hwDetection == HW_AUTODETECT ? F(" (Auto-Detected)") : F(" (Forced)");
 
   // Home Automation protocol
   if (_ha.protocol == HA_PROTO_MQTT)
@@ -2758,10 +2769,23 @@ bool WPalaControl::appInit(bool reInit)
 #else
   uint8_t hwDetectPin = 22;
 #endif
-  pinMode(hwDetectPin, INPUT_PULLUP);
-  delay(1);
 
-  if (digitalRead(hwDetectPin) == HIGH)
+  if (_hwDetection == HW_AUTODETECT)
+  {
+    pinMode(hwDetectPin, INPUT_PULLUP);
+    delay(2);
+
+    if (digitalRead(hwDetectPin) == HIGH)
+      _detectedHwVersion = HW_V1;
+    else
+      _detectedHwVersion = HW_V2;
+  }
+  else if (_hwDetection == HW_FORCED_V1)
+    _detectedHwVersion = HW_V1;
+  else
+    _detectedHwVersion = HW_V2;
+
+  if (_detectedHwVersion == HW_V1)
     LOG_SERIAL_PRINT(F("HW1..."));
   else
     LOG_SERIAL_PRINT(F("HW2..."));
@@ -2776,7 +2800,7 @@ bool WPalaControl::appInit(bool reInit)
       std::bind(&WPalaControl::myDrainSerial, this),
       std::bind(&WPalaControl::myFlushSerial, this),
       std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1),
-      digitalRead(hwDetectPin) == HIGH);
+      _detectedHwVersion == HW_V1);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
