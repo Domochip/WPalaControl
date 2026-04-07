@@ -46,6 +46,16 @@ private:
     MQTT mqtt;
   } HomeAutomation;
 
+  #define HW_AUTODETECT 0
+  #define HW_FORCED_V1 1
+  #define HW_FORCED_V2 2
+  byte _hwDetection = 0;
+
+  #define HW_UNKNOWN 0
+  #define HW_V1 1
+  #define HW_V2 2
+  byte _detectedHwVersion = 0;
+
   HomeAutomation _ha;
   int _haSendResult = 0;
   WiFiClient _wifiClient;
