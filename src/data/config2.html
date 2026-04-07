@@ -4,6 +4,15 @@
 <form class="pure-form pure-form-aligned" id='f1'>
     <fieldset>
 
+        <div class="pure-control-group">
+            <label for="hwdetection">Hardware detection</label>
+            <select id='hwdetection' name='hwdetection'>
+                <option value="0">Auto</option>
+                <option value="1">V1.X</option>
+                <option value="2">V2.X</option>
+            </select>
+        </div>
+
         <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip">?</span></h3>
         <div class="infotipdiv" id="haidiv" name="haidiv" style="display:none;">
             HTTP GET request can be send to this device.<br>
