@@ -1519,11 +1519,16 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
+      char timeBuf[16];
       data["IGN"] = IGN;
-      data["POWERTIME"] = String(POWERTIMEh) + ':' + (POWERTIMEm / 10) + (POWERTIMEm % 10);
-      data["HEATTIME"] = String(HEATTIMEh) + ':' + (HEATTIMEm / 10) + (HEATTIMEm % 10);
-      data["SERVICETIME"] = String(SERVICETIMEh) + ':' + (SERVICETIMEm / 10) + (SERVICETIMEm % 10);
-      data["ONTIME"] = String(ONTIMEh) + ':' + (ONTIMEm / 10) + (ONTIMEm % 10);
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", POWERTIMEh, POWERTIMEm);
+      data["POWERTIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", HEATTIMEh, HEATTIMEm);
+      data["HEATTIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", SERVICETIMEh, SERVICETIMEm);
+      data["SERVICETIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", ONTIMEh, ONTIMEm);
+      data["ONTIME"] = timeBuf;
       data["OVERTMPERRORS"] = OVERTMPERRORS;
       data["IGNERRORS"] = IGNERRORS;
       data["PQT"] = PQT;
