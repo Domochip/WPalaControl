@@ -1257,7 +1257,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
   JsonDocument jsonDoc;
   JsonObject info = jsonDoc["INFO"].to<JsonObject>();
   JsonObject data = jsonDoc["DATA"].to<JsonObject>();
-  String palaCategory; // used to return data to the correct MQTT category (if needed)
+  const __FlashStringHelper* palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
 
   // Parse parameters ----------------------------------------------------------
   byte cmdParamNumber = 0;
@@ -2458,7 +2458,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       info["RSP"] = F("OK");
       jsonDoc["SUCCESS"] = true;
 
-      if (publish && palaCategory.length() > 0)
+      if (publish && String(palaCategory).length() > 0)
       {
         String strData;
         serializeJson(data, strData);
