@@ -129,7 +129,8 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
   }
 
   // if topic ends with "/update/install"
-  if (String(topic).endsWith(F("/update/install")))
+  const size_t topicLen = strlen(topic);
+  if (topicLen >= 15 && memcmp_P(topic + topicLen - 15, PSTR("/update/install"), 15) == 0)
   {
     String version;
     String retMsg;
