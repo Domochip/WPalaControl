@@ -1300,14 +1300,18 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       if (cmdParamNumber == 0 && (cmd.startsWith(F("EXT ADRD ")) || cmd.startsWith(F("EXT ADWR "))))
         cmdParams[cmdParamNumber] = strtol(strCmdParams[cmdParamNumber].c_str(), NULL, 16);
 
-      // verify convertion is successfull
-      // ( copy strCmdParams and remove all 0 from the string, if convertion result is 0, then resulting string should be empty)
-      String validation = strCmdParams[cmdParamNumber];
-      validation.replace("0", "");
-      if (cmdParams[cmdParamNumber] == 0 && validation.length())
+      // verify conversion is successful: if result is 0, all chars must be '0'
+      if (cmdParams[cmdParamNumber] == 0)
       {
-        cmdProcessed = true;
-        info["MSG"] = String(F("Incorrect Parameter Value : ")) + strCmdParams[cmdParamNumber];
+        for (char c : strCmdParams[cmdParamNumber])
+        {
+          if (c != '0')
+          {
+            cmdProcessed = true;
+            info["MSG"] = String(F("Incorrect Parameter Value : ")) + strCmdParams[cmdParamNumber];
+            break;
+          }
+        }
       }
 
       cmdParamNumber++;
