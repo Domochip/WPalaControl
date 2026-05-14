@@ -78,13 +78,13 @@ void EventSourceMan::initEventSourceServer(char appIdChar, WebServer &server)
 #endif
 }
 
-void EventSourceMan::eventSourceBroadcast(const String &message, const String &eventType) // default eventType is "message"
+void EventSourceMan::eventSourceBroadcast(const char *message, const char *eventType) // default eventType is "message"
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
         if (_EventSourceClientList[i])
         {
-            _EventSourceClientList[i].printf_P(PSTR("event: %s\ndata: %s\n\n"), eventType.c_str(), message.c_str());
+            _EventSourceClientList[i].printf_P(PSTR("event: %s\ndata: %s\n\n"), eventType, message);
 
 #if DEVELOPPER_MODE
             LOG_SERIAL_PRINTF_P(PSTR("statusEventSourceBroadcast - event sent to client #%d\n"), i);

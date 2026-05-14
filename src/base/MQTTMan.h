@@ -10,6 +10,7 @@
 
 #include <Ticker.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
 
 #define CONNECTED_CALLBACK_SIGNATURE std::function<void(MQTTMan * mqttMan, bool firstConnection)>
 #define DISCONNECTED_CALLBACK_SIGNATURE std::function<void()>
@@ -43,10 +44,11 @@ public:
     using PubSubClient::beginPublish;
     using PubSubClient::endPublish;
     using PubSubClient::publish;
+    bool publish(const char *topic, const JsonDocument &jsonDoc, bool retained = false);
     bool publishToConnectedTopic(const char *payload);
     using PubSubClient::publish_P;
     using PubSubClient::state;
-    String getStateString();
+    const __FlashStringHelper *getStateString();
     using PubSubClient::subscribe;
     using PubSubClient::getBufferSize;
     using PubSubClient::setBufferSize;

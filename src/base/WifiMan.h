@@ -38,7 +38,7 @@ private:
   WiFiEventHandler _staDisconnectedHandler;
 #endif
   DNSServer *_dnsServer = nullptr;
-  int _apChannel = 2;
+  uint8_t _apChannel = 2;
   bool _needRefreshWifi = false;
   bool _stationConnectedToSoftAP = false;
   Ticker _refreshTicker;
@@ -50,8 +50,8 @@ private:
 
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonDocument &doc, bool fromWebPage);
-  String generateConfigJSON(bool forSaveFile);
-  String generateStatusJSON();
+  void fillConfigJSON(JsonDocument &doc, bool forSaveFile);
+  void fillStatusJSON(JsonDocument &doc);
   bool appInit(bool reInit);
   const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp);
   size_t getHTMLContentSize(WebPageForPlaceHolder wp);

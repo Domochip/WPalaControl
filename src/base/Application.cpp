@@ -12,7 +12,7 @@ char Application::getAppIdChar(AppId appId)
   return '0' + appId;
 }
 
-String Application::getAppIdName(AppId appId)
+const __FlashStringHelper *Application::getAppIdName(AppId appId)
 {
   if (appId == CoreApp)
     return F("Core");
@@ -25,14 +25,18 @@ String Application::getAppIdName(AppId appId)
 
 bool Application::saveConfig()
 {
-  File configFile = LittleFS.open(String('/') + getAppIdName(_appId) + F(".json"), "w");
+  char configPath[32];
+  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName(_appId));
+  File configFile = LittleFS.open(configPath, "w");
   if (!configFile)
   {
     LOG_SERIAL_PRINTLN(F("Failed to open config file for writing"));
     return false;
   }
 
-  configFile.print(generateConfigJSON(true));
+  JsonDocument doc;
+  fillConfigJSON(doc, true);
+  serializeJson(doc, configFile);
   configFile.close();
   return true;
 }
@@ -44,7 +48,9 @@ bool Application::loadConfig()
     return true;
 
   bool result = false;
-  File configFile = LittleFS.open(String('/') + getAppIdName(_appId) + F(".json"), "r");
+  char configPath[32];
+  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName(_appId));
+  File configFile = LittleFS.open(configPath, "r");
   if (configFile)
   {
 
@@ -70,15 +76,15 @@ bool Application::loadConfig()
   return result;
 }
 
-bool Application::getLastestUpdateInfo(String &version, String &title, String &releaseDate, String &summary)
+bool Application::getLastestUpdateInfo(char *version, char *title, char *releaseDate, char *summary)
 {
-  String githubURL = F("https://api.github.com/repos/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/latest");
+  version[0] = title[0] = releaseDate[0] = summary[0] = '\0';
 
   WiFiClientSecure clientSecure;
   HTTPClient http;
 
   clientSecure.setInsecure();
-  http.begin(clientSecure, githubURL);
+  http.begin(clientSecure, String(F("https://api.github.com/repos/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/latest")));
   int httpCode = http.GET();
 
   // check for http error
@@ -93,12 +99,10 @@ bool Application::getLastestUpdateInfo(String &version, String &title, String &r
 
   // We need to parse the JSON response without loading the whole response in memory
 
-  uint8_t maxKeyLength = 16; // longest key is "\"published_at\":"" =>15 chars
-  String keyBuffer;          // Shifting buffer used to find keys
-  uint8_t treeLevel = 0;     // used to skip unwanted data
-  bool keyFound = false;     // used to know if we found a key we are looking for
-  String *targetString = nullptr;
-  size_t targetStringSize = 0;
+  const uint8_t maxKeyLength = 16; // longest key is "\"published_at\":"" => 15 chars
+  char keyBuffer[17] = {0};        // Shifting buffer used to find keys
+  uint8_t keyLen = 0;              // current length of the key in the buffer (up to maxKeyLength)
+  uint8_t treeLevel = 0;           // used to skip unwanted data
 
   // sometime the stream is not yet ready (no data available yet)
   for (byte i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
@@ -122,112 +126,125 @@ bool Application::getLastestUpdateInfo(String &version, String &title, String &r
       continue;
 
     // if keyBuffer is full, shift it to the left by one character
-    if (keyBuffer.length() == maxKeyLength)
-      keyBuffer.remove(0, 1);
+    if (keyLen == maxKeyLength)
+    {
+      memmove(keyBuffer, keyBuffer + 1, maxKeyLength - 1);
+      keyLen = maxKeyLength - 1;
+    }
+    // and add the new character at the end
+    keyBuffer[keyLen++] = c;
+    keyBuffer[keyLen] = '\0';
 
-    // add the new character at the end
-    keyBuffer.concat(c);
+    if (c != ':')
+      continue;
 
-    keyFound = false;
+    char *targetPtr = nullptr;
+    size_t targetMaxLen = 0;
 
     // if we found the key "tag_name"
-    if (c == ':' && keyBuffer.endsWith(F("\"tag_name\":")))
+    if (keyLen >= 11 && memcmp(keyBuffer + keyLen - 11, "\"tag_name\":", 11) == 0)
     {
-      keyFound = true;
-      targetString = &version;
-      targetStringSize = 9;
+      targetPtr = version;
+      targetMaxLen = 9;
     }
-
     // if we found the key "name"
-    if (c == ':' && keyBuffer.endsWith(F("\"name\":")))
+    else if (keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"name\":", 7) == 0)
     {
-      keyFound = true;
-      targetString = &title;
-      targetStringSize = 63;
+      targetPtr = title;
+      targetMaxLen = 63;
     }
-
     // if we found the key "published_at"
-    if (c == ':' && keyBuffer.endsWith(F("\"published_at\":")))
+    else if (keyLen >= 15 && memcmp(keyBuffer + keyLen - 15, "\"published_at\":", 15) == 0)
     {
-      keyFound = true;
-      targetString = &releaseDate;
-      targetStringSize = 10;
+      targetPtr = releaseDate;
+      targetMaxLen = 10;
     }
-
     // if we found the key "body"
-    if (c == ':' && keyBuffer.endsWith(F("\"body\":")))
+    else if (keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"body\":", 7) == 0)
     {
-      keyFound = true;
-      targetString = &summary;
-      targetStringSize = 255;
+      targetPtr = summary;
+      targetMaxLen = 255;
     }
 
-    if (keyFound)
+    // if this is not a key we are looking for, continue
+    if (!targetPtr)
+      continue;
+
+    //otherwise prepare target buffer
+    targetPtr[0] = '\0';
+    size_t curLen = 0;
+
+    // skip until opening doublequote
+    while (stream->available() && stream->read() != '"')
+      ;
+
+    // for title, skip version prefix up to first space
+    if (targetPtr == title)
+      while (stream->available() && stream->read() != ' ')
+        ;
+
+    // read the value
+    while (stream->available())
     {
-      // read until the next quote (should be next to semicolon)
-      stream->readStringUntil('"');
+      c = stream->read();
 
-      // for name/title key, skip text until the first space
-      if (targetString == &title)
-        stream->readStringUntil(' ');
+      // endsWithBackslash is used to handle escaped characters in JSON (e.g. \n, \r, \") and avoid stopping at an escaped double quote
+      bool endsWithBackslash = (curLen > 0 && targetPtr[curLen - 1] == '\\');
 
-      // read the value
-      while (stream->available())
+      if (c == '"' && !endsWithBackslash)
+        break;
+
+      if (endsWithBackslash)
       {
-        c = stream->read();
+        if (c == 'n')
+          targetPtr[curLen - 1] = '\n';
+        else if (c == 'r')
+          targetPtr[curLen - 1] = '\r';
+        else if (c == '"')
+          targetPtr[curLen - 1] = '"';
+      }
+      else if (curLen < targetMaxLen)
+      {
+        targetPtr[curLen++] = c;
+        targetPtr[curLen] = '\0';
+      }
 
-        if (c == '"' && !targetString->endsWith(F("\\")))
-          break;
-
-        if (targetString->endsWith(F("\\")) && c == 'n')
-          (*targetString)[targetString->length() - 1] = '\n';
-        else if (targetString->endsWith(F("\\")) && c == 'r')
-          (*targetString)[targetString->length() - 1] = '\r';
-        else if (targetString->endsWith(F("\\")) && c == '"')
-          (*targetString)[targetString->length() - 1] = '"';
-        else if (targetString->length() < targetStringSize)
-          targetString->concat(c);
-
-        // for summary, stop at "\r\n\r\n##"
-        if (targetString == &summary && targetString->endsWith(F("\r\n\r\n##")))
-        {
-          // remove the last 6 characters
-          targetString->remove(targetString->length() - 6);
-          // avoid adding more text in summary
-          targetStringSize = targetString->length();
-        }
+      // for summary, stop at first section break "\r\n\r\n##"
+      if (targetPtr == summary && curLen >= 6 && memcmp(targetPtr + curLen - 6, "\r\n\r\n##", 6) == 0)
+      {
+        // remove the last 6 characters
+        curLen -= 6;
+        targetPtr[curLen] = '\0';
+        // avoid adding more text in summary
+        targetMaxLen = curLen;
       }
     }
   }
 
   http.end();
 
-  return version.length() > 0;
+  return version[0] != '\0';
 }
 
-String Application::getLatestUpdateInfoJson(bool forWebPage /* = false */)
+void Application::fillLatestUpdateInfoJson(JsonDocument &doc, bool forWebPage /* = false */)
 {
-  JsonDocument doc;
-
   doc[F("installed_version")] = VERSION;
 
-  String version, title, releaseDate, summary;
+  char version[10], title[64], releaseDate[11], summary[256];
 
   if (getLastestUpdateInfo(version, title, releaseDate, summary))
   {
     doc[F("latest_version")] = version;
     doc[F("title")] = title;
     doc[F("release_summary")] = summary;
-    doc[F("release_url")] = String(F("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/tag/")) + version;
+
+    char releaseUrl[128];
+    snprintf_P(releaseUrl, sizeof(releaseUrl), PSTR("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/tag/%s"), version);
+    doc[F("release_url")] = releaseUrl;
 
     if (forWebPage)
       doc[F("release_date")] = releaseDate;
   }
-
-  String info;
-  serializeJson(doc, info);
-
-  return info;
 }
 
 bool Application::updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback /* = nullptr */)
@@ -241,14 +258,14 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   WiFiClientSecure clientSecure;
   clientSecure.setInsecure();
 
-  String fwUrl(F("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/download/"));
+  char fwUrl[200];
 #ifdef ESP8266
-  fwUrl = fwUrl + version + '/' + F(CUSTOM_APP_MODEL) + '.' + version + F(".bin");
+  snprintf_P(fwUrl, sizeof(fwUrl), PSTR("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/download/%s/" CUSTOM_APP_MODEL ".%s.bin"), version, version);
 #else
-  fwUrl = fwUrl + version + '/' + F(CUSTOM_APP_MODEL) + F(".esp32") + '.' + version + F(".bin");
+  snprintf_P(fwUrl, sizeof(fwUrl), PSTR("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/download/%s/" CUSTOM_APP_MODEL ".esp32.%s.bin"), version, version);
 #endif
 
-  LOG_SERIAL_PRINTF_P(PSTR("Trying to Update from URL: %s\n"), fwUrl.c_str());
+  LOG_SERIAL_PRINTF_P(PSTR("Trying to Update from URL: %s\n"), fwUrl);
 
   HTTPClient https;
   https.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -259,8 +276,9 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   {
     https.end();
 
-    retMsg = F("Failed to download file, httpCode: ");
-    retMsg += httpCode;
+    char retMsgBuf[48];
+    snprintf_P(retMsgBuf, sizeof(retMsgBuf), PSTR("Failed to download file, httpCode: %d"), httpCode);
+    retMsg = retMsgBuf;
 
     LOG_SERIAL_PRINTLN(retMsg);
 
@@ -273,7 +291,9 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   WiFiClient *stream = https.getStreamPtr();
   int contentLength = https.getSize();
 
-  LOG_SERIAL_PRINTF_P(PSTR("Update Start: %s (Online Update)\n"), (String(F(CUSTOM_APP_MODEL)) + '.' + version + F(".bin")).c_str());
+  const char *fwName = strrchr(fwUrl, '/');
+  fwName = fwName ? fwName + 1 : fwUrl;
+  LOG_SERIAL_PRINTF_P(PSTR("Update Start: %s (Online Update)\n"), fwName);
 
   if (progressCallback)
     Update.onProgress(progressCallback);
@@ -309,14 +329,18 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
 
 String Application::getStatusJSON()
 {
-  return generateStatusJSON();
+  JsonDocument doc;
+  fillStatusJSON(doc);
+  String s;
+  serializeJson(doc, s);
+  return s;
 }
 
 void Application::init(bool skipExistingConfig)
 {
   bool result = true;
 
-  LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), getAppIdName(_appId).c_str());
+  LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), (const char *)getAppIdName(_appId));
 
   setConfigDefaultValues();
 
@@ -360,7 +384,12 @@ void Application::initWebServer(WebServer &server)
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Cache-Control"), F("no-cache"));
-              server.send(200, F("text/json"), generateStatusJSON());
+              JsonDocument doc;
+              fillStatusJSON(doc);
+              server.setContentLength(measureJson(doc));
+              server.send(200, F("text/json"), "");
+              WiFiClient client = server.client();
+              serializeJson(doc, client);
             });
 
   // JSON Config handler
@@ -370,7 +399,12 @@ void Application::initWebServer(WebServer &server)
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Cache-Control"), F("no-cache"));
-              server.send(200, F("text/json"), generateConfigJSON());
+              JsonDocument doc;
+              fillConfigJSON(doc);
+              server.setContentLength(measureJson(doc));
+              server.send(200, F("text/json"), "");
+              WiFiClient client = server.client();
+              serializeJson(doc, client);
             });
 
   sprintf_P(url, PSTR("/sc%c"), getAppIdChar(_appId));
@@ -418,7 +452,7 @@ void Application::run()
 {
   if (_reInit)
   {
-    LOG_SERIAL_PRINTF_P(PSTR("ReStart %s : "), getAppIdName(_appId).c_str());
+    LOG_SERIAL_PRINTF_P(PSTR("ReStart %s : "), (const char *)getAppIdName(_appId));
 
     if (appInit(true))
       LOG_SERIAL_PRINTLN(F("OK"));

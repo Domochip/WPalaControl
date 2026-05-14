@@ -1,12 +1,23 @@
 #include "WifiMan.h"
 
+static const char *formatIP(char (&buf)[16], uint32_t v)
+{
+  snprintf_P(buf, sizeof(buf), PSTR("%u.%u.%u.%u"), (uint8_t)v, (uint8_t)(v >> 8), (uint8_t)(v >> 16), (uint8_t)(v >> 24));
+  return buf;
+}
+
 void WifiMan::enableAP(bool force = false)
 {
   if (!(WiFi.getMode() & WIFI_AP) || force)
   {
     WiFi.enableAP(true);
     WiFi.softAP(F(DEFAULT_AP_SSID), F(DEFAULT_AP_PSK), _apChannel);
-    // Start DNS server
+    // Free existing DNS server if any, and start a new one
+    if (_dnsServer)
+    {
+      _dnsServer->stop();
+      delete _dnsServer;
+    }
     _dnsServer = new DNSServer();
     _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
     while (WiFi.softAPIP() == INADDR_NONE)
@@ -51,7 +62,8 @@ void WifiMan::refreshWiFi()
         STATUS_LED_GOOD
 #endif
 
-        LOG_SERIAL_PRINTF_P(PSTR("Connected (%s) "), WiFi.localIP().toString().c_str());
+        char ipBuf[16];
+        LOG_SERIAL_PRINTF_P(PSTR("Connected (%s) "), formatIP(ipBuf, static_cast<uint32_t>(WiFi.localIP())));
       }
       else // connection failed
       {
@@ -76,7 +88,8 @@ void WifiMan::refreshWiFi()
     STATUS_LED_GOOD
 #endif
 
-    LOG_SERIAL_PRINTF_P(PSTR(" AP mode(%s - %s) "), F(DEFAULT_AP_SSID), WiFi.softAPIP().toString().c_str());
+    char ipBuf[16];
+    LOG_SERIAL_PRINTF_P(PSTR(" AP mode(%s - %s) "), F(DEFAULT_AP_SSID), formatIP(ipBuf, static_cast<uint32_t>(WiFi.softAPIP())));
   }
 }
 
@@ -156,10 +169,8 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
   return true;
 }
 
-String WifiMan::generateConfigJSON(bool forSaveFile = false)
+void WifiMan::fillConfigJSON(JsonDocument &doc, bool forSaveFile)
 {
-  JsonDocument doc;
-
   doc["s"] = ssid;
 
   if (forSaveFile)
@@ -171,35 +182,32 @@ String WifiMan::generateConfigJSON(bool forSaveFile = false)
   doc["h"] = hostname;
 
   doc[F("staticip")] = (ip ? 1 : 0);
+
+  char ipBuf[16];
   if (ip)
-    doc["ip"] = IPAddress(ip).toString();
+    doc["ip"] = formatIP(ipBuf, ip);
   if (gw)
-    doc["gw"] = IPAddress(gw).toString();
+    doc["gw"] = formatIP(ipBuf, gw);
   else
     doc["gw"] = F("0.0.0.0");
   if (mask)
-    doc[F("mask")] = IPAddress(mask).toString();
+    doc[F("mask")] = formatIP(ipBuf, mask);
   else
     doc[F("mask")] = F("0.0.0.0");
   if (dns1)
-    doc[F("dns1")] = IPAddress(dns1).toString();
+    doc[F("dns1")] = formatIP(ipBuf, dns1);
   if (dns2)
-    doc[F("dns2")] = IPAddress(dns2).toString();
-
-  String gc;
-  serializeJson(doc, gc);
-
-  return gc;
+    doc[F("dns2")] = formatIP(ipBuf, dns2);
 }
 
-String WifiMan::generateStatusJSON()
+void WifiMan::fillStatusJSON(JsonDocument &doc)
 {
-  JsonDocument doc;
+  char ipBuf[16];
 
   if ((WiFi.getMode() & WIFI_AP))
   {
     doc[F("apmode")] = F("on");
-    doc[F("apip")] = WiFi.softAPIP().toString();
+    doc[F("apip")] = formatIP(ipBuf, static_cast<uint32_t>(WiFi.softAPIP()));
   }
   else
     doc[F("apmode")] = F("off");
@@ -209,19 +217,18 @@ String WifiMan::generateStatusJSON()
     doc[F("stationmode")] = F("on");
     if (WiFi.isConnected())
     {
-      doc[F("stationip")] = WiFi.localIP().toString();
+      doc[F("stationip")] = formatIP(ipBuf, static_cast<uint32_t>(WiFi.localIP()));
       doc[F("stationipsource")] = ip ? F("Static IP") : F("DHCP");
     }
   }
   else
     doc[F("stationmode")] = F("off");
 
-  doc[F("mac")] = WiFi.macAddress();
-
-  String gs;
-  serializeJson(doc, gs);
-
-  return gs;
+  uint8_t macBuf[6];
+  char mac[18];
+  WiFi.macAddress(macBuf);
+  snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
+  doc[F("mac")] = mac;
 }
 
 bool WifiMan::appInit(bool reInit = false)
@@ -394,10 +401,10 @@ void WifiMan::appInitWebServer(WebServer &server)
                   wnl0["SSID"] = WiFi.SSID(i);
                   wnl0["RSSI"] = WiFi.RSSI(i);
                 }
-                String networksJSON;
-                serializeJson(doc, networksJSON);
-
-                server.send(200, F("text/json"), networksJSON);
+                server.setContentLength(measureJson(doc));
+                server.send(200, F("text/json"), "");
+                WiFiClient client = server.client();
+                serializeJson(doc, client);
                 WiFi.scanDelete();
               }
             });

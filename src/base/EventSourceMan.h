@@ -32,7 +32,7 @@ private:
 public:
 #if EVTSRC_ENABLED
     void initEventSourceServer(char appIdChar, WebServer &server);
-    void eventSourceBroadcast(const String &message, const String &eventType = "message");
+    void eventSourceBroadcast(const char *message, const char *eventType = "message");
 
 #if EVTSRC_KEEPALIVE_ENABLED
 
