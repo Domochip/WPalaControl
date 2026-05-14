@@ -1363,11 +1363,10 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
         serializeJson(data, strData);
         _eventSourceMan.eventSourceBroadcast(strData.c_str());
 
-        String baseTopic = _ha.mqtt.generic.baseTopic;
-        MQTTMan::prepareTopic(baseTopic);
-
         if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
         {
+          String baseTopic = _ha.mqtt.generic.baseTopic;
+          MQTTMan::prepareTopic(baseTopic);
           _haSendResult &= mqttPublishData(baseTopic, palaCategory, jsonDoc);
         }
       }
