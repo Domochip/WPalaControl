@@ -1137,8 +1137,9 @@ bool WPalaControl::mqttPublishUpdate()
   if (!_mqttMan.connected())
     return false;
 
-  // get update info from Core
-  String updateInfo = getLatestUpdateInfoJson();
+  // get update info
+  JsonDocument updateInfo;
+  fillLatestUpdateInfoJson(updateInfo);
 
   String baseTopic;
   String topic;
@@ -1153,17 +1154,13 @@ bool WPalaControl::mqttPublishUpdate()
   // parse JSON
   if (_ha.mqtt.hassDiscoveryEnabled)
   {
-    JsonDocument doc;
     JsonVariant jv;
-    DeserializationError error = deserializeJson(doc, updateInfo);
-    // if there is no error and latest_version is available
-    if (!error && (jv = doc[F("latest_version")]).is<const char *>())
+    // if latest_version is available
+    if ((jv = updateInfo[F("latest_version")]).is<const char *>())
     {
       // get version
       char version[10] = {0};
       strlcpy(version, jv.as<const char *>(), sizeof(version));
-
-      doc.clear(); // clean doc
 
       // then publish updated Update autodiscovery
 
@@ -1243,7 +1240,7 @@ bool WPalaControl::mqttPublishUpdate()
   _mqttMan.publish(topic.c_str(), (String(F("{\"in_progress\":")) + (Update.isRunning() ? F("true") : F("false")) + '}').c_str(), true);
 
   // publish update info
-  _mqttMan.publish(topic.c_str(), updateInfo.c_str(), true);
+  _mqttMan.publish(topic.c_str(), updateInfo, true);
 
   return true;
 }
@@ -1257,7 +1254,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
   JsonDocument jsonDoc;
   JsonObject info = jsonDoc["INFO"].to<JsonObject>();
   JsonObject data = jsonDoc["DATA"].to<JsonObject>();
-  const __FlashStringHelper* palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
+  const __FlashStringHelper *palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
 
   // Parse parameters ----------------------------------------------------------
   byte cmdParamNumber = 0;
