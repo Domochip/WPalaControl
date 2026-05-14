@@ -1357,7 +1357,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       info["RSP"] = F("OK");
       jsonDoc["SUCCESS"] = true;
 
-      if (publish && String(palaCategory).length() > 0)
+      if (publish && reinterpret_cast<const char *>(palaCategory)[0] != '\0')
       {
         String strData;
         serializeJson(data, strData);
