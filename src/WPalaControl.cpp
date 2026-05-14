@@ -2462,7 +2462,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       {
         String strData;
         serializeJson(data, strData);
-        _eventSourceMan.eventSourceBroadcast(strData);
+        _eventSourceMan.eventSourceBroadcast(strData.c_str());
 
         String baseTopic = _ha.mqtt.generic.baseTopic;
         MQTTMan::prepareTopic(baseTopic);
