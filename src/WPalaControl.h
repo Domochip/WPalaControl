@@ -90,6 +90,10 @@ private:
   bool mqttPublishHassDiscovery();
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, String &strJson, bool publish = false);
+  Palazzetti::CommandResult executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
+  Palazzetti::CommandResult executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams);
+  Palazzetti::CommandResult executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams);
+  Palazzetti::CommandResult executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams);
 
   void publishTick();
   void udpRequestHandler(WiFiUDP &udpServer);

@@ -1322,9 +1322,94 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     }
   }
 
-  // Process commands ---------------------------------------------------------
+  // Dispatch command ---------------------------------------------------------
 
-  if (!cmdProcessed && cmd == F("CMD OFF"))
+  if (!cmdProcessed)
+  {
+    if (cmd.startsWith(F("CMD ")))
+      cmdSuccess = executeCmdPalaCmd(cmd, data, info, palaCategory, cmdProcessed);
+    else if (cmd.startsWith(F("GET ")))
+      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+    else if (cmd.startsWith(F("SET ")))
+      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+    else if (cmd.startsWith(F("EXT ")))
+      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+  }
+
+  // Process result -----------------------------------------------------------
+
+  // releases the unused memory before serialization
+  jsonDoc.shrinkToFit();
+
+  // if command has been processed
+  if (cmdProcessed)
+  {
+
+    // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
+    if (_ha.protocol == HA_PROTO_MQTT)
+      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
+
+    // if communication with stove was successful
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      info["CMD"] = cmd.substring(0, 8);
+
+      info["RSP"] = F("OK");
+      jsonDoc["SUCCESS"] = true;
+
+      if (publish && String(palaCategory).length() > 0)
+      {
+        String strData;
+        serializeJson(data, strData);
+        _eventSourceMan.eventSourceBroadcast(strData.c_str());
+
+        String baseTopic = _ha.mqtt.generic.baseTopic;
+        MQTTMan::prepareTopic(baseTopic);
+
+        if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
+        {
+          _haSendResult &= mqttPublishData(baseTopic, palaCategory, jsonDoc);
+        }
+      }
+    }
+    else
+    {
+      info["CMD"] = cmd;
+
+      // if there is no MSG in info then stove communication failed
+      if (info["MSG"].isNull())
+      {
+        info["RSP"] = F("TIMEOUT");
+        info["MSG"] = F("Stove communication failed");
+      }
+      else
+        info["RSP"] = F("ERROR");
+
+      jsonDoc["SUCCESS"] = false;
+      data["NODATA"] = true;
+    }
+  }
+  else
+  {
+    // command is unknown and not processed
+    info["RSP"] = F("ERROR");
+    info["CMD"] = F("UNKNOWN");
+    info["MSG"] = F("No valid request received");
+    jsonDoc["SUCCESS"] = false;
+    data["NODATA"] = true;
+  }
+
+  // serialize result to the provided strJson
+  serializeJson(jsonDoc, strJson);
+
+  return jsonDoc["SUCCESS"].as<bool>();
+}
+
+Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd == F("CMD OFF"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
@@ -1339,8 +1424,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["FSTATUS"] = FSTATUS;
     }
   }
-
-  if (!cmdProcessed && cmd == F("CMD ON"))
+  else if (cmd == F("CMD ON"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
@@ -1356,7 +1440,14 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     }
   }
 
-  if (!cmdProcessed && cmd == F("GET ALLS"))
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd == F("GET ALLS"))
   {
     cmdProcessed = true;
     palaCategory = F("ALLS");
@@ -1453,8 +1544,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
         data["SN"] = SN;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET CHRD"))
+  else if (cmd == F("GET CHRD"))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
@@ -1511,8 +1601,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && (cmd == F("GET CNTR") || cmd == F("GET CUNT")))
+  else if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
   {
     cmdProcessed = true;
     palaCategory = F("CNTR");
@@ -1537,8 +1626,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["PQT"] = PQT;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET DPRS"))
+  else if (cmd == F("GET DPRS"))
   {
     cmdProcessed = true;
     palaCategory = F("DPRS");
@@ -1552,8 +1640,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["DP_PRESS"] = DP_PRESS;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET FAND"))
+  else if (cmd == F("GET FAND"))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -1584,8 +1671,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("GET HPAR ")))
+  else if (cmd.startsWith(F("GET HPAR ")))
   {
     cmdProcessed = true;
     palaCategory = F("HPAR");
@@ -1606,8 +1692,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET IOPT"))
+  else if (cmd == F("GET IOPT"))
   {
     cmdProcessed = true;
     palaCategory = F("IOPT");
@@ -1631,8 +1716,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["OUT_O07"] = OUT_O07;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET LABL"))
+  else if (cmd == F("GET LABL"))
   {
     cmdProcessed = true;
     palaCategory = F("LABL");
@@ -1640,8 +1724,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
 
     data["LABEL"] = WiFi.getHostname();
   }
-
-  if (!cmdProcessed && cmd == F("GET MDVE"))
+  else if (cmd == F("GET MDVE"))
   {
     cmdProcessed = true;
     palaCategory = F("MDVE");
@@ -1658,8 +1741,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["FWDATE"] = FWDATE;
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("GET PARM ")))
+  else if (cmd.startsWith(F("GET PARM ")))
   {
     cmdProcessed = true;
     palaCategory = F("PARM");
@@ -1680,8 +1762,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET SETP"))
+  else if (cmd == F("GET SETP"))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
@@ -1694,8 +1775,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["SETP"] = serialized(String(SETP, 2));
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET STAT"))
+  else if (cmd == F("GET STAT"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
@@ -1710,8 +1790,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["FSTATUS"] = FSTATUS;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET STDT"))
+  else if (cmd == F("GET STDT"))
   {
     cmdProcessed = true;
     palaCategory = F("STDT");
@@ -1817,8 +1896,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["NOMINALPWR"] = NOMINALPWR;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET TIME"))
+  else if (cmd == F("GET TIME"))
   {
     cmdProcessed = true;
     palaCategory = F("TIME");
@@ -1833,8 +1911,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["STOVE_WDAY"] = STOVE_WDAY;
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET TMPS"))
+  else if (cmd == F("GET TMPS"))
   {
     cmdProcessed = true;
     palaCategory = F("TMPS");
@@ -1851,8 +1928,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["T5"] = serialized(String(T5, 2));
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET POWR"))
+  else if (cmd == F("GET POWR"))
   {
     cmdProcessed = true;
     palaCategory = F("POWR");
@@ -1867,8 +1943,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["FDR"] = serialized(String(FDR, 2));
     }
   }
-
-  if (!cmdProcessed && cmd == F("GET SERN"))
+  else if (cmd == F("GET SERN"))
   {
     cmdProcessed = true;
     palaCategory = F("SERN");
@@ -1882,7 +1957,14 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     }
   }
 
-  if (!cmdProcessed && cmd.startsWith(F("SET CDAY ")))
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd.startsWith(F("SET CDAY ")))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
@@ -1912,8 +1994,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CPRD ")))
+  else if (cmd.startsWith(F("SET CPRD ")))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
@@ -1943,8 +2024,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSET ")))
+  else if (cmd.startsWith(F("SET CSET ")))
   {
     cmdProcessed = true;
 
@@ -1954,8 +2034,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     if (info["MSG"].isNull())
       cmdSuccess = _Pala.setChronoSetpoint(cmdParams[0], cmdParams[1]);
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSPH ")))
+  else if (cmd.startsWith(F("SET CSPH ")))
   {
     cmdProcessed = true;
 
@@ -1965,8 +2044,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     if (info["MSG"].isNull())
       cmdSuccess = _Pala.setChronoStopHH(cmdParams[0], cmdParams[1]);
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSPM ")))
+  else if (cmd.startsWith(F("SET CSPM ")))
   {
     cmdProcessed = true;
 
@@ -1976,8 +2054,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     if (info["MSG"].isNull())
       cmdSuccess = _Pala.setChronoStopMM(cmdParams[0], cmdParams[1]);
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSST ")))
+  else if (cmd.startsWith(F("SET CSST ")))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
@@ -1996,8 +2073,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSTH ")))
+  else if (cmd.startsWith(F("SET CSTH ")))
   {
     cmdProcessed = true;
 
@@ -2007,8 +2083,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     if (info["MSG"].isNull())
       cmdSuccess = _Pala.setChronoStartHH(cmdParams[0], cmdParams[1]);
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET CSTM ")))
+  else if (cmd.startsWith(F("SET CSTM ")))
   {
     cmdProcessed = true;
 
@@ -2018,8 +2093,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     if (info["MSG"].isNull())
       cmdSuccess = _Pala.setChronoStartMM(cmdParams[0], cmdParams[1]);
   }
-
-  if (!cmdProcessed && cmd == F("SET FN2D"))
+  else if (cmd == F("SET FN2D"))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2038,8 +2112,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["F2LF"] = F2LFReturn;
     }
   }
-
-  if (!cmdProcessed && cmd == F("SET FN2U"))
+  else if (cmd == F("SET FN2U"))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2058,8 +2131,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["F2LF"] = F2LFReturn;
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET FN3L ")))
+  else if (cmd.startsWith(F("SET FN3L ")))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2078,8 +2150,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET FN4L ")))
+  else if (cmd.startsWith(F("SET FN4L ")))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2098,8 +2169,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET HPAR ")))
+  else if (cmd.startsWith(F("SET HPAR ")))
   {
     cmdProcessed = true;
     palaCategory = F("HPAR");
@@ -2117,8 +2187,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET PARM ")))
+  else if (cmd.startsWith(F("SET PARM ")))
   {
     cmdProcessed = true;
     palaCategory = F("PARM");
@@ -2136,8 +2205,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET POWR ")))
+  else if (cmd.startsWith(F("SET POWR ")))
   {
     cmdProcessed = true;
     palaCategory = F("POWR");
@@ -2168,8 +2236,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd == F("SET PWRD"))
+  else if (cmd == F("SET PWRD"))
   {
     cmdProcessed = true;
     palaCategory = F("POWR");
@@ -2194,8 +2261,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       fanlminmax.add(FANLMINMAXReturn[5]);
     }
   }
-
-  if (!cmdProcessed && cmd == F("SET PWRU"))
+  else if (cmd == F("SET PWRU"))
   {
     cmdProcessed = true;
     palaCategory = F("POWR");
@@ -2220,8 +2286,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       fanlminmax.add(FANLMINMAXReturn[5]);
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET RFAN ")))
+  else if (cmd.startsWith(F("SET RFAN ")))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2246,8 +2311,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET SETP ")))
+  else if (cmd.startsWith(F("SET SETP ")))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
@@ -2266,8 +2330,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET SLNT ")))
+  else if (cmd.startsWith(F("SET SLNT ")))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
@@ -2300,8 +2363,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd == F("SET STPD"))
+  else if (cmd == F("SET STPD"))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
@@ -2314,8 +2376,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["SETP"] = serialized(String(SETPReturn, 2));
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET STPF ")))
+  else if (cmd.startsWith(F("SET STPF ")))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
@@ -2341,8 +2402,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       }
     }
   }
-
-  if (!cmdProcessed && cmd == F("SET STPU"))
+  else if (cmd == F("SET STPU"))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
@@ -2355,8 +2415,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data["SETP"] = serialized(String(SETPReturn, 2));
     }
   }
-
-  if (!cmdProcessed && cmd.startsWith(F("SET TIME ")))
+  else if (cmd.startsWith(F("SET TIME ")))
   {
     cmdProcessed = true;
     palaCategory = F("TIME");
@@ -2396,7 +2455,14 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     }
   }
 
-  if (!cmdProcessed && cmd.startsWith(F("EXT ADRD")))
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd.startsWith(F("EXT ADRD")))
   {
     cmdProcessed = true;
     palaCategory = F("ADRD");
@@ -2417,10 +2483,9 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
       data[addrName] = ADDR_DATA;
     }
   }
-
 #if DEVELOPPER_MODE
   // To be used only if you have good knowledge of Alpha motherboard
-  if (!cmdProcessed && cmd.startsWith(F("EXT ADWR")))
+  else if (cmd.startsWith(F("EXT ADWR")))
   {
     cmdProcessed = true;
     palaCategory = F("ADWR");
@@ -2434,73 +2499,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
   }
 #endif
 
-  // Process result -----------------------------------------------------------
-
-  // releases the unused memory before serialization
-  jsonDoc.shrinkToFit();
-
-  // if command has been processed
-  if (cmdProcessed)
-  {
-
-    // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
-    if (_ha.protocol == HA_PROTO_MQTT)
-      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
-
-    // if communication with stove was successful
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      info["CMD"] = cmd.substring(0, 8);
-
-      info["RSP"] = F("OK");
-      jsonDoc["SUCCESS"] = true;
-
-      if (publish && String(palaCategory).length() > 0)
-      {
-        String strData;
-        serializeJson(data, strData);
-        _eventSourceMan.eventSourceBroadcast(strData.c_str());
-
-        String baseTopic = _ha.mqtt.generic.baseTopic;
-        MQTTMan::prepareTopic(baseTopic);
-
-        if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
-        {
-          _haSendResult &= mqttPublishData(baseTopic, palaCategory, jsonDoc);
-        }
-      }
-    }
-    else
-    {
-      info["CMD"] = cmd;
-
-      // if there is no MSG in info then stove communication failed
-      if (info["MSG"].isNull())
-      {
-        info["RSP"] = F("TIMEOUT");
-        info["MSG"] = F("Stove communication failed");
-      }
-      else
-        info["RSP"] = F("ERROR");
-
-      jsonDoc["SUCCESS"] = false;
-      data["NODATA"] = true;
-    }
-  }
-  else
-  {
-    // command is unknown and not processed
-    info["RSP"] = F("ERROR");
-    info["CMD"] = F("UNKNOWN");
-    info["MSG"] = F("No valid request received");
-    jsonDoc["SUCCESS"] = false;
-    data["NODATA"] = true;
-  }
-
-  // serialize result to the provided strJson
-  serializeJson(jsonDoc, strJson);
-
-  return jsonDoc["SUCCESS"].as<bool>();
+  return cmdSuccess;
 }
 
 void WPalaControl::publishTick()
