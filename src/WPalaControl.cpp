@@ -2676,10 +2676,8 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
 
 //------------------------------------------
 // Generate JSON from configuration properties
-String WPalaControl::generateConfigJSON(bool forSaveFile = false)
+void WPalaControl::fillConfigJSON(JsonDocument &doc, bool forSaveFile = false)
 {
-  JsonDocument doc;
-
   doc[F("hwdetection")] = _hwDetection;
 
   doc[F("haproto")] = _ha.protocol;
@@ -2702,19 +2700,12 @@ String WPalaControl::generateConfigJSON(bool forSaveFile = false)
     doc[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
     doc[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
   }
-
-  String gc;
-  serializeJson(doc, gc);
-
-  return gc;
 }
 
 //------------------------------------------
 // Generate JSON of application status
-String WPalaControl::generateStatusJSON()
+void WPalaControl::fillStatusJSON(JsonDocument &doc)
 {
-  JsonDocument doc;
-
   doc[F("hwversion")] = _detectedHwVersion == HW_V1 ? F("V1.x") : (_detectedHwVersion == HW_V2 ? F("V2.x") : F("Unknown"));
   doc[F("hwdetection")] = _hwDetection == HW_AUTODETECT ? F(" (Auto-Detected)") : F(" (Forced)");
 
@@ -2732,11 +2723,6 @@ String WPalaControl::generateStatusJSON()
     if (_mqttMan.state() == MQTT_CONNECTED)
       doc[F("hamqttlastpublish")] = (_haSendResult ? F("OK") : F("Failed"));
   }
-
-  String gs;
-  serializeJson(doc, gs);
-
-  return gs;
 }
 
 //------------------------------------------

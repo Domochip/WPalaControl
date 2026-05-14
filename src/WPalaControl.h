@@ -96,8 +96,8 @@ private:
 
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonDocument &doc, bool fromWebPage);
-  String generateConfigJSON(bool forSaveFile);
-  String generateStatusJSON();
+  void fillConfigJSON(JsonDocument &doc, bool forSaveFile);
+  void fillStatusJSON(JsonDocument &doc);
   bool appInit(bool reInit);
   const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp);
   size_t getHTMLContentSize(WebPageForPlaceHolder wp);
