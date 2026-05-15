@@ -7,6 +7,14 @@ Version : <span id="version"></span><br>
 UpTime : <span id="uptime"></span><br>
 FreeHeap : <span id="freeheap"></span><br>
 
+<div id="cdiv" style="display:none">
+Crash logged : <span id="crashcount"></span><br>
+Crash files :<span id="cbtns">
+&nbsp;<a href="/crashdl" class="pure-button pure-button-primary" style="font-size:0.75em">Download</a>
+&nbsp;<button class="pure-button pure-button-primary" style="font-size:0.75em;background:rgb(202,60,60)" onclick="clrCrashes()">Clear</button>
+</span>
+</div>
+
 <script>
     //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
     //var qsp = '#content0 ';
@@ -16,8 +24,17 @@ FreeHeap : <span id="freeheap"></span><br>
             if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
             if (k == 'model') $('#model').innerHTML = GS[k]; // 'model' is a special value that need to be set for the global look and feel
         }
+        if (GS.crashcount > 0) {
+            $(qsp + '#cdiv').style.display = '';
+        }
         fadeOut($(qsp + "#l"));
     }, function () {
         $(qsp + "#l").innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
     });
+
+    function clrCrashes() {
+        post('/crashclr', null, function () {
+            $(qsp + '#cdiv').style.display = 'none';
+        }, function () { alert('Failed to clear crashes'); });
+    }
 </script>

@@ -33,8 +33,12 @@ void Core::fillStatusJSON(JsonDocument &doc)
 #ifdef ESP8266
   doc[F("freestack")] = ESP.getFreeContStack();
   doc[F("flashsize")] = ESP.getFlashChipRealSize();
+
+  uint32_t crashCount = SaveCrashSpiffs.count();
+  doc[F("crashcount")] = crashCount;
 #else
   doc[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
+  doc[F("crashcount")] = 0;
 #endif
 }
 bool Core::appInit(bool reInit = false)
@@ -241,6 +245,53 @@ void Core::appInitWebServer(WebServer &server)
               server.send_P(200, PSTR("text/html"), PSTR("Reboot command received"));
               SystemState::shouldReboot = true;
             });
+
+#ifdef ESP8266
+  // Download all crash logs as text attachment -------------------------------
+  server.on(F("/crashdl"), HTTP_GET,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+              server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"crashes.txt\""));
+              server.send(200, F("text/plain"), "");
+              SaveCrashSpiffs.iterateCrashLogFiles([&server](uint32_t, const char *fileName)
+                                                   {
+                File f = LittleFS.open(fileName, "r");
+                if (f) {
+                  server.sendContent(F("--- "));
+                  server.sendContent(fileName);
+                  server.sendContent(F(" ---\n"));
+                  server.sendContent(f.readString());
+                  f.close();
+                } });
+              server.sendContent(emptyString);
+            });
+
+  // Clear all crash logs -----------------------------------------------------
+  server.on(F("/crashclr"), HTTP_POST,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              for (int i = 0, n = SaveCrashSpiffs.count(); i < n; i++)
+                SaveCrashSpiffs.removeFile(0);
+              server.send_P(200, PSTR("text/plain"), PSTR("OK"));
+            });
+
+#if DEVELOPPER_MODE
+  // dbz endpoint try to do a division by 0 to trigger a crash for testing purposes
+  server.on(F("/dbz"), HTTP_GET,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              volatile int a = 1;
+              volatile int b = 0;
+              volatile int c = a / b;
+              (void)c; // avoid unused variable warning
+              server.send_P(200, PSTR("text/html"), PSTR("This should never be seen"));
+            });
+#endif
+#endif
 
   // 302 on not found ---------------------------------------------------------
   server.onNotFound(

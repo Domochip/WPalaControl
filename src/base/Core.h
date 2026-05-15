@@ -8,6 +8,10 @@
 #include "data/config0.html.gz.h"
 #include "data/fw.html.gz.h"
 
+#ifdef ESP8266
+#include <EspSaveCrashFs.h>
+#endif
+
 class Core : public Application
 {
 private:
