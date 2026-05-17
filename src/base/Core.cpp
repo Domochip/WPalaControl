@@ -34,7 +34,7 @@ void Core::fillStatusJSON(JsonDocument &doc)
   doc[F("freestack")] = ESP.getFreeContStack();
   doc[F("flashsize")] = ESP.getFlashChipRealSize();
 
-  uint32_t crashCount = SaveCrashSpiffs.count();
+  uint32_t crashCount = CrashSaver::count();
   doc[F("crashcount")] = crashCount;
 #else
   doc[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
@@ -255,7 +255,7 @@ void Core::appInitWebServer(WebServer &server)
               server.setContentLength(CONTENT_LENGTH_UNKNOWN);
               server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"crashes.txt\""));
               server.send(200, F("text/plain"), "");
-              SaveCrashSpiffs.iterateCrashLogFiles([&server](uint32_t, const char *fileName)
+              CrashSaver::iterateCrashLogFiles([&server](uint32_t, const char *fileName)
                                                    {
                 File f = LittleFS.open(fileName, "r");
                 if (f) {
@@ -273,8 +273,7 @@ void Core::appInitWebServer(WebServer &server)
             [&server]()
             {
               SERVER_KEEPALIVE_FALSE()
-              for (int i = 0, n = SaveCrashSpiffs.count(); i < n; i++)
-                SaveCrashSpiffs.removeFile(0);
+              CrashSaver::clearAllLogs();
               server.send_P(200, PSTR("text/plain"), PSTR("OK"));
             });
 

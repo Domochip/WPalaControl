@@ -87,6 +87,7 @@ void setup()
   {
     LOG_SERIAL_PRINTLN(F("-> RESCUE MODE : Stored configuration won't be loaded."));
   }
+  
 #ifdef ESP8266
   if (!LittleFS.begin())
 #else
@@ -96,6 +97,11 @@ void setup()
     LOG_SERIAL_PRINTLN(F("/!\\   File System Mount Failed   /!\\"));
     LOG_SERIAL_PRINTLN(F("/!\\ Configuration can't be saved /!\\"));
   }
+
+#ifdef ESP8266
+  // Init CrashSaver
+  CrashSaver::init(LittleFS);
+#endif
 
   // Init Core
   core.init(skipExistingConfig);
