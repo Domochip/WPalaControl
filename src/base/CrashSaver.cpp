@@ -4,6 +4,10 @@
 
 extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack, uint32_t stack_end)
 {
+    // avoid to log a crash during Update reboot
+    if (SystemState::shouldReboot)
+        return;
+
     if (CrashSaver::_fs == nullptr)
         return;
 

@@ -13,6 +13,8 @@ Inspired by https://github.com/brainelectronics/EspSaveCrashSpiffs
 #include <functional>
 #include <user_interface.h>
 
+#include "SystemState.h"
+
 class CrashSaver
 {
 public:
