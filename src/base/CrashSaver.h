@@ -7,6 +7,8 @@ Inspired by https://github.com/brainelectronics/EspSaveCrashSpiffs
 #ifndef CrashSaver_h
 #define CrashSaver_h
 
+#ifdef ESP8266
+
 #include <FS.h>
 #include <functional>
 #include <user_interface.h>
@@ -34,4 +36,5 @@ private:
     static char _nextLogFilePath[LOG_FILE_PATH_LEN];
 };
 
-#endif
+#endif // ESP8266
+#endif // CrashSaver_h

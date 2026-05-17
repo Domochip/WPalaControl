@@ -1,5 +1,7 @@
 #include "CrashSaver.h"
 
+#ifdef ESP8266
+
 extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack, uint32_t stack_end)
 {
     if (CrashSaver::_fs == nullptr)
@@ -164,3 +166,5 @@ bool CrashSaver::clearAllLogs()
 
     return allRemoved;
 }
+
+#endif // ESP8266
