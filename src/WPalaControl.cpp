@@ -59,15 +59,14 @@ void WPalaControl::myUSleep(unsigned long usecond) { delayMicroseconds(usecond);
 void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 {
   // Subscribe command topic --------------------------------
-  String cmdTopic = _ha.mqtt.generic.baseTopic;
-  MQTTMan::prepareTopic(cmdTopic);
+  String cmdTopic = _preparedMqttBaseTopic;
 
   switch (_ha.mqtt.type) // switch on MQTT type
   {
   case HA_MQTT_GENERIC:
   case HA_MQTT_GENERIC_JSON:
   case HA_MQTT_GENERIC_CATEGORIZED:
-    cmdTopic += F("cmd");
+    cmdTopic += F("/cmd");
     break;
   }
 
@@ -76,9 +75,8 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
   mqttMan->subscribe(cmdTopic.c_str());
 
   // Subscribe to update/install topic -----------------------
-  String updateInstalltopic(_ha.mqtt.generic.baseTopic);
-  MQTTMan::prepareTopic(updateInstalltopic);
-  updateInstalltopic += F("update/install");
+  String updateInstalltopic(_preparedMqttBaseTopic);
+  updateInstalltopic += F("/update/install");
   mqttMan->subscribe(updateInstalltopic.c_str());
 
   // raise flag to publish Home Assistant discovery data
@@ -94,15 +92,14 @@ void WPalaControl::mqttDisconnectedCallback()
 void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
   // calculate command topic
-  String cmdTopic = _ha.mqtt.generic.baseTopic;
-  MQTTMan::prepareTopic(cmdTopic);
+  String cmdTopic = _preparedMqttBaseTopic;
 
   switch (_ha.mqtt.type) // switch on MQTT type
   {
   case HA_MQTT_GENERIC:
   case HA_MQTT_GENERIC_JSON:
   case HA_MQTT_GENERIC_CATEGORIZED:
-    cmdTopic += F("cmd");
+    cmdTopic += F("/cmd");
     break;
   }
   // if topic is command one
@@ -121,10 +118,8 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     executePalaCmd(cmd, strJson, true);
 
     // publish json result to MQTT
-    String baseTopic = _ha.mqtt.generic.baseTopic;
-    MQTTMan::prepareTopic(baseTopic);
-    String resTopic(baseTopic);
-    resTopic += F("result");
+    String resTopic = _preparedMqttBaseTopic;
+    resTopic += F("/result");
     _mqttMan.publish(resTopic.c_str(), strJson.c_str());
   }
 
@@ -200,6 +195,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
       {
         // prepare topic
         String topic(baseTopic);
+        topic += '/';
         topic += kv.key().c_str();
         // publish
         res = _mqttMan.publish(topic.c_str(), kv.value().as<String>().c_str());
@@ -210,6 +206,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
     {
       // prepare topic
       String topic(baseTopic);
+      topic += '/';
       topic += palaCategory;
       // serialize DATA to JSON
       String serializedData;
@@ -222,6 +219,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
     {
       // prepare category topic
       String categoryTopic(baseTopic);
+      categoryTopic += '/';
       categoryTopic += palaCategory;
       categoryTopic += '/';
 
@@ -274,15 +272,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // variables
   JsonDocument jsonDoc;
   String device, availability;
-  String baseTopic;
   String uniqueIdPrefix, uniqueIdPrefixStove;
   String uniqueId;
   String topic;
-
-  // prepare base topic
-  baseTopic = _ha.mqtt.generic.baseTopic;
-  MQTTMan::prepareTopic(baseTopic);
-  baseTopic.remove(baseTopic.length() - 1); // remove ending '/'
 
   // ---------- Device ----------
 
@@ -313,7 +305,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
 
   // prepare payload for connectivity sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("default_entity_id")] = F("binary_sensor." CUSTOM_APP_MODEL "_connectivity");
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
@@ -428,7 +420,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
 
   // prepare payload for Stove connectivity sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("default_entity_id")] = F("binary_sensor.stove_connectivity");
   jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
@@ -450,7 +442,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove status sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_status");
   jsonDoc[F("device")] = serialized(device);
@@ -474,7 +466,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove status text sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_status_text");
   jsonDoc[F("device")] = serialized(device);
@@ -505,7 +497,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("climate"), uniqueId);
 
   // prepare payload for Stove thermostat
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
@@ -589,7 +581,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
     // prepare payload for Stove supply water temperature sensor
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("default_entity_id")] = F("sensor.stove_supplywatertemp");
     jsonDoc[F("device")] = serialized(device);
@@ -645,7 +637,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove main temperature sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
   defaultEntityIdSuffix.replace(F(" "), "");
@@ -675,7 +667,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove flue gas temperature sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_fluegastemp");
   jsonDoc[F("device")] = serialized(device);
@@ -703,7 +695,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove pellet consumption sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_pqt");
   jsonDoc[F("device")] = serialized(device);
@@ -730,7 +722,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove service time counter sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_servicetimecounter");
   jsonDoc[F("device")] = serialized(device);
@@ -758,7 +750,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove feeder sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_feeder");
   jsonDoc[F("device")] = serialized(device);
@@ -783,7 +775,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove target differential pressure sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_targetdifferentialpressure");
   jsonDoc[F("device")] = serialized(device);
@@ -813,7 +805,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove differential pressure sensor
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_differentialpressure");
   jsonDoc[F("device")] = serialized(device);
@@ -845,7 +837,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
 
     // prepare payload for Stove onoff switch
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("switch.stove_on_off");
@@ -879,7 +871,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove setpoint number
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+SETP+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
@@ -912,7 +904,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove power number
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_template")] = F("SET+POWR+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
@@ -944,7 +936,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove room fan
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
 
     // specific availibility for room fan
     JsonArray availability = jsonDoc["availability"].to<JsonArray>();
@@ -992,7 +984,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
 
     // prepare payload for Stove room fan auto mode
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("switch.stove_rfan_auto");
@@ -1027,7 +1019,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan3 number
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = ifFan3SwitchEntity ? F("switch.stove_fan3") : F("number.stove_fan3");
@@ -1072,7 +1064,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan4 number
-    jsonDoc[F("~")] = baseTopic;
+    jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availability);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = ifFan4SwitchEntity ? F("switch.stove_fan4") : F("number.stove_fan4");
@@ -1114,7 +1106,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("button"), uniqueId);
 
   // prepare payload for Stove set time button
-  jsonDoc[F("~")] = baseTopic;
+  jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availability);
   jsonDoc[F("command_template")] = F("SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}");
   jsonDoc[F("command_topic")] = cmdTopic;
@@ -1141,12 +1133,7 @@ bool WPalaControl::mqttPublishUpdate()
   JsonDocument updateInfo;
   fillLatestUpdateInfoJson(updateInfo);
 
-  String baseTopic;
   String topic;
-
-  // prepare base topic
-  baseTopic = _ha.mqtt.generic.baseTopic;
-  MQTTMan::prepareTopic(baseTopic);
 
   // This part of code is necessary because "payload_install" is not a template
   // and we need to get the version to install pushed from Home Assistant
@@ -1210,7 +1197,7 @@ bool WPalaControl::mqttPublishUpdate()
       topic += F("/config");
 
       // prepare payload for update sensor
-      jsonDoc[F("~")] = baseTopic.substring(0, baseTopic.length() - 1); // remove ending '/'
+      jsonDoc[F("~")] = _preparedMqttBaseTopic;
       jsonDoc[F("availability")] = serialized(availability);
       jsonDoc[F("command_topic")] = F("~/update/install");
       jsonDoc[F("default_entity_id")] = F("update." CUSTOM_APP_MODEL);
@@ -1231,7 +1218,8 @@ bool WPalaControl::mqttPublishUpdate()
   }
 
   // calculate topic
-  topic = baseTopic + F("update");
+  topic = _preparedMqttBaseTopic;
+  topic += F("/update");
 
   // publish install in_progress (new in 2024.11)
   // I keep it here because I want to separate the two publish for retrocompatibility
@@ -1364,11 +1352,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
         _eventSourceMan.eventSourceBroadcast(strData.c_str());
 
         if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
-        {
-          String baseTopic = _ha.mqtt.generic.baseTopic;
-          MQTTMan::prepareTopic(baseTopic);
-          _haSendResult &= mqttPublishData(baseTopic, palaCategory, jsonDoc);
-        }
+          _haSendResult &= mqttPublishData(_preparedMqttBaseTopic, palaCategory, jsonDoc);
       }
     }
     else
@@ -2508,20 +2492,12 @@ void WPalaControl::publishTick()
   // if MQTT protocol is enabled and connected then publish Core, Wifi and WPalaControl status
   if (_ha.protocol == HA_PROTO_MQTT && _mqttMan.connected())
   {
-    String baseTopic = _ha.mqtt.generic.baseTopic;
-    MQTTMan::prepareTopic(baseTopic);
-    // remove the last char of baseTopic which is a '/'
-    baseTopic.remove(baseTopic.length() - 1);
-
     JsonDocument doc;
     doc[getAppIdName(CoreApp)] = serialized(_applicationList[CoreApp]->getStatusJSON());
     doc[getAppIdName(WifiManApp)] = serialized(_applicationList[WifiManApp]->getStatusJSON());
     doc[getAppIdName(CustomApp)] = serialized(getStatusJSON());
 
-    String strJson;
-    serializeJson(doc, strJson);
-
-    _mqttMan.publish(baseTopic.c_str(), strJson.c_str(), true);
+    _mqttMan.publish(_preparedMqttBaseTopic, doc, true);
   }
 
   // array of commands to execute
@@ -2740,9 +2716,8 @@ bool WPalaControl::appInit(bool reInit)
     MQTTMan::prepareTopic(_ha.mqtt.generic.baseTopic, _preparedMqttBaseTopic, sizeof(_preparedMqttBaseTopic));
 
     // prepare will topic
-    String willTopic = _ha.mqtt.generic.baseTopic;
-    MQTTMan::prepareTopic(willTopic);
-    willTopic += F("connected");
+    String willTopic = _preparedMqttBaseTopic;
+    willTopic += F("/connected");
 
     // setup MQTT
     _mqttMan.setBufferSize(2048); // max JSON size (STDT ~1100 but Thermostat HAss discovery ~1800)
