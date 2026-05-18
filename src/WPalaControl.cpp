@@ -1230,67 +1230,99 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
   // Parse parameters ----------------------------------------------------------
   byte cmdParamNumber = 0;
-  String strCmdParams[6];
-  uint16_t cmdParams[6];
+  uint16_t cmdParams[6] = {};
+  char paramBuf[40] = {};
 
+  // if cmd length means there is parameters
   if (cmd.length() > 9 && cmd[8] == ' ')
   {
-    String cmdWorkingCopy = cmd.substring(9);
-    cmdWorkingCopy.trim();
-
-    // special case SET TIME
-    if (cmd.startsWith(F("SET TIME ")))
-    {
-      cmdWorkingCopy.replace('-', ' ');
-      cmdWorkingCopy.replace(':', ' ');
-    }
-
-    // special case SET STPF
-    if (cmd.startsWith(F("SET STPF ")))
-      cmdWorkingCopy.replace('.', ' ');
-
-    while (cmdWorkingCopy.length() && cmdParamNumber < 6)
-    {
-      int pos = cmdWorkingCopy.indexOf(' ');
-      if (pos == -1)
-      {
-        strCmdParams[cmdParamNumber] = cmdWorkingCopy;
-        cmdWorkingCopy = "";
-      }
-      else
-      {
-        strCmdParams[cmdParamNumber] = cmdWorkingCopy.substring(0, pos);
-        cmdWorkingCopy = cmdWorkingCopy.substring(pos + 1);
-      }
-
-      cmdParams[cmdParamNumber] = strCmdParams[cmdParamNumber].toInt();
-
-      // special case EXT ADRD and EXT ADWR (first parameter is an hexadecimal address)
-      if (cmdParamNumber == 0 && (cmd.startsWith(F("EXT ADRD ")) || cmd.startsWith(F("EXT ADWR "))))
-        cmdParams[cmdParamNumber] = strtol(strCmdParams[cmdParamNumber].c_str(), NULL, 16);
-
-      // verify conversion is successful: if result is 0, all chars must be '0'
-      if (cmdParams[cmdParamNumber] == 0)
-      {
-        for (char c : strCmdParams[cmdParamNumber])
-        {
-          if (c != '0')
-          {
-            cmdProcessed = true;
-            info["MSG"] = String(F("Incorrect Parameter Value : ")) + strCmdParams[cmdParamNumber];
-            break;
-          }
-        }
-      }
-
-      cmdParamNumber++;
-    }
-
-    // too much parameters has been sent
-    if (cmdParamNumber == 6 && cmdWorkingCopy.length())
+    // check parameters length before copying to a temporary buffer
+    const char *rawParams = cmd.c_str() + 9;
+    if (strlen(rawParams) >= sizeof(paramBuf))
     {
       cmdProcessed = true;
-      info["MSG"] = F("Incorrect Parameter Number");
+      info["MSG"] = F("Parameters too long");
+    }
+
+    if (!cmdProcessed)
+    {
+      // copy parameters to a temporary buffer for parsing
+      strlcpy(paramBuf, rawParams, sizeof(paramBuf));
+
+      // trim leading spaces
+      char *start = paramBuf;
+      while (*start == ' ')
+        start++;
+      if (start != paramBuf)
+        memmove(paramBuf, start, strlen(start) + 1);
+
+      // trim trailing spaces
+      int len = strlen(paramBuf);
+      while (len > 0 && paramBuf[len - 1] == ' ')
+        paramBuf[--len] = '\0';
+
+      // special case SET TIME: replace '-' and ':' with ' '
+      if (cmd.startsWith(F("SET TIME ")))
+      {
+        for (char *q = paramBuf; *q; q++)
+          if (*q == '-' || *q == ':')
+            *q = ' ';
+      }
+
+      // special case SET STPF: replace '.' with ' '
+      if (cmd.startsWith(F("SET STPF ")))
+      {
+        for (char *q = paramBuf; *q; q++)
+          if (*q == '.')
+            *q = ' ';
+      }
+
+      // collapse consecutive spaces into one
+      char *r = paramBuf, *w = paramBuf;
+      while (*r)
+      {
+        *w++ = *r++;
+        if (r[-1] == ' ')
+          while (*r == ' ')
+            r++;
+      }
+      *w = '\0';
+
+      // split parameters by space and convert to integer
+      char *tok = strtok(paramBuf, " ");
+      while (tok && cmdParamNumber < 6)
+      {
+        char *endPtr = nullptr;
+        long parsedValue = strtol(tok, &endPtr, 10);
+
+        // special case SET STPF (second parameter is the decimal part) (handle 19.8 instead of 19.80)
+        if (cmdParamNumber == 1 && cmd.startsWith(F("SET STPF ")) && strlen(tok) == 1)
+          parsedValue *= 10;
+
+        // special case EXT ADRD and EXT ADWR (first parameter is an hexadecimal address)
+        if (cmdParamNumber == 0 && (cmd.startsWith(F("EXT ADRD ")) || cmd.startsWith(F("EXT ADWR "))))
+          parsedValue = strtol(tok, &endPtr, 16);
+
+        // Conversion is valid only if the full token is numeric and the value fits uint16_t.
+        if (endPtr != tok && *endPtr == '\0' && parsedValue >= 0 && parsedValue <= 0xFFFF)
+          cmdParams[cmdParamNumber] = parsedValue;
+        else
+        {
+          cmdProcessed = true;
+          info["MSG"] = (String(F("Incorrect Parameter Value : ")) + tok).c_str();
+          break;
+        }
+
+        cmdParamNumber++;
+        tok = strtok(NULL, " ");
+      }
+
+      // too much parameters has been sent
+      if (!cmdProcessed && tok)
+      {
+        cmdProcessed = true;
+        info["MSG"] = F("Incorrect Parameter Number");
+      }
     }
   }
 
@@ -1301,11 +1333,11 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
     if (cmd.startsWith(F("CMD ")))
       cmdSuccess = executeCmdPalaCmd(cmd, data, info, palaCategory, cmdProcessed);
     else if (cmd.startsWith(F("GET ")))
-      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
     else if (cmd.startsWith(F("SET ")))
-      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
     else if (cmd.startsWith(F("EXT ")))
-      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams, strCmdParams);
+      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
   }
 
   // Process result -----------------------------------------------------------
@@ -1405,7 +1437,7 @@ Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -1940,7 +1972,7 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -2367,7 +2399,11 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
     if (cmdParamNumber != 2)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
     else if (cmdParams[1] > 80 || cmdParams[1] % 20 != 0)
-      info["MSG"] = String(F("Incorrect Parameter Value : ")) + strCmdParams[0] + '.' + strCmdParams[1];
+    {
+      char msgBuf[64];
+      snprintf(msgBuf, sizeof(msgBuf), "Incorrect Parameter Value : %u.%02u", cmdParams[0], cmdParams[1]);
+      info["MSG"] = msgBuf;
+    }
 
     // convert splitted float string back to float
     float setPointFloat = cmdParams[1]; // load decimal part
@@ -2443,7 +2479,7 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
+Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
