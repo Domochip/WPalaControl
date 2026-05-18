@@ -12,6 +12,7 @@ using WebServer = ESP8266WebServer;
 #endif
 
 #include <Ticker.h>
+#include <ArduinoJson.h>
 
 class EventSourceMan
 {
@@ -33,6 +34,7 @@ public:
 #if EVTSRC_ENABLED
     void initEventSourceServer(char appIdChar, WebServer &server);
     void eventSourceBroadcast(const char *message, const char *eventType = "message");
+    void eventSourceBroadcast(JsonDocument &doc, const char *eventType = "message");
 
 #if EVTSRC_KEEPALIVE_ENABLED
 
