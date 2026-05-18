@@ -93,14 +93,14 @@ void EventSourceMan::eventSourceBroadcast(const char *message, const char *event
     }
 }
 
-void EventSourceMan::eventSourceBroadcast(JsonDocument &doc, const char *eventType)
+void EventSourceMan::eventSourceBroadcast(JsonVariantConst message, const char *eventType)
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
         if (_EventSourceClientList[i])
         {
             _EventSourceClientList[i].printf_P(PSTR("event: %s\ndata: "), eventType);
-            serializeJson(doc, _EventSourceClientList[i]);
+            serializeJson(message, _EventSourceClientList[i]);
             _EventSourceClientList[i].print(F("\n\n"));
 
 #if DEVELOPPER_MODE
