@@ -186,51 +186,46 @@ void WPalaControl::mqttPublishStoveConnected(bool stoveConnected)
 bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc)
 {
   bool res = false;
-  if (_mqttMan.connected())
-  {
-    if (_ha.mqtt.type == HA_MQTT_GENERIC)
-    {
-      // for each key/value pair in DATA
-      for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
-      {
-        // prepare topic
-        String topic(baseTopic);
-        topic += '/';
-        topic += kv.key().c_str();
-        // publish
-        res = _mqttMan.publish(topic.c_str(), kv.value().as<String>().c_str());
-      }
-    }
+  if (!_mqttMan.connected())
+    return res;
 
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  char topicBuf[sizeof(_preparedMqttBaseTopic) + sizeof("/TIME/STOVE_DATETIME")]; // longest possible topic
+
+  if (_ha.mqtt.type == HA_MQTT_GENERIC)
+  {
+    for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
     {
       // prepare topic
-      String topic(baseTopic);
-      topic += '/';
-      topic += palaCategory;
-      // publish
-      res = _mqttMan.publish(topic.c_str(), jsonDoc["DATA"]);
-    }
-
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
-    {
-      // prepare category topic
-      String categoryTopic(baseTopic);
-      categoryTopic += '/';
-      categoryTopic += palaCategory;
-      categoryTopic += '/';
-
-      // for each key/value pair in DATA
-      for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
-      {
-        // prepare topic
-        String topic(categoryTopic);
-        topic += kv.key().c_str();
-        // publish
-        res = _mqttMan.publish(topic.c_str(), kv.value().as<String>().c_str());
-      }
+      snprintf(topicBuf, sizeof(topicBuf), "%s/%s", baseTopic.c_str(), kv.key().c_str());
+      // prepare value
+      const char *val = kv.value().as<const char *>(); // try to get value as string
+      // publish to MQTT
+      res = val ? _mqttMan.publish(topicBuf, val) : _mqttMan.publish(topicBuf, kv.value());
     }
   }
+
+  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  {
+    // prepare topic
+    snprintf(topicBuf, sizeof(topicBuf), "%s/%s", baseTopic.c_str(), palaCategory.c_str());
+    // publish to MQTT
+    res = _mqttMan.publish(topicBuf, jsonDoc["DATA"]);
+  }
+
+  if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  {
+    int prefixLen = snprintf(topicBuf, sizeof(topicBuf), "%s/%s/", baseTopic.c_str(), palaCategory.c_str());
+    for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
+    {
+      // prepare topic
+      snprintf(topicBuf + prefixLen, sizeof(topicBuf) - prefixLen, "%s", kv.key().c_str());
+      // prepare value
+      const char *val = kv.value().as<const char *>(); // try to get value as string
+      // publish to MQTT
+      res = val ? _mqttMan.publish(topicBuf, val) : _mqttMan.publish(topicBuf, kv.value());
+    }
+  }
+
   return res;
 }
 
