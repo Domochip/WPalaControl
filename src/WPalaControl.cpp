@@ -1347,9 +1347,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
       if (publish && String(palaCategory).length() > 0)
       {
-        String strData;
-        serializeJson(data, strData);
-        _eventSourceMan.eventSourceBroadcast(strData.c_str());
+        _eventSourceMan.eventSourceBroadcast(data);
 
         if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
           _haSendResult &= mqttPublishData(_preparedMqttBaseTopic, palaCategory, jsonDoc);
