@@ -106,7 +106,7 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
   if (cmdTopic == topic)
   {
     String cmd;
-    String strJson;
+    JsonDocument jsonDoc;
 
     // convert payload to String cmd
     cmd.concat((char *)payload, length);
@@ -115,12 +115,12 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     cmd.replace('+', ' ');
 
     // execute Palazzetti command
-    executePalaCmd(cmd, strJson, true);
+    executePalaCmd(cmd, jsonDoc, true);
 
     // publish json result to MQTT
     String resTopic = _preparedMqttBaseTopic;
     resTopic += F("/result");
-    _mqttMan.publish(resTopic.c_str(), strJson.c_str());
+    _mqttMan.publish(resTopic.c_str(), jsonDoc);
   }
 
   // if topic ends with "/update/install"
@@ -1233,13 +1233,13 @@ bool WPalaControl::mqttPublishUpdate()
   return true;
 }
 
-bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publish /* = false*/)
+bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
 {
   bool cmdProcessed = false;                                                             // cmd has been processed
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR; // Palazzetti function calls successful
 
   // Prepare answer structure --------------------------------------------------
-  JsonDocument jsonDoc;
+  jsonDoc.clear();
   JsonObject info = jsonDoc["INFO"].to<JsonObject>();
   JsonObject data = jsonDoc["DATA"].to<JsonObject>();
   const __FlashStringHelper *palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
@@ -1381,9 +1381,6 @@ bool WPalaControl::executePalaCmd(const String &cmd, String &strJson, bool publi
     jsonDoc["SUCCESS"] = false;
     data["NODATA"] = true;
   }
-
-  // serialize result to the provided strJson
-  serializeJson(jsonDoc, strJson);
 
   return jsonDoc["SUCCESS"].as<bool>();
 }
@@ -2517,9 +2514,9 @@ void WPalaControl::publishTick()
   // execute commands
   for (const __FlashStringHelper *cmd : cmdList)
   {
-    String strJson;
+    JsonDocument jsonDoc;
     // execute command with publish flag to true
-    if (!executePalaCmd(cmd, strJson, true))
+    if (!executePalaCmd(cmd, jsonDoc, true))
       break;
   }
 }
@@ -2532,7 +2529,7 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
     return;
 
   String strData;
-  String strAnswer;
+  JsonDocument jsonDoc;
 
   strData.reserve(packetSize + 1);
 
@@ -2543,15 +2540,15 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 
   // process request
   if (strData.endsWith(F("bridge?")))
-    executePalaCmd(F("GET STDT"), strAnswer);
+    executePalaCmd(F("GET STDT"), jsonDoc);
   else if (strData.endsWith(F("bridge?GET ALLS")))
-    executePalaCmd(F("GET ALLS"), strAnswer);
+    executePalaCmd(F("GET ALLS"), jsonDoc);
   else
-    executePalaCmd("", strAnswer);
+    executePalaCmd("", jsonDoc);
 
   // answer to the requester
   udpServer.beginPacket(udpServer.remoteIP(), udpServer.remotePort());
-  udpServer.write((const uint8_t *)strAnswer.c_str(), strAnswer.length());
+  serializeJson(jsonDoc, udpServer);
   udpServer.endPacket();
 }
 
@@ -2856,7 +2853,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
   server.on(F("/cgi-bin/sendmsg.lua"), HTTP_GET, [this, &server]()
             {
     String cmd;
-    String strJson;
+    JsonDocument jsonDoc;
 
     if (server.hasArg(F("cmd"))) cmd = server.arg(F("cmd"));
 
@@ -2989,11 +2986,13 @@ void WPalaControl::appInitWebServer(WebServer &server)
     }
 
     // Other commands processed using normal Palazzetti logic
-    executePalaCmd(cmd, strJson);
+    executePalaCmd(cmd, jsonDoc);
 
     // send response
     SERVER_KEEPALIVE_FALSE()
-    server.send(200, F("text/json"), strJson); });
+    server.setContentLength(measureJson(jsonDoc));
+    server.send(200, F("text/json"), "");
+    serializeJson(jsonDoc, server.client()); });
 
   // Handle HTTP POST requests (Body contains a JSON)
   server.on(
@@ -3001,7 +3000,6 @@ void WPalaControl::appInitWebServer(WebServer &server)
       {
         String cmd;
         JsonDocument jsonDoc;
-        String strJson;
 
         DeserializationError error = deserializeJson(jsonDoc, server.arg(F("plain")));
 
@@ -3009,11 +3007,13 @@ void WPalaControl::appInitWebServer(WebServer &server)
           cmd = jsonDoc[F("command")].as<String>();
 
         // process cmd
-        executePalaCmd(cmd, strJson);
+        executePalaCmd(cmd, jsonDoc);
 
         // send response
         SERVER_KEEPALIVE_FALSE()
-        server.send(200, F("text/json"), strJson); });
+        server.setContentLength(measureJson(jsonDoc));
+        server.send(200, F("text/json"), "");
+        serializeJson(jsonDoc, server.client()); });
 
   // register EventSource
   _eventSourceMan.initEventSourceServer(getAppIdChar(_appId), server);
