@@ -2736,6 +2736,9 @@ bool WPalaControl::appInit(bool reInit)
   // if MQTT used so configure it
   if (_ha.protocol == HA_PROTO_MQTT)
   {
+    // prepare base topic
+    MQTTMan::prepareTopic(_ha.mqtt.generic.baseTopic, _preparedMqttBaseTopic, sizeof(_preparedMqttBaseTopic));
+
     // prepare will topic
     String willTopic = _ha.mqtt.generic.baseTopic;
     MQTTMan::prepareTopic(willTopic);

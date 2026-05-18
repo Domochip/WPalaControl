@@ -60,6 +60,7 @@ private:
   int _haSendResult = 0;
   WiFiClient _wifiClient;
   MQTTMan _mqttMan;
+  char _preparedMqttBaseTopic[64 + 4 + 12 - 7 + sizeof(CUSTOM_APP_MODEL) + 1] = {0}; // _ha.mqtt.generic.baseTopic.baseTopic length + one of each placeholder (+4 sn) (+12 mac) (+X model)
   EventSourceMan _eventSourceMan;
   WiFiUDP _udpServer;
 
