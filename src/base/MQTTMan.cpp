@@ -179,9 +179,9 @@ bool MQTTMan::publishToConnectedTopic(const char *payload)
     return false;
 }
 
-bool MQTTMan::publish(const char *topic, const JsonDocument &jsonDoc, bool retained)
+bool MQTTMan::publish(const char *topic, JsonVariantConst payload, bool retained)
 {
-    const size_t payloadLen = measureJson(jsonDoc);
+    const size_t payloadLen = measureJson(payload);
     if (!beginPublish(topic, payloadLen, retained))
         return false;
 
@@ -193,7 +193,7 @@ bool MQTTMan::publish(const char *topic, const JsonDocument &jsonDoc, bool retai
         size_t write(const uint8_t *buffer, size_t size) { return mqtt.write(buffer, size); }
     } writer{*this};
 
-    const size_t written = serializeJson(jsonDoc, writer);
+    const size_t written = serializeJson(payload, writer);
     if (written != payloadLen)
         return false;
 
