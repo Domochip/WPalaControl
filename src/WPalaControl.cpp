@@ -1408,6 +1408,7 @@ Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, Jso
 Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  char floatBuf[8];
 
   if (cmd == F("GET ALLS"))
   {
@@ -1469,7 +1470,8 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
       data["LSTATUS"] = LSTATUS;
       if (isMFSTATUSValid)
         data["MFSTATUS"] = MFSTATUS;
-      data["SETP"] = serialized(String(SETP, 2));
+      dtostrf(SETP, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
       data["PUMP"] = PUMP;
       data["PQT"] = PQT;
       data["F1V"] = F1V;
@@ -1490,16 +1492,22 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
         data["F4L"] = F4L;
       }
       data["PWR"] = PWR;
-      data["FDR"] = serialized(String(FDR, 2));
+      dtostrf(FDR, 1, 2, floatBuf);
+      data["FDR"] = serialized(floatBuf);
       data["DPT"] = DPT;
       data["DP"] = DP;
       data["IN"] = IN;
       data["OUT"] = OUT;
-      data["T1"] = serialized(String(T1, 2));
-      data["T2"] = serialized(String(T2, 2));
-      data["T3"] = serialized(String(T3, 2));
-      data["T4"] = serialized(String(T4, 2));
-      data["T5"] = serialized(String(T5, 2));
+      dtostrf(T1, 1, 2, floatBuf);
+      data["T1"] = serialized(floatBuf);
+      dtostrf(T2, 1, 2, floatBuf);
+      data["T2"] = serialized(floatBuf);
+      dtostrf(T3, 1, 2, floatBuf);
+      data["T3"] = serialized(floatBuf);
+      dtostrf(T4, 1, 2, floatBuf);
+      data["T4"] = serialized(floatBuf);
+      dtostrf(T5, 1, 2, floatBuf);
+      data["T5"] = serialized(floatBuf);
 
       data["EFLAGS"] = 0; // new ErrorFlags not implemented
       if (isSNValid)
@@ -1529,7 +1537,8 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
       {
         programName[1] = i + '1';
         JsonObject px = data[programName].to<JsonObject>();
-        px["CHRSETP"] = serialized(String(PCHRSETP[i], 2));
+        dtostrf(PCHRSETP[i], 1, 2, floatBuf);
+        px["CHRSETP"] = serialized(floatBuf);
         time[0] = PSTART[i][0] / 10 + '0';
         time[1] = PSTART[i][0] % 10 + '0';
         time[3] = PSTART[i][1] / 10 + '0';
@@ -1623,8 +1632,10 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
       data["F2LF"] = F2LF;
       if (isF3SF4SValid)
       {
-        data["F3S"] = serialized(String(F3S, 2));
-        data["F4S"] = serialized(String(F4S, 2));
+        dtostrf(F3S, 1, 2, floatBuf);
+        data["F3S"] = serialized(floatBuf);
+        dtostrf(F4S, 1, 2, floatBuf);
+        data["F4S"] = serialized(floatBuf);
       }
       if (isF3LF4LValid)
       {
@@ -1734,7 +1745,8 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      data["SETP"] = serialized(String(SETP, 2));
+      dtostrf(SETP, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
     }
   }
   else if (cmd == F("GET STAT"))
@@ -1883,11 +1895,16 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      data["T1"] = serialized(String(T1, 2));
-      data["T2"] = serialized(String(T2, 2));
-      data["T3"] = serialized(String(T3, 2));
-      data["T4"] = serialized(String(T4, 2));
-      data["T5"] = serialized(String(T5, 2));
+      dtostrf(T1, 1, 2, floatBuf);
+      data["T1"] = serialized(floatBuf);
+      dtostrf(T2, 1, 2, floatBuf);
+      data["T2"] = serialized(floatBuf);
+      dtostrf(T3, 1, 2, floatBuf);
+      data["T3"] = serialized(floatBuf);
+      dtostrf(T4, 1, 2, floatBuf);
+      data["T4"] = serialized(floatBuf);
+      dtostrf(T5, 1, 2, floatBuf);
+      data["T5"] = serialized(floatBuf);
     }
   }
   else if (cmd == F("GET POWR"))
@@ -1902,7 +1919,8 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
       data["PWR"] = PWR;
-      data["FDR"] = serialized(String(FDR, 2));
+      dtostrf(FDR, 1, 2, floatBuf);
+      data["FDR"] = serialized(floatBuf);
     }
   }
   else if (cmd == F("GET SERN"))
@@ -1925,6 +1943,7 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
 Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams, const String *strCmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  char floatBuf[8];
 
   if (cmd.startsWith(F("SET CDAY ")))
   {
@@ -2288,7 +2307,8 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        data["SETP"] = serialized(String(SETPReturn, 2));
+        dtostrf(SETPReturn, 1, 2, floatBuf);
+        data["SETP"] = serialized(floatBuf);
       }
     }
   }
@@ -2335,7 +2355,8 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      data["SETP"] = serialized(String(SETPReturn, 2));
+      dtostrf(SETPReturn, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
     }
   }
   else if (cmd.startsWith(F("SET STPF ")))
@@ -2360,7 +2381,8 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        data["SETP"] = serialized(String(SETPReturn, 2));
+        dtostrf(SETPReturn, 1, 2, floatBuf);
+        data["SETP"] = serialized(floatBuf);
       }
     }
   }
@@ -2374,7 +2396,8 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      data["SETP"] = serialized(String(SETPReturn, 2));
+      dtostrf(SETPReturn, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
     }
   }
   else if (cmd.startsWith(F("SET TIME ")))
