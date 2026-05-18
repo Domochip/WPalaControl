@@ -2909,11 +2909,11 @@ void WPalaControl::appInitWebServer(WebServer &server)
           for (byte i = 0; i < 0x6A; i++)
             PARM.add(params[i]);
 
-          serializeJson(doc, toReturn);
-
           SERVER_KEEPALIVE_FALSE()
           server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.json\""));
-          server.send(200, F("text/json"), toReturn);
+          server.setContentLength(measureJson(doc));
+          server.send(200, F("text/json"), "");
+          serializeJson(doc, server.client());
           break;
         }
 
@@ -2974,11 +2974,11 @@ void WPalaControl::appInitWebServer(WebServer &server)
           for (byte i = 0; i < 0x6F; i++)
             HPAR.add(hiddenParams[i]);
 
-          serializeJson(doc, toReturn);
-
           SERVER_KEEPALIVE_FALSE()
           server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.json\""));
-          server.send(200, F("text/json"), toReturn);
+          server.setContentLength(measureJson(doc));
+          server.send(200, F("text/json"), "");
+          serializeJson(doc, server.client());
           break;
         }
 
