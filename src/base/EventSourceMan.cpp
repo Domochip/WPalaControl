@@ -26,12 +26,6 @@ void EventSourceMan::eventSourceHandler(WebServer &server)
             return server.send(500);
     }
 
-#ifdef ESP8266
-    server.client().setSync(true); // disable Nagle's algorithm and flush immediately
-#else
-    server.client().setNoDelay(true);
-#endif
-
     // create/update subscription
     _EventSourceClientList[subPos] = server.client();
     server.setContentLength(CONTENT_LENGTH_UNKNOWN); // the payload can go on forever
