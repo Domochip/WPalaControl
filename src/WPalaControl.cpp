@@ -208,11 +208,8 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
       String topic(baseTopic);
       topic += '/';
       topic += palaCategory;
-      // serialize DATA to JSON
-      String serializedData;
-      serializeJson(jsonDoc["DATA"], serializedData);
       // publish
-      res = _mqttMan.publish(topic.c_str(), serializedData.c_str());
+      res = _mqttMan.publish(topic.c_str(), jsonDoc["DATA"]);
     }
 
     if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -259,12 +256,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Helper lambda to publish JSON payload
   auto publishJson = [&](const String &topic, JsonDocument &jsonDoc)
   {
-    jsonDoc.shrinkToFit();
-
-    String payload;
-    serializeJson(jsonDoc, payload);
-
-    _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
 
     jsonDoc.clear();
   };
@@ -1153,7 +1145,7 @@ bool WPalaControl::mqttPublishUpdate()
 
       // variables
       JsonDocument jsonDoc;
-      String device, availability, payload;
+      String device, availability;
 
       String uniqueIdPrefix;
       String uniqueId;
@@ -1209,11 +1201,8 @@ bool WPalaControl::mqttPublishUpdate()
       jsonDoc[F("state_topic")] = F("~/update");
       jsonDoc[F("unique_id")] = uniqueId;
 
-      jsonDoc.shrinkToFit();
-      serializeJson(jsonDoc, payload);
-
       // publish
-      _mqttMan.publish(topic.c_str(), payload.c_str(), true);
+      _mqttMan.publish(topic.c_str(), jsonDoc, true);
     }
   }
 
