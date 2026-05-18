@@ -2893,6 +2893,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         switch (fileType)
         {
         case 0: //CSV
+          toReturn.reserve(965); // Header + 106 lines with worst-case index/value width (3+1+3+2)
           toReturn += F("PARM;VALUE\r\n");
           for (byte i = 0; i < 0x6A; i++)
             toReturn += String(i) + ';' + params[i] + '\r' + '\n';
@@ -2957,6 +2958,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         switch (fileType)
         {
         case 0: //CSV
+          toReturn.reserve(1232); // Header + 111 lines with worst-case index/value width (3+1+5+2)
           toReturn += F("HPAR;VALUE\r\n");
           for (byte i = 0; i < 0x6F; i++)
             toReturn += String(i) + ';' + hiddenParams[i] + '\r' + '\n';
