@@ -1,64 +1,81 @@
 #include "MQTTMan.h"
 
-void MQTTMan::prepareTopic(String &topic)
+void MQTTMan::prepareTopic(const char *topic, char *result, size_t resultSize)
 {
-    // Build result in one pass into a fixed buffer
-    char result[128];
-    const char *src = topic.c_str();
+    if (!result || resultSize == 0)
+        return;
+
+    result[0] = '\0';
+    if (!topic || resultSize == 1)
+        return;
+
+    const char *src = topic;
     char *dst = result;
-    const char *end = result + sizeof(result) - 2; // reserve 2 bytes: trailing '/' + '\0'
+    char *end = result + resultSize - 1; // reserve 1 byte: '\0'
+    bool overflow = false;
+
+    char sn[9];
+#ifdef ESP8266
+    sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
+#else
+    sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+#endif
+
+    uint8_t macBuf[6];
+    char mac[18];
+    WiFi.macAddress(macBuf);
+    snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
+
+    const char *model = CUSTOM_APP_MODEL;
 
     while (*src && dst < end)
     {
+        const char *replacement = nullptr;
+        size_t replacementLen = 0;
+
         if (src[0] == '$' && src[1] == 's' && src[2] == 'n' && src[3] == '$')
         {
-            char sn[9];
-#ifdef ESP8266
-            sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-#else
-            sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
-#endif
-            size_t len = strlen(sn);
-            if (dst + len > end)
-                len = end - dst;
-            memcpy(dst, sn, len);
-            dst += len;
+            replacement = sn;
+            replacementLen = strlen(sn);
             src += 4;
         }
         else if (src[0] == '$' && src[1] == 'm' && src[2] == 'a' && src[3] == 'c' && src[4] == '$')
         {
-            uint8_t macBuf[6];
-            char mac[18];
-            WiFi.macAddress(macBuf);
-            snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
-            size_t len = strlen(mac);
-            if (dst + len > end)
-                len = end - dst;
-            memcpy(dst, mac, len);
-            dst += len;
+            replacement = mac;
+            replacementLen = strlen(mac);
             src += 5;
         }
         else if (src[0] == '$' && src[1] == 'm' && src[2] == 'o' && src[3] == 'd' && src[4] == 'e' && src[5] == 'l' && src[6] == '$')
         {
-            const char *model = CUSTOM_APP_MODEL;
-            size_t len = strlen(model);
-            if (dst + len > end)
-                len = end - dst;
-            memcpy(dst, model, len);
-            dst += len;
+            replacement = model;
+            replacementLen = strlen(model);
             src += 7;
         }
         else
         {
             *dst++ = *src++;
+            continue;
         }
+
+        if (dst + replacementLen > end)
+        {
+            overflow = true;
+            replacementLen = end - dst;
+        }
+
+        memcpy(dst, replacement, replacementLen);
+        dst += replacementLen;
     }
 
-    if (dst > result && *(dst - 1) != '/')
-        *dst++ = '/';
+    if (*src)
+        overflow = true;
+
+    if (dst > result && *(dst - 1) == '/')
+        --dst;
     *dst = '\0';
 
-    topic = result;
+    if (overflow)
+        LOG_SERIAL_PRINTLN(F("/!\\MQTT prepareTopic overflow/!\\"));
 }
 
 bool MQTTMan::connect(bool firstConnection)

@@ -30,7 +30,7 @@ private:
     bool connect(bool firstConnection);
 
 public:
-    static void prepareTopic(String &topic);
+    static void prepareTopic(const char *topic, char *result, size_t resultSize);
 
     using PubSubClient::setClient;
     using PubSubClient::setServer;
