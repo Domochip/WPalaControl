@@ -62,9 +62,17 @@
 
 // construct Version text
 #if DEVELOPPER_MODE
-#define VERSION VERSION_NUMBER "-DEV"
+#define _DEV_SUFFIX "-DEV"
 #else
-#define VERSION VERSION_NUMBER
+#define _DEV_SUFFIX ""
 #endif
+
+#ifdef DEBUG
+#define _DEBUG_SUFFIX "-DEBUG"
+#else
+#define _DEBUG_SUFFIX ""
+#endif
+
+#define VERSION VERSION_NUMBER _DEV_SUFFIX _DEBUG_SUFFIX
 
 #endif
