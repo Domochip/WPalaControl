@@ -16,8 +16,13 @@ def extract_macro_value(file_path, macro_name):
 
 model = extract_macro_value(r'./src/Main.h', 'CUSTOM_APP_MODEL')
 version = extract_macro_value(r'./src/Main.h', 'VERSION_NUMBER')
+developper_mode = extract_macro_value(r'./src/Main.h', 'DEVELOPPER_MODE')
 
 platform = env.GetProjectOption("platform")
-esp32suffix = ".esp32" if platform == "espressif32" else ""
+build_type = env.GetProjectOption("build_type", "release")
 
-env.Replace(PROGNAME=f"{model}{esp32suffix}.{version}")
+esp32suffix = ".esp32" if platform == "espressif32" else ""
+developpersuffix = ".dev" if developper_mode == "1" else ""
+debugsuffix = ".debug" if str(build_type).strip().lower() == "debug" else ""
+
+env.Replace(PROGNAME=f"{model}{esp32suffix}.{version}{developpersuffix}{debugsuffix}")

@@ -97,18 +97,18 @@
         // Define the patterns for the filename
         const esp32Pattern = '(\\.esp32)?';
         const versionPattern = '(\\.\\d+\\.\\d+\\.\\d+)?';
-        const filenamePattern1 = new RegExp(`^${model}${esp32Pattern}${versionPattern}\\.bin$`, 'i');
+        const filenamePattern1 = new RegExp(`^${model}${esp32Pattern}${versionPattern}.*\\.bin$`, 'i');
         let filenamePattern2 = null;
 
         // If model starts with 'W', define an additional pattern
         if (model.startsWith('W')) {
             const modelWithoutFirstChar = model.substring(1);
-            filenamePattern2 = new RegExp(`^Wireless${modelWithoutFirstChar}${esp32Pattern}${versionPattern}\\.bin$`, 'i');
+            filenamePattern2 = new RegExp(`^Wireless${modelWithoutFirstChar}${esp32Pattern}${versionPattern}.*\\.bin$`, 'i');
         }
 
         // Check if the filename matches either pattern
         if (!filenamePattern1.test(fn) && (!filenamePattern2 || !filenamePattern2.test(fn))) {
-            alert(`You didn't select a valid Firmware file for ${model}`);
+            alert(`You didn't select a valid Firmware file for ${model} (${model}.1.2.3.bin expected)`);
             return false;
         }
         return confirm("Please do not power off the device during the update process.");

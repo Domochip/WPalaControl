@@ -1,4 +1,5 @@
 #include "CrashSaver.h"
+#include "../Main.h" // for VERSION_NUMBER and CUSTOM_APP_MODEL
 
 #ifdef ESP8266
 
@@ -33,6 +34,12 @@ extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack,
     // maximum tmpBuffer size needed is 93 (UTC datetime crash line), so 100 should be enough
     char tmpBuffer[100];
 
+    // log model and version info
+    int writtenLen = snprintf_P(tmpBuffer, sizeof(tmpBuffer), PSTR("Model: %s\nVersion: %s\n"), CUSTOM_APP_MODEL, VERSION_NUMBER);
+    if (writtenLen > 0)
+        logFile.write(tmpBuffer, writtenLen);
+
+    // log crash time, reason and exception cause
     if (CrashSaver::_ntpEpoch != 0)
     {
         time_t crashEpoch = (time_t)(CrashSaver::_ntpEpoch + (crashTime - CrashSaver::_ntpMillis) / 1000);
@@ -48,6 +55,7 @@ extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack,
 
     logFile.write(tmpBuffer, strlen(tmpBuffer));
 
+    // log crash info (epc1, epc2, epc3, excvaddr, depc) and stack trace
     // 83 chars of epc1, epc2, epc3, excvaddr, depc info + 13 chars of >stack>
     sprintf_P(tmpBuffer, PSTR("epc1=0x%08x epc2=0x%08x epc3=0x%08x excvaddr=0x%08x depc=0x%08x\n>>>stack>>>\n"),
               rst_info->epc1, rst_info->epc2, rst_info->epc3, rst_info->excvaddr, rst_info->depc);
@@ -55,7 +63,7 @@ extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack,
 
     uint16_t stackLength = stack_end - stack;
 
-    // collect stack trace
+    // log stack trace
     // one loop contains 45 chars of stack address and its content
     // e.g. "3fffffb0: feefeffe feefeffe 3ffe8508 40100459"
     for (uint16_t i = 0; i < stackLength; i += 0x10)
@@ -65,15 +73,7 @@ extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack,
         uint32_t *p2 = (uint32_t *)(stack + i + 8);
         uint32_t *p3 = (uint32_t *)(stack + i + 12);
 
-        int writtenLen = snprintf_P(
-            tmpBuffer,
-            sizeof(tmpBuffer),
-            PSTR("%08x: %08x %08x %08x %08x\n"),
-            stack + i,
-            *p0,
-            *p1,
-            *p2,
-            *p3);
+        writtenLen = snprintf_P(tmpBuffer, sizeof(tmpBuffer), PSTR("%08x: %08x %08x %08x %08x\n"), stack + i, *p0, *p1, *p2, *p3);
 
         if (writtenLen > 0)
             logFile.write(tmpBuffer, writtenLen);
