@@ -250,7 +250,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // variables
   JsonDocument jsonDoc;
-  String device, availability;
+  String device;
   String uniqueIdPrefix, uniqueIdPrefixStove;
   String uniqueId;
   String topic;
@@ -347,6 +347,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // ---------- Usefull variables for entities building ----------
 
+  const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
   const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
   const __FlashStringHelper *tempProbeTopicListArray[][3] = {
       {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
@@ -372,12 +373,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare unique id prefix for Stove
   uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
   uniqueIdPrefixStove += SN;
-
-  // prepare availability JSON for Stove entities
-  jsonDoc[F("topic")] = F("~/connected");
-  jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
-  serializeJson(jsonDoc, availability); // serialize to availability String
-  jsonDoc.clear();                      // clean jsonDoc
 
   // prepare Stove device JSON
   jsonDoc[F("configuration_url")] = F("http://wpalacontrol.local");
@@ -424,7 +419,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove status sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_status");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("entity_category")] = F("diagnostic");
@@ -449,7 +444,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove status text sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_status_text");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("enum");
@@ -488,7 +483,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
 
   jsonDoc[F("action_topic")] = statusTopicList[_ha.mqtt.type];
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   jsonDoc[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
@@ -566,7 +561,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove supply water temperature sensor
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("default_entity_id")] = F("sensor.stove_supplywatertemp");
     jsonDoc[F("device")] = serialized(device);
     jsonDoc[F("device_class")] = F("temperature");
@@ -623,7 +618,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove main temperature sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
   defaultEntityIdSuffix.replace(F(" "), "");
   defaultEntityIdSuffix.toLowerCase();
@@ -654,7 +649,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove flue gas temperature sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_fluegastemp");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("temperature");
@@ -683,7 +678,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove pellet consumption sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_pqt");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("weight");
@@ -711,7 +706,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove service time counter sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_servicetimecounter");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("icon")] = F("mdi:account-wrench-outline");
@@ -740,7 +735,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove feeder sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_feeder");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("enabled_by_default")] = false;
@@ -766,7 +761,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove target differential pressure sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_targetdifferentialpressure");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("pressure");
@@ -797,7 +792,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove differential pressure sensor
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("default_entity_id")] = F("sensor.stove_differentialpressure");
   jsonDoc[F("device")] = serialized(device);
   jsonDoc[F("device_class")] = F("pressure");
@@ -830,7 +825,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove onoff switch
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("switch.stove_on_off");
     jsonDoc[F("device")] = serialized(device);
@@ -865,7 +860,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove setpoint number
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_template")] = F("SET+SETP+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("number.stove_setp");
@@ -899,7 +894,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove power number
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_template")] = F("SET+POWR+{{ value }}");
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("number.stove_pwr");
@@ -981,7 +976,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove room fan auto mode
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = F("switch.stove_rfan_auto");
     jsonDoc[F("device")] = serialized(device);
@@ -1017,7 +1012,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove fan3 number
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = ifFan3SwitchEntity ? F("switch.stove_fan3") : F("number.stove_fan3");
     jsonDoc[F("device")] = serialized(device);
@@ -1063,7 +1058,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // prepare payload for Stove fan4 number
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
-    jsonDoc[F("availability")] = serialized(availability);
+    jsonDoc[F("availability")] = serialized(availabilityJSON);
     jsonDoc[F("command_topic")] = cmdTopic;
     jsonDoc[F("default_entity_id")] = ifFan4SwitchEntity ? F("switch.stove_fan4") : F("number.stove_fan4");
     jsonDoc[F("device")] = serialized(device);
@@ -1106,7 +1101,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare payload for Stove set time button
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("availability")] = serialized(availability);
+  jsonDoc[F("availability")] = serialized(availabilityJSON);
   jsonDoc[F("command_template")] = F("SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}");
   jsonDoc[F("command_topic")] = cmdTopic;
   jsonDoc[F("default_entity_id")] = F("button.stove_set_time");
