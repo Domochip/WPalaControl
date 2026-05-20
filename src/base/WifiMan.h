@@ -60,6 +60,8 @@ private:
 
 public:
   WifiMan() : Application(WifiManApp) {};
+  // helper to convert IPAddress to const char*
+  static const char *ipToCString(IPAddress ip);
 };
 
 #endif
