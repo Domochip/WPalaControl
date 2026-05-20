@@ -1167,7 +1167,7 @@ bool WPalaControl::mqttPublishUpdate()
 
       // variables
       JsonDocument jsonDoc;
-      String device, availability;
+      String device;
 
       String uniqueIdPrefix;
       String uniqueId;
@@ -1180,20 +1180,17 @@ bool WPalaControl::mqttPublishUpdate()
       // ---------- Device ----------
 
       // prepare device JSON
-      jsonDoc[F("configuration_url")] = F("http://" CUSTOM_APP_MODEL ".local");
+      deserializeJson(jsonDoc, F("{"
+                                 "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
+                                 "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
+                                 "\"model\":\"" CUSTOM_APP_MODEL "\","
+                                 "\"sw_version\":\"" VERSION "\""
+                                 "}"));
       jsonDoc[F("identifiers")][0] = uniqueIdPrefix;
-      jsonDoc[F("manufacturer")] = F(CUSTOM_APP_MANUFACTURER);
-      jsonDoc[F("model")] = F(CUSTOM_APP_MODEL);
       jsonDoc[F("name")] = WiFi.getHostname();
-      jsonDoc[F("sw_version")] = VERSION;
       serializeJson(jsonDoc, device); // serialize to device String
-      jsonDoc.clear();                // clean jsonDoc
 
-      // prepare availability JSON for entities
-      jsonDoc[F("topic")] = F("~/connected");
-      jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
-      serializeJson(jsonDoc, availability); // serialize to availability String
-      jsonDoc.clear();                      // clean jsonDoc
+      const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
 
       // ----- Entities -----
 
@@ -1211,16 +1208,18 @@ bool WPalaControl::mqttPublishUpdate()
       topic += F("/config");
 
       // prepare payload for update sensor
+      deserializeJson(jsonDoc, F("{"
+                                 "\"command_topic\":\"~/update/install\","
+                                 "\"default_entity_id\":\"update." CUSTOM_APP_MODEL "\","
+                                 "\"device_class\":\"firmware\","
+                                 "\"entity_category\":\"config\","
+                                 "\"object_id\":\"" CUSTOM_APP_MODEL "\","
+                                 "\"state_topic\":\"~/update\""
+                                 "}"));
       jsonDoc[F("~")] = _preparedMqttBaseTopic;
-      jsonDoc[F("availability")] = serialized(availability);
-      jsonDoc[F("command_topic")] = F("~/update/install");
-      jsonDoc[F("default_entity_id")] = F("update." CUSTOM_APP_MODEL);
+      jsonDoc[F("availability")] = serialized(availabilityJSON);
       jsonDoc[F("device")] = serialized(device);
-      jsonDoc[F("device_class")] = F("firmware");
-      jsonDoc[F("entity_category")] = F("config");
-      jsonDoc[F("object_id")] = F(CUSTOM_APP_MODEL);
       jsonDoc[F("payload_install")] = version;
-      jsonDoc[F("state_topic")] = F("~/update");
       jsonDoc[F("unique_id")] = uniqueId;
 
       // publish
