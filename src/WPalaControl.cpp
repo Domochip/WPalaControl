@@ -357,16 +357,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
       {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
       {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
-  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
-  const __FlashStringHelper *serviceTimeTopicList[] = {F("~/SERVICETIME"), F("~/CNTR"), F("~/CNTR/SERVICETIME")};
-  const __FlashStringHelper *feederTopicList[] = {F("~/FDR"), F("~/POWR"), F("~/POWR/FDR")};
-  const __FlashStringHelper *dpTargetTopicList[] = {F("~/DP_TARGET"), F("~/DPRS"), F("~/DPRS/DP_TARGET")};
-  const __FlashStringHelper *dpTopicList[] = {F("~/DP_PRESS"), F("~/DPRS"), F("~/DPRS/DP_PRESS")};
   const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
-  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
   const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-  const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
-  const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
 
   // ---------- Stove Device ----------
 
@@ -669,6 +661,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Pellet consumption entity
   //
 
+  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
+
   uniqueId = uniqueIdPrefixStove + F("_PQT");
 
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
@@ -697,6 +691,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Service time counter entity
   //
+
+  const __FlashStringHelper *serviceTimeTopicList[] = {F("~/SERVICETIME"), F("~/CNTR"), F("~/CNTR/SERVICETIME")};
 
   uniqueId = uniqueIdPrefixStove + F("_ServiceTimeCounter");
 
@@ -728,6 +724,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Feeder entity
   //
 
+  const __FlashStringHelper *feederTopicList[] = {F("~/FDR"), F("~/POWR"), F("~/POWR/FDR")};
+
   uniqueId = uniqueIdPrefixStove + F("_Feeder");
 
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
@@ -754,6 +752,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Target Differential Pressure entity
   //
+
+  const __FlashStringHelper *dpTargetTopicList[] = {F("~/DP_TARGET"), F("~/DPRS"), F("~/DPRS/DP_TARGET")};
 
   uniqueId = uniqueIdPrefixStove + F("_TargetDifferentialPressure");
 
@@ -786,6 +786,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Differential Pressure entity
   //
+
+  const __FlashStringHelper *dpTopicList[] = {F("~/DP_PRESS"), F("~/DPRS"), F("~/DPRS/DP_PRESS")};
 
   uniqueId = uniqueIdPrefixStove + F("_DifferentialPressure");
 
@@ -889,6 +891,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Power entity
   //
+
+  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
 
   if (hasPower)
   {
@@ -1011,6 +1015,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   if (hasFan3)
   {
+    const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
+
     uniqueId = uniqueIdPrefixStove + F("_FAN3");
 
     // entity type depends on Min and Max value of FAN3
@@ -1059,6 +1065,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   if (hasFan4)
   {
+    const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
+
     uniqueId = uniqueIdPrefixStove + F("_FAN4");
 
     // entity type depends on Min and Max value of FAN4
