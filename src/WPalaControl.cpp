@@ -2617,7 +2617,6 @@ void WPalaControl::setConfigDefaultValues()
 bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
 {
   JsonVariant jv;
-  char tempPassword[150 + 1] = {0};
 
   // parse hardware detection mode
   if ((jv = doc[F("hwdetection")]).is<JsonVariant>())
@@ -2649,14 +2648,11 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
     if ((jv = doc[F("hamu")]).is<const char *>())
       strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
 
-    // put MQTT password into tempPassword
     if ((jv = doc[F("hamp")]).is<const char *>())
     {
-      strlcpy(tempPassword, jv, sizeof(tempPassword));
-
-      // if not from web page or password is not the predefined one then copy it to _ha.mqtt.password
-      if (!fromWebPage || strcmp_P(tempPassword, appDataPredefPassword))
-        strcpy(_ha.mqtt.password, tempPassword);
+      // if not from web page or password is not the predefined one
+      if (!fromWebPage || strcmp_P(jv, appDataPredefPassword))
+        strlcpy(_ha.mqtt.password, jv, sizeof(_ha.mqtt.password));
     }
 
     switch (_ha.mqtt.type)
