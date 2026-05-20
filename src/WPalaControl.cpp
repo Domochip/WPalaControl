@@ -248,14 +248,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
     return topic;
   };
 
-  // Helper lambda to publish JSON payload
-  auto publishJson = [&](const String &topic, JsonDocument &jsonDoc)
-  {
-    _mqttMan.publish(topic.c_str(), jsonDoc, true);
-
-    jsonDoc.clear();
-  };
-
   // variables
   JsonDocument jsonDoc;
   String device, availability;
@@ -302,7 +294,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("unique_id")] = uniqueId;
   jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'ON', 'OFF') }}");
 
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   // clean device JSON before switching to Stove entities
   device = "";
@@ -418,7 +411,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("value_template")] = F("{{ iif(int(value) > 1, 'ON', 'OFF') }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Status entity
@@ -442,7 +436,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ value_json.STATUS }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Status Text entity
@@ -468,7 +463,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value_json.STATUS }}{% endif %}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Thermostat entity
@@ -554,7 +550,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("unique_id")] = uniqueId;
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   // T1 probe config is fixed for hydro type stove
   if (isHydroType)
@@ -590,7 +587,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("state_topic")] = F("~/TMPS/T1");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -643,7 +641,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Flue Gas temperature entity (T3)
@@ -671,7 +670,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ value_json.T3 }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Pellet consumption entity
@@ -698,7 +698,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ value_json.PQT }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Service time counter entity
@@ -726,7 +727,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Feeder entity
@@ -751,7 +753,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ value_json.FDR }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Target Differential Pressure entity
@@ -781,7 +784,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ (iif(int(value_json.DP_TARGET) > 0x7FFF, int(value_json.DP_TARGET) - 0x10000, int(value_json.DP_TARGET)) * 1000 /60) | round }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // Differential Pressure entity
@@ -811,7 +815,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("value_template")] = F("{{ (iif(int(value_json.DP_PRESS) > 0x7FFF, int(value_json.DP_PRESS) - 0x10000, int(value_json.DP_PRESS)) * 1000 / 60) | round }}");
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   //
   // OnOff entity
@@ -844,7 +849,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -877,7 +883,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("value_template")] = F("{{ value_json.SETP }}");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -909,7 +916,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("value_template")] = F("{{ value_json.PWR }}");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -957,7 +965,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("value_template")] = F("{{ value_json.F2L }}");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -991,7 +1000,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
       jsonDoc[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -1036,7 +1046,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     }
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -1081,7 +1092,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     }
 
     // publish
-    publishJson(topic, jsonDoc);
+    _mqttMan.publish(topic.c_str(), jsonDoc, true);
+    jsonDoc.clear();
   }
 
   //
@@ -1106,7 +1118,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   jsonDoc[F("unique_id")] = uniqueId;
 
   // publish
-  publishJson(topic, jsonDoc);
+  _mqttMan.publish(topic.c_str(), jsonDoc, true);
+  jsonDoc.clear();
 
   return true;
 }
