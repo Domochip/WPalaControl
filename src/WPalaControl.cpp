@@ -1835,20 +1835,20 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
       // Network infos
       data["GWDEVICE"] = F("wlan0"); // always wifi
       data["MAC"] = WiFi.macAddress();
-      data["GATEWAY"] = WiFi.gatewayIP().toString();
-      data["DNS"][0] = WiFi.dnsIP().toString();
+      data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
+      data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
 
       // Wifi infos
       data["WMAC"] = WiFi.macAddress();
       data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
-      data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-      data["WGW"] = WiFi.gatewayIP().toString();
+      data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
+      data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
       data["WENC"] = F("psk2");
       data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
       data["WSSID"] = WiFi.SSID();
       data["WPR"] = (true) ? F("dhcp") : F("static");
-      data["WMSK"] = WiFi.subnetMask().toString();
-      data["WBCST"] = WiFi.broadcastIP().toString();
+      data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
+      data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
       data["WCH"] = String(WiFi.channel());
 
       // Ethernet infos

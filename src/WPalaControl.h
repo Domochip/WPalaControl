@@ -2,6 +2,7 @@
 #define WPalaControl_h
 
 #include "Main.h"
+#include "base/WifiMan.h"
 #include "base/MQTTMan.h"
 #include "base/EventSourceMan.h"
 #include "base/Application.h"
