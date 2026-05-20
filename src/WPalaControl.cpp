@@ -263,14 +263,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   uniqueIdPrefix.replace(":", "");
 
   // prepare device JSON
-  jsonDoc[F("configuration_url")] = F("http://" CUSTOM_APP_MODEL ".local");
+  deserializeJson(jsonDoc, F("{"
+                             "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
+                             "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
+                             "\"model\":\"" CUSTOM_APP_MODEL "\","
+                             "\"sw_version\":\"" VERSION "\""
+                             "}"));
   jsonDoc[F("identifiers")][0] = uniqueIdPrefix;
-  jsonDoc[F("manufacturer")] = F(CUSTOM_APP_MANUFACTURER);
-  jsonDoc[F("model")] = F(CUSTOM_APP_MODEL);
   jsonDoc[F("name")] = WiFi.getHostname();
-  jsonDoc[F("sw_version")] = VERSION;
   serializeJson(jsonDoc, device); // serialize to device String
-  jsonDoc.clear();                // clean jsonDoc
 
   // ----- Entities -----
 
@@ -284,18 +285,19 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
 
   // prepare payload for connectivity sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"binary_sensor." CUSTOM_APP_MODEL "_connectivity\","
+                             "\"device_class\":\"connectivity\","
+                             "\"entity_category\":\"diagnostic\","
+                             "\"object_id\":\"" CUSTOM_APP_MODEL "_connectivity\","
+                             "\"state_topic\":\"~/connected\","
+                             "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("default_entity_id")] = F("binary_sensor." CUSTOM_APP_MODEL "_connectivity");
-  jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("object_id")] = F(CUSTOM_APP_MODEL "_connectivity");
-  jsonDoc[F("state_topic")] = F("~/connected");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("value_template")] = F("{{ iif(int(value) > 0, 'ON', 'OFF') }}");
 
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   // clean device JSON before switching to Stove entities
   device = "";
@@ -366,8 +368,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
   const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
 
-  const __FlashStringHelper *cmdTopic = F("~/cmd");
-
   // ---------- Stove Device ----------
 
   // prepare unique id prefix for Stove
@@ -375,14 +375,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   uniqueIdPrefixStove += SN;
 
   // prepare Stove device JSON
-  jsonDoc[F("configuration_url")] = F("http://wpalacontrol.local");
+  deserializeJson(jsonDoc, F("{"
+                             "\"configuration_url\":\"http://wpalacontrol.local\","
+                             "\"name\":\"Stove\""
+                             "}"));
   jsonDoc[F("identifiers")][0] = uniqueIdPrefixStove;
   jsonDoc[F("model")] = String(MOD);
-  jsonDoc[F("name")] = F("Stove");
   jsonDoc[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
   jsonDoc[F("via_device")] = uniqueIdPrefix;
   serializeJson(jsonDoc, device); // serialize to device String
-  jsonDoc.clear();                // clean jsonDoc
 
   // ----- Stove Entities -----
 
@@ -395,19 +396,20 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
 
   // prepare payload for Stove connectivity sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
+                             "\"device_class\":\"connectivity\","
+                             "\"entity_category\":\"diagnostic\","
+                             "\"object_id\":\"stove_connectivity\","
+                             "\"state_topic\":\"~/connected\","
+                             "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
-  jsonDoc[F("default_entity_id")] = F("binary_sensor.stove_connectivity");
-  jsonDoc[F("device_class")] = F("connectivity");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("object_id")] = F("stove_connectivity");
-  jsonDoc[F("state_topic")] = F("~/connected");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("value_template")] = F("{{ iif(int(value) > 1, 'ON', 'OFF') }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Status entity
@@ -418,13 +420,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove status sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_status\","
+                             "\"entity_category\":\"diagnostic\","
+                             "\"name\":\"Status\","
+                             "\"object_id\":\"stove_status\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_status");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("name")] = F("Status");
-  jsonDoc[F("object_id")] = F("stove_status");
   jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -432,7 +436,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Status Text entity
@@ -443,13 +446,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove status text sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_status_text\","
+                             "\"device_class\":\"enum\","
+                             "\"name\":\"Status\","
+                             "\"object_id\":\"stove_status_text\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_status_text");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("enum");
-  jsonDoc[F("name")] = F("Status");
-  jsonDoc[F("object_id")] = F("stove_status_text");
   jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -459,7 +464,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Thermostat entity
@@ -475,6 +479,21 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("climate"), uniqueId);
 
   // prepare payload for Stove thermostat
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"climate.stove_thermostat\","
+                             "\"mode_command_template\":\"CMD+{{ iif(value == 'off', 'OFF', 'ON') }}\","
+                             "\"mode_command_topic\":\"~/cmd\","
+                             "\"modes\":[\"off\",\"heat\"],"
+                             "\"name\":\"Thermostat\","
+                             "\"object_id\":\"stove_thermostat\","
+                             "\"optimistic\":false,"
+                             "\"payload_off\":\"CMD+OFF\","
+                             "\"payload_on\":\"CMD+ON\","
+                             "\"power_command_topic\":\"~/cmd\","
+                             "\"temperature_command_template\":\"SET+SETP+{{ value|int }}\","
+                             "\"temperature_command_topic\":\"~/cmd\","
+                             "\"temperature_unit\":\"C\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -487,37 +506,25 @@ bool WPalaControl::mqttPublishHassDiscovery()
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   jsonDoc[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  jsonDoc[F("default_entity_id")] = F("climate.stove_thermostat");
   jsonDoc[F("device")] = serialized(device);
 
   if (hasRoomFan)
   {
 
     jsonDoc[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
-    jsonDoc[F("fan_mode_command_topic")] = cmdTopic;
+    jsonDoc[F("fan_mode_command_topic")] = F("~/cmd");
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
       jsonDoc[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
     else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
       jsonDoc[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
     jsonDoc[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
 
-    JsonArray fan_modes = jsonDoc["fan_modes"].to<JsonArray>();
-    fan_modes.add("off");
-    fan_modes.add("1");
-    fan_modes.add("2");
-    fan_modes.add("3");
-    fan_modes.add("4");
-    fan_modes.add("5");
-    fan_modes.add("high");
-    if (isAirType && hasFanAuto)
-      fan_modes.add("auto");
+    jsonDoc[F("fan_modes")] = serialized((isAirType && hasFanAuto) ? F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\",\"auto\"]") : F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\"]"));
   }
 
   // Adjust max_temp for stove with air temperature setPoint, goal is to center the range around 19°C (Does someone really wants its room at 51°C ...)
   jsonDoc[F("max_temp")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMAX : SPLMIN + 2 * (19 - SPLMIN);
   jsonDoc[F("min_temp")] = SPLMIN;
-  jsonDoc[F("mode_command_template")] = F("CMD+{{ iif(value == 'off', 'OFF', 'ON') }}");
-  jsonDoc[F("mode_command_topic")] = cmdTopic;
 
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
@@ -525,28 +532,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
     jsonDoc[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
 
   jsonDoc[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
+  // modes already in deserialized JSON
 
-  JsonArray modes = jsonDoc["modes"].to<JsonArray>();
-  modes.add("off");
-  modes.add("heat");
-
-  jsonDoc[F("name")] = F("Thermostat");
-  jsonDoc[F("object_id")] = F("stove_thermostat");
-  jsonDoc[F("optimistic")] = false;
-  jsonDoc[F("payload_off")] = F("CMD+OFF");
-  jsonDoc[F("payload_on")] = F("CMD+ON");
-  jsonDoc[F("power_command_topic")] = cmdTopic;
-  jsonDoc[F("temperature_command_template")] = F("SET+SETP+{{ value|int }}");
-  jsonDoc[F("temperature_command_topic")] = cmdTopic;
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("temperature_state_template")] = F("{{ value_json.SETP }}");
   jsonDoc[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
-  jsonDoc[F("temperature_unit")] = F("C");
   jsonDoc[F("unique_id")] = uniqueId;
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   // T1 probe config is fixed for hydro type stove
   if (isHydroType)
@@ -560,17 +554,19 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
     // prepare payload for Stove supply water temperature sensor
+    deserializeJson(jsonDoc, F("{"
+                               "\"default_entity_id\":\"sensor.stove_supplywatertemp\","
+                               "\"device_class\":\"temperature\","
+                               "\"name\":\"Supply Water Temperature\","
+                               "\"object_id\":\"stove_supplywatertemp\","
+                               "\"suggested_display_precision\":1,"
+                               "\"state_class\":\"measurement\","
+                               "\"unit_of_measurement\":\"°C\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("default_entity_id")] = F("sensor.stove_supplywatertemp");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("device_class")] = F("temperature");
-    jsonDoc[F("name")] = F("Supply Water Temperature");
-    jsonDoc[F("object_id")] = F("stove_supplywatertemp");
-    jsonDoc[F("suggested_display_precision")] = 1;
-    jsonDoc[F("state_class")] = F("measurement");
     jsonDoc[F("unique_id")] = uniqueId;
-    jsonDoc[F("unit_of_measurement")] = F("°C");
     if (_ha.mqtt.type == HA_MQTT_GENERIC)
       jsonDoc[F("state_topic")] = F("~/T1");
     else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -583,7 +579,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -617,6 +612,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove main temperature sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"device_class\":\"temperature\","
+                             "\"suggested_display_precision\":1,"
+                             "\"state_class\":\"measurement\","
+                             "\"unit_of_measurement\":\"°C\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
   String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
@@ -624,20 +625,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   defaultEntityIdSuffix.toLowerCase();
   jsonDoc[F("default_entity_id")] = String(F("sensor.stove_")) + defaultEntityIdSuffix + F("temp");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("temperature");
   jsonDoc[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
   jsonDoc[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
-  jsonDoc[F("suggested_display_precision")] = 1;
-  jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("unit_of_measurement")] = F("°C");
   jsonDoc[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Flue Gas temperature entity (T3)
@@ -648,25 +644,26 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove flue gas temperature sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_fluegastemp\","
+                             "\"device_class\":\"temperature\","
+                             "\"enabled_by_default\":false,"
+                             "\"name\":\"Flue Gas Temperature\","
+                             "\"object_id\":\"stove_fluegastemp\","
+                             "\"suggested_display_precision\":1,"
+                             "\"state_class\":\"measurement\","
+                             "\"unit_of_measurement\":\"°C\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_fluegastemp");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("temperature");
-  jsonDoc[F("enabled_by_default")] = false;
-  jsonDoc[F("name")] = F("Flue Gas Temperature");
-  jsonDoc[F("object_id")] = F("stove_fluegastemp");
-  jsonDoc[F("suggested_display_precision")] = 1;
-  jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("unit_of_measurement")] = F("°C");
   jsonDoc[F("state_topic")] = tempProbeTopicListArray[2][_ha.mqtt.type];
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("value_template")] = F("{{ value_json.T3 }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Pellet consumption entity
@@ -677,24 +674,25 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove pellet consumption sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_pqt\","
+                             "\"device_class\":\"weight\","
+                             "\"icon\":\"mdi:chart-bell-curve-cumulative\","
+                             "\"name\":\"Pellet Consumed\","
+                             "\"object_id\":\"stove_pqt\","
+                             "\"state_class\":\"total_increasing\","
+                             "\"unit_of_measurement\":\"kg\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_pqt");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("weight");
-  jsonDoc[F("icon")] = F("mdi:chart-bell-curve-cumulative");
-  jsonDoc[F("name")] = F("Pellet Consumed");
-  jsonDoc[F("object_id")] = F("stove_pqt");
-  jsonDoc[F("state_class")] = F("total_increasing");
   jsonDoc[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("unit_of_measurement")] = F("kg");
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
     jsonDoc[F("value_template")] = F("{{ value_json.PQT }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Service time counter entity
@@ -705,17 +703,19 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove service time counter sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_servicetimecounter\","
+                             "\"icon\":\"mdi:account-wrench-outline\","
+                             "\"name\":\"Service Time Counter\","
+                             "\"object_id\":\"stove_servicetimecounter\","
+                             "\"state_class\":\"total_increasing\","
+                             "\"unit_of_measurement\":\"h\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_servicetimecounter");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("icon")] = F("mdi:account-wrench-outline");
-  jsonDoc[F("name")] = F("Service Time Counter");
-  jsonDoc[F("object_id")] = F("stove_servicetimecounter");
-  jsonDoc[F("state_class")] = F("total_increasing");
   jsonDoc[F("state_topic")] = serviceTimeTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("unit_of_measurement")] = F("h");
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("value_template")] = F("{{ value.split(':')[0] }}");
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -723,7 +723,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Feeder entity
@@ -734,14 +733,16 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove feeder sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_feeder\","
+                             "\"enabled_by_default\":false,"
+                             "\"entity_category\":\"diagnostic\","
+                             "\"name\":\"Feeder\","
+                             "\"object_id\":\"stove_feeder\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_feeder");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("enabled_by_default")] = false;
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("name")] = F("Feeder");
-  jsonDoc[F("object_id")] = F("stove_feeder");
   jsonDoc[F("state_topic")] = feederTopicList[_ha.mqtt.type];
   jsonDoc[F("unique_id")] = uniqueId;
   if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -749,7 +750,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Target Differential Pressure entity
@@ -760,19 +760,21 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove target differential pressure sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_targetdifferentialpressure\","
+                             "\"device_class\":\"pressure\","
+                             "\"enabled_by_default\":false,"
+                             "\"entity_category\":\"diagnostic\","
+                             "\"name\":\"Target Differential Pressure\","
+                             "\"object_id\":\"stove_targetdifferentialpressure\","
+                             "\"state_class\":\"measurement\","
+                             "\"unit_of_measurement\":\"mPa\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_targetdifferentialpressure");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("pressure");
-  jsonDoc[F("enabled_by_default")] = false;
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("name")] = F("Target Differential Pressure");
-  jsonDoc[F("object_id")] = F("stove_targetdifferentialpressure");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
-  jsonDoc[F("unit_of_measurement")] = F("mPa");
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -780,7 +782,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // Differential Pressure entity
@@ -791,19 +792,21 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
 
   // prepare payload for Stove differential pressure sensor
+  deserializeJson(jsonDoc, F("{"
+                             "\"default_entity_id\":\"sensor.stove_differentialpressure\","
+                             "\"device_class\":\"pressure\","
+                             "\"enabled_by_default\":false,"
+                             "\"entity_category\":\"diagnostic\","
+                             "\"name\":\"Differential Pressure\","
+                             "\"object_id\":\"stove_differentialpressure\","
+                             "\"state_class\":\"measurement\","
+                             "\"unit_of_measurement\":\"mPa\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("default_entity_id")] = F("sensor.stove_differentialpressure");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("device_class")] = F("pressure");
-  jsonDoc[F("enabled_by_default")] = false;
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("name")] = F("Differential Pressure");
-  jsonDoc[F("object_id")] = F("stove_differentialpressure");
   jsonDoc[F("unique_id")] = uniqueId;
-  jsonDoc[F("state_class")] = F("measurement");
   jsonDoc[F("state_topic")] = dpTopicList[_ha.mqtt.type];
-  jsonDoc[F("unit_of_measurement")] = F("mPa");
   if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
     jsonDoc[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -811,7 +814,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   //
   // OnOff entity
@@ -824,18 +826,20 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
 
     // prepare payload for Stove onoff switch
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_topic\":\"~/cmd\","
+                               "\"default_entity_id\":\"switch.stove_on_off\","
+                               "\"icon\":\"mdi:power\","
+                               "\"name\":\"On/Off\","
+                               "\"object_id\":\"stove_on_off\","
+                               "\"payload_off\":\"CMD+OFF\","
+                               "\"payload_on\":\"CMD+ON\","
+                               "\"state_off\":\"OFF\","
+                               "\"state_on\":\"ON\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("switch.stove_on_off");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:power");
-    jsonDoc[F("name")] = F("On/Off");
-    jsonDoc[F("object_id")] = F("stove_on_off");
-    jsonDoc[F("payload_off")] = F("CMD+OFF");
-    jsonDoc[F("payload_on")] = F("CMD+ON");
-    jsonDoc[F("state_off")] = F("OFF");
-    jsonDoc[F("state_on")] = F("ON");
     jsonDoc[F("state_topic")] = statusTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -845,7 +849,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -859,27 +862,28 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove setpoint number
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_template\":\"SET+SETP+{{ value }}\","
+                               "\"command_topic\":\"~/cmd\","
+                               "\"default_entity_id\":\"number.stove_setp\","
+                               "\"device_class\":\"temperature\","
+                               "\"mode\":\"slider\","
+                               "\"name\":\"SetPoint\","
+                               "\"object_id\":\"stove_setp\","
+                               "\"unit_of_measurement\":\"°C\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_template")] = F("SET+SETP+{{ value }}");
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("number.stove_setp");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("device_class")] = F("temperature");
     jsonDoc[F("min")] = SPLMIN;
     jsonDoc[F("max")] = SPLMAX;
-    jsonDoc[F("mode")] = F("slider");
-    jsonDoc[F("name")] = F("SetPoint");
-    jsonDoc[F("object_id")] = F("stove_setp");
     jsonDoc[F("state_topic")] = setpTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
-    jsonDoc[F("unit_of_measurement")] = F("°C");
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
       jsonDoc[F("value_template")] = F("{{ value_json.SETP }}");
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -893,18 +897,20 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove power number
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_template\":\"SET+POWR+{{ value }}\","
+                               "\"command_topic\":\"~/cmd\","
+                               "\"default_entity_id\":\"number.stove_pwr\","
+                               "\"icon\":\"mdi:signal\","
+                               "\"min\":1,"
+                               "\"max\":5,"
+                               "\"mode\":\"slider\","
+                               "\"name\":\"Power\","
+                               "\"object_id\":\"stove_pwr\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_template")] = F("SET+POWR+{{ value }}");
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("number.stove_pwr");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:signal");
-    jsonDoc[F("min")] = 1;
-    jsonDoc[F("max")] = 5;
-    jsonDoc[F("mode")] = F("slider");
-    jsonDoc[F("name")] = F("Power");
-    jsonDoc[F("object_id")] = F("stove_pwr");
     jsonDoc[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -912,7 +918,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -926,6 +931,18 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
 
     // prepare payload for Stove room fan
+    deserializeJson(jsonDoc, F("{"
+                               "\"availability_mode\":\"all\","
+                               "\"command_template\":\"SET+RFAN+{{ value }}\","
+                               "\"command_topic\":\"~/cmd\","
+                               "\"default_entity_id\":\"number.stove_rfan\","
+                               "\"icon\":\"mdi:fan\","
+                               "\"min\":0,"
+                               "\"max\":6,"
+                               "\"name\":\"Room Fan\","
+                               "\"object_id\":\"stove_rfan\","
+                               "\"payload_reset\":\"7\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
 
     // specific availibility for room fan
@@ -942,18 +959,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
       availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
 
-    jsonDoc[F("availability_mode")] = F("all");
-
-    jsonDoc[F("command_template")] = F("SET+RFAN+{{ value }}");
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("number.stove_rfan");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:fan");
-    jsonDoc[F("min")] = 0;
-    jsonDoc[F("max")] = 6;
-    jsonDoc[F("name")] = F("Room Fan");
-    jsonDoc[F("object_id")] = F("stove_rfan");
-    jsonDoc[F("payload_reset")] = F("7");
     jsonDoc[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -961,7 +967,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -975,18 +980,20 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
 
     // prepare payload for Stove room fan auto mode
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_topic\":\"~/cmd\","
+                               "\"default_entity_id\":\"switch.stove_rfan_auto\","
+                               "\"icon\":\"mdi:fan-auto\","
+                               "\"name\":\"Room Fan Auto\","
+                               "\"object_id\":\"stove_rfan_auto\","
+                               "\"payload_off\":\"SET+RFAN+3\","
+                               "\"payload_on\":\"SET+RFAN+7\","
+                               "\"state_off\":\"OFF\","
+                               "\"state_on\":\"ON\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = F("switch.stove_rfan_auto");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:fan-auto");
-    jsonDoc[F("name")] = F("Room Fan Auto");
-    jsonDoc[F("object_id")] = F("stove_rfan_auto");
-    jsonDoc[F("payload_off")] = F("SET+RFAN+3");
-    jsonDoc[F("payload_on")] = F("SET+RFAN+7");
-    jsonDoc[F("state_off")] = F("OFF");
-    jsonDoc[F("state_on")] = F("ON");
     jsonDoc[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
@@ -996,7 +1003,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -1011,14 +1017,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan3 number
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_topic\":\"~/cmd\","
+                               "\"icon\":\"mdi:fan-speed-2\","
+                               "\"name\":\"Left Fan\","
+                               "\"object_id\":\"stove_fan3\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = ifFan3SwitchEntity ? F("switch.stove_fan3") : F("number.stove_fan3");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:fan-speed-2");
-    jsonDoc[F("name")] = F("Left Fan");
-    jsonDoc[F("object_id")] = F("stove_fan3");
     jsonDoc[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -1027,6 +1034,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // add entity type specific configuration
     if (ifFan3SwitchEntity)
     {
+      jsonDoc[F("default_entity_id")] = F("switch.stove_fan3");
       jsonDoc[F("payload_off")] = F("SET+FN3L+0");
       jsonDoc[F("payload_on")] = F("SET+FN3L+1");
       jsonDoc[F("state_off")] = F("0");
@@ -1034,6 +1042,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     }
     else
     {
+      jsonDoc[F("default_entity_id")] = F("number.stove_fan3");
       jsonDoc[F("command_template")] = F("SET+FN3L+{{ value }}");
       jsonDoc[F("min")] = FANLMINMAX[2];
       jsonDoc[F("max")] = FANLMINMAX[3];
@@ -1042,7 +1051,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -1057,14 +1065,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
     topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan4 number
+    deserializeJson(jsonDoc, F("{"
+                               "\"command_topic\":\"~/cmd\","
+                               "\"icon\":\"mdi:fan-speed-3\","
+                               "\"name\":\"Right Fan\","
+                               "\"object_id\":\"stove_fan4\""
+                               "}"));
     jsonDoc[F("~")] = _preparedMqttBaseTopic;
     jsonDoc[F("availability")] = serialized(availabilityJSON);
-    jsonDoc[F("command_topic")] = cmdTopic;
-    jsonDoc[F("default_entity_id")] = ifFan4SwitchEntity ? F("switch.stove_fan4") : F("number.stove_fan4");
     jsonDoc[F("device")] = serialized(device);
-    jsonDoc[F("icon")] = F("mdi:fan-speed-3");
-    jsonDoc[F("name")] = F("Right Fan");
-    jsonDoc[F("object_id")] = F("stove_fan4");
     jsonDoc[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
     jsonDoc[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
@@ -1073,6 +1082,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     // add entity type specific configuration
     if (ifFan4SwitchEntity)
     {
+      jsonDoc[F("default_entity_id")] = F("switch.stove_fan4");
       jsonDoc[F("payload_off")] = F("SET+FN4L+0");
       jsonDoc[F("payload_on")] = F("SET+FN4L+1");
       jsonDoc[F("state_off")] = F("0");
@@ -1080,6 +1090,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     }
     else
     {
+      jsonDoc[F("default_entity_id")] = F("number.stove_fan4");
       jsonDoc[F("command_template")] = F("SET+FN4L+{{ value }}");
       jsonDoc[F("min")] = FANLMINMAX[4];
       jsonDoc[F("max")] = FANLMINMAX[5];
@@ -1088,7 +1099,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     // publish
     _mqttMan.publish(topic.c_str(), jsonDoc, true);
-    jsonDoc.clear();
   }
 
   //
@@ -1100,21 +1110,22 @@ bool WPalaControl::mqttPublishHassDiscovery()
   topic = prepareEntityTopic(_ha.mqtt.hassDiscoveryPrefix, F("button"), uniqueId);
 
   // prepare payload for Stove set time button
+  deserializeJson(jsonDoc, F("{"
+                             "\"command_template\":\"SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}\","
+                             "\"command_topic\":\"~/cmd\","
+                             "\"default_entity_id\":\"button.stove_set_time\","
+                             "\"entity_category\":\"diagnostic\","
+                             "\"icon\":\"mdi:clock-outline\","
+                             "\"name\":\"Set Time\","
+                             "\"object_id\":\"stove_set_time\""
+                             "}"));
   jsonDoc[F("~")] = _preparedMqttBaseTopic;
   jsonDoc[F("availability")] = serialized(availabilityJSON);
-  jsonDoc[F("command_template")] = F("SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}");
-  jsonDoc[F("command_topic")] = cmdTopic;
-  jsonDoc[F("default_entity_id")] = F("button.stove_set_time");
   jsonDoc[F("device")] = serialized(device);
-  jsonDoc[F("entity_category")] = F("diagnostic");
-  jsonDoc[F("icon")] = F("mdi:clock-outline");
-  jsonDoc[F("name")] = F("Set Time");
-  jsonDoc[F("object_id")] = F("stove_set_time");
   jsonDoc[F("unique_id")] = uniqueId;
 
   // publish
   _mqttMan.publish(topic.c_str(), jsonDoc, true);
-  jsonDoc.clear();
 
   return true;
 }
