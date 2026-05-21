@@ -2640,24 +2640,24 @@ void WPalaControl::setConfigDefaultValues()
 
 //------------------------------------------
 // Parse JSON object into configuration properties
-bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
+bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
 {
   JsonVariant jv;
 
   // parse hardware detection mode
-  if ((jv = doc[F("hwdetection")]).is<JsonVariant>())
+  if ((jv = json[F("hwdetection")]).is<JsonVariant>())
     _hwDetection = jv;
 
   // Parse HA protocol
-  if ((jv = doc[F("haproto")]).is<JsonVariant>())
+  if ((jv = json[F("haproto")]).is<JsonVariant>())
     _ha.protocol = jv;
 
   // if an home Automation protocol has been selected then get common param
   if (_ha.protocol != HA_PROTO_DISABLED)
   {
-    if ((jv = doc[F("hahost")]).is<const char *>())
+    if ((jv = json[F("hahost")]).is<const char *>())
       strlcpy(_ha.hostname, jv, sizeof(_ha.hostname));
-    if ((jv = doc[F("haupperiod")]).is<JsonVariant>())
+    if ((jv = json[F("haupperiod")]).is<JsonVariant>())
       _ha.uploadPeriod = jv;
   }
 
@@ -2667,14 +2667,14 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
 
   case HA_PROTO_MQTT:
 
-    if ((jv = doc[F("hamtype")]).is<JsonVariant>())
+    if ((jv = json[F("hamtype")]).is<JsonVariant>())
       _ha.mqtt.type = jv;
-    if ((jv = doc[F("hamport")]).is<JsonVariant>())
+    if ((jv = json[F("hamport")]).is<JsonVariant>())
       _ha.mqtt.port = jv;
-    if ((jv = doc[F("hamu")]).is<const char *>())
+    if ((jv = json[F("hamu")]).is<const char *>())
       strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
 
-    if ((jv = doc[F("hamp")]).is<const char *>())
+    if ((jv = json[F("hamp")]).is<const char *>())
     {
       // if not from web page or password is not the predefined one
       if (!fromWebPage || strcmp_P(jv, appDataPredefPassword))
@@ -2686,7 +2686,7 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
     case HA_MQTT_GENERIC:
     case HA_MQTT_GENERIC_JSON:
     case HA_MQTT_GENERIC_CATEGORIZED:
-      if ((jv = doc[F("hamgbt")]).is<const char *>())
+      if ((jv = json[F("hamgbt")]).is<const char *>())
         strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
 
       if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
@@ -2694,9 +2694,9 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
       break;
     }
 
-    _ha.mqtt.hassDiscoveryEnabled = doc[F("hamhassde")];
+    _ha.mqtt.hassDiscoveryEnabled = json[F("hamhassde")];
 
-    if ((jv = doc[F("hamhassdp")]).is<const char *>())
+    if ((jv = json[F("hamhassdp")]).is<const char *>())
       strlcpy(_ha.mqtt.hassDiscoveryPrefix, jv, sizeof(_ha.mqtt.hassDiscoveryPrefix));
 
     break;
@@ -2707,52 +2707,52 @@ bool WPalaControl::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
 
 //------------------------------------------
 // Generate JSON from configuration properties
-void WPalaControl::fillConfigJSON(JsonDocument &doc, bool forSaveFile = false)
+void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile = false)
 {
-  doc[F("hwdetection")] = _hwDetection;
+  json[F("hwdetection")] = _hwDetection;
 
-  doc[F("haproto")] = _ha.protocol;
-  doc[F("hahost")] = _ha.hostname;
-  doc[F("haupperiod")] = _ha.uploadPeriod;
+  json[F("haproto")] = _ha.protocol;
+  json[F("hahost")] = _ha.hostname;
+  json[F("haupperiod")] = _ha.uploadPeriod;
 
   // if for WebPage or protocol selected is MQTT
   if (!forSaveFile || _ha.protocol == HA_PROTO_MQTT)
   {
-    doc[F("hamtype")] = _ha.mqtt.type;
-    doc[F("hamport")] = _ha.mqtt.port;
-    doc[F("hamu")] = _ha.mqtt.username;
+    json[F("hamtype")] = _ha.mqtt.type;
+    json[F("hamport")] = _ha.mqtt.port;
+    json[F("hamu")] = _ha.mqtt.username;
     if (forSaveFile)
-      doc[F("hamp")] = _ha.mqtt.password;
+      json[F("hamp")] = _ha.mqtt.password;
     else
-      doc[F("hamp")] = (const __FlashStringHelper *)appDataPredefPassword; // predefined special password (mean to keep already saved one)
+      json[F("hamp")] = (const __FlashStringHelper *)appDataPredefPassword; // predefined special password (mean to keep already saved one)
 
-    doc[F("hamgbt")] = _ha.mqtt.generic.baseTopic;
+    json[F("hamgbt")] = _ha.mqtt.generic.baseTopic;
 
-    doc[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
-    doc[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
+    json[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
+    json[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
   }
 }
 
 //------------------------------------------
 // Generate JSON of application status
-void WPalaControl::fillStatusJSON(JsonDocument &doc)
+void WPalaControl::fillStatusJSON(JsonVariant json)
 {
-  doc[F("hwversion")] = _detectedHwVersion == HW_V1 ? F("V1.x") : (_detectedHwVersion == HW_V2 ? F("V2.x") : F("Unknown"));
-  doc[F("hwdetection")] = _hwDetection == HW_AUTODETECT ? F(" (Auto-Detected)") : F(" (Forced)");
+  json[F("hwversion")] = _detectedHwVersion == HW_V1 ? F("V1.x") : (_detectedHwVersion == HW_V2 ? F("V2.x") : F("Unknown"));
+  json[F("hwdetection")] = _hwDetection == HW_AUTODETECT ? F(" (Auto-Detected)") : F(" (Forced)");
 
   // Home Automation protocol
   if (_ha.protocol == HA_PROTO_MQTT)
-    doc[F("haprotocol")] = F("MQTT");
+    json[F("haprotocol")] = F("MQTT");
   else
-    doc[F("haprotocol")] = F("Disabled");
+    json[F("haprotocol")] = F("Disabled");
 
   // Home automation connection status
   if (_ha.protocol == HA_PROTO_MQTT)
   {
-    doc[F("hamqttstatus")] = _mqttMan.getStateString();
+    json[F("hamqttstatus")] = _mqttMan.getStateString();
 
     if (_mqttMan.state() == MQTT_CONNECTED)
-      doc[F("hamqttlastpublish")] = (_haSendResult ? F("OK") : F("Failed"));
+      json[F("hamqttlastpublish")] = (_haSendResult ? F("OK") : F("Failed"));
   }
 }
 
