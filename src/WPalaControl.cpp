@@ -2916,22 +2916,16 @@ void WPalaControl::appInitWebServer(WebServer &server)
   server.on(F("/cgi-bin/sendmsg.lua"), HTTP_GET, [this, &server]()
             {
     String cmd;
-    JsonDocument json;
 
-    if (server.hasArg(F("cmd"))) cmd = server.arg(F("cmd"));
+    if (server.hasArg(F("cmd")))
+      cmd = server.arg(F("cmd"));
 
     // WPalaControl specific command
     if (cmd.startsWith(F("BKP PARM ")))
     {
-      byte fileType;
-
       String strFileType(cmd.substring(9));
 
-      if (strFileType == F("CSV"))
-        fileType = 0;
-      else if (strFileType == F("JSON"))
-        fileType = 1;
-      else
+      if (strFileType != F("CSV") && strFileType != F("JSON"))
       {
         String ret(F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Incorrect File Type : "));
         ret += strFileType;
@@ -2944,65 +2938,53 @@ void WPalaControl::appInitWebServer(WebServer &server)
       byte params[0x6A];
       Palazzetti::CommandResult cmdRes = _Pala.getAllParameters(&params);
 
-      if (cmdRes == Palazzetti::CommandResult::OK)
-      {
-        String toReturn;
-
-        switch (fileType)
-        {
-        case 0: //CSV
-          toReturn.reserve(965); // Header + 106 lines with worst-case index/value width (3+1+3+2)
-          toReturn += F("PARM;VALUE\r\n");
-          {
-            char line[10];
-            for (byte i = 0; i < 0x6A; i++)
-            {
-              snprintf(line, sizeof(line), "%d;%d\r\n", i, params[i]);
-              toReturn += line;
-            }
-          }
-
-          SERVER_KEEPALIVE_FALSE()
-          server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.csv\""));
-          server.send(200, F("text/csv"), toReturn);
-          break;
-
-        case 1: //JSON
-          JsonDocument json;
-          JsonArray PARM = json[F("PARM")].to<JsonArray>();
-          for (byte i = 0; i < 0x6A; i++)
-            PARM.add(params[i]);
-
-          SERVER_KEEPALIVE_FALSE()
-          server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.json\""));
-          server.setContentLength(measureJson(json));
-          server.send(200, F("text/json"), "");
-          serializeJson(json, server.client());
-          break;
-        }
-
-        return;
-      }
-      else
+      if (cmdRes != Palazzetti::CommandResult::OK)
       {
         SERVER_KEEPALIVE_FALSE()
         server.send(200, F("text/json"), F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         return;
       }
+
+      if (strFileType == F("CSV"))
+      {
+        String toReturn;
+        char line[10];
+        toReturn.reserve(965); // Header + 106 lines with worst-case index/value width (3+1+3+2)
+        toReturn += F("PARM;VALUE\r\n");
+
+        for (byte i = 0; i < 0x6A; i++)
+        {
+          snprintf(line, sizeof(line), "%d;%d\r\n", i, params[i]);
+          toReturn += line;
+        }
+
+        SERVER_KEEPALIVE_FALSE()
+        server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.csv\""));
+        server.send(200, F("text/csv"), toReturn);
+      }
+      else
+      {
+        JsonDocument json;
+        JsonArray PARM = json[F("PARM")].to<JsonArray>();
+        for (byte i = 0; i < 0x6A; i++)
+          PARM.add(params[i]);
+
+        SERVER_KEEPALIVE_FALSE()
+        server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.json\""));
+        server.setContentLength(measureJson(json));
+        server.send(200, F("text/json"), "");
+        serializeJson(json, server.client());
+      }
+
+      return;
     }
 
     // WPalaControl specific command
     if (cmd.startsWith(F("BKP HPAR ")))
     {
-      byte fileType;
-
       String strFileType(cmd.substring(9));
 
-      if (strFileType == F("CSV"))
-        fileType = 0;
-      else if (strFileType == F("JSON"))
-        fileType = 1;
-      else
+      if (strFileType != F("CSV") && strFileType != F("JSON"))
       {
         String ret(F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Incorrect File Type : "));
         ret += strFileType;
@@ -3015,52 +2997,48 @@ void WPalaControl::appInitWebServer(WebServer &server)
       uint16_t hiddenParams[0x6F];
       Palazzetti::CommandResult cmdRes = _Pala.getAllHiddenParameters(&hiddenParams);
 
-      if (cmdRes == Palazzetti::CommandResult::OK)
-      {
-        String toReturn;
-
-        switch (fileType)
-        {
-        case 0: //CSV
-          toReturn.reserve(1232); // Header + 111 lines with worst-case index/value width (3+1+5+2)
-          toReturn += F("HPAR;VALUE\r\n");
-          {
-            char line[12];
-            for (byte i = 0; i < 0x6F; i++)
-            {
-              snprintf(line, sizeof(line), "%d;%d\r\n", i, hiddenParams[i]);
-              toReturn += line;
-            }
-          }
-
-          SERVER_KEEPALIVE_FALSE()
-          server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.csv\""));
-          server.send(200, F("text/csv"), toReturn);
-          break;
-
-        case 1: //JSON
-          JsonDocument json;
-          JsonArray HPAR = json[F("HPAR")].to<JsonArray>();
-          for (byte i = 0; i < 0x6F; i++)
-            HPAR.add(hiddenParams[i]);
-
-          SERVER_KEEPALIVE_FALSE()
-          server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.json\""));
-          server.setContentLength(measureJson(json));
-          server.send(200, F("text/json"), "");
-          serializeJson(json, server.client());
-          break;
-        }
-
-        return;
-      }
-      else
+      if (cmdRes != Palazzetti::CommandResult::OK)
       {
         SERVER_KEEPALIVE_FALSE()
         server.send(200, F("text/json"), F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         return;
       }
+
+      if (strFileType == F("CSV"))
+      {
+        String toReturn;
+        char line[12];
+        toReturn.reserve(1232); // Header + 111 lines with worst-case index/value width (3+1+5+2)
+        toReturn += F("HPAR;VALUE\r\n");
+
+        for (byte i = 0; i < 0x6F; i++)
+        {
+          snprintf(line, sizeof(line), "%d;%d\r\n", i, hiddenParams[i]);
+          toReturn += line;
+        }
+
+        SERVER_KEEPALIVE_FALSE()
+        server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.csv\""));
+        server.send(200, F("text/csv"), toReturn);
+      }
+      else if (strFileType == F("JSON"))
+      {
+        JsonDocument json;
+        JsonArray HPAR = json[F("HPAR")].to<JsonArray>();
+        for (byte i = 0; i < 0x6F; i++)
+          HPAR.add(hiddenParams[i]);
+
+        SERVER_KEEPALIVE_FALSE()
+        server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.json\""));
+        server.setContentLength(measureJson(json));
+        server.send(200, F("text/json"), "");
+        serializeJson(json, server.client());
+      }
+
+      return;
     }
+
+    JsonDocument json;
 
     // Other commands processed using normal Palazzetti logic
     executePalaCmd(cmd, json);
