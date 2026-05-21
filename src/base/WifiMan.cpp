@@ -104,25 +104,25 @@ void WifiMan::setConfigDefaultValues()
   dns2 = 0;
 }
 
-bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
+bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
 {
   JsonVariant jv;
 
-  if ((jv = doc["s"]).is<const char *>())
+  if ((jv = json["s"]).is<const char *>())
     strlcpy(ssid, jv, sizeof(ssid));
 
-  if ((jv = doc["p"]).is<const char *>())
+  if ((jv = json["p"]).is<const char *>())
   {
     // if not from web page or password is not the predefined one
     if (!fromWebPage || strcmp_P(jv, predefPassword))
       strlcpy(password, jv, sizeof(password));
   }
 
-  if ((jv = doc["h"]).is<const char *>())
+  if ((jv = json["h"]).is<const char *>())
     strlcpy(hostname, jv, sizeof(hostname));
 
   IPAddress ipParser;
-  if ((jv = doc["ip"]).is<const char *>())
+  if ((jv = json["ip"]).is<const char *>())
   {
     if (ipParser.fromString(jv.as<const char *>()))
       ip = ipParser;
@@ -130,7 +130,7 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
       ip = 0;
   }
 
-  if ((jv = doc["gw"]).is<const char *>())
+  if ((jv = json["gw"]).is<const char *>())
   {
     if (ipParser.fromString(jv.as<const char *>()))
       gw = ipParser;
@@ -138,7 +138,7 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
       gw = 0;
   }
 
-  if ((jv = doc[F("mask")]).is<const char *>())
+  if ((jv = json[F("mask")]).is<const char *>())
   {
     if (ipParser.fromString(jv.as<const char *>()))
       mask = ipParser;
@@ -146,7 +146,7 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
       mask = 0;
   }
 
-  if ((jv = doc[F("dns1")]).is<const char *>())
+  if ((jv = json[F("dns1")]).is<const char *>())
   {
     if (ipParser.fromString(jv.as<const char *>()))
       dns1 = ipParser;
@@ -154,7 +154,7 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
       dns1 = 0;
   }
 
-  if ((jv = doc[F("dns2")]).is<const char *>())
+  if ((jv = json[F("dns2")]).is<const char *>())
   {
     if (ipParser.fromString(jv.as<const char *>()))
       dns2 = ipParser;
@@ -165,64 +165,64 @@ bool WifiMan::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false)
   return true;
 }
 
-void WifiMan::fillConfigJSON(JsonDocument &doc, bool forSaveFile)
+void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile)
 {
-  doc["s"] = ssid;
+  json["s"] = ssid;
 
   if (forSaveFile)
-    doc["p"] = password;
+    json["p"] = password;
   else
     // there is a predefined special password (used to keep already saved one)
-    doc["p"] = (const __FlashStringHelper *)predefPassword;
+    json["p"] = (const __FlashStringHelper *)predefPassword;
 
-  doc["h"] = hostname;
+  json["h"] = hostname;
 
-  doc[F("staticip")] = (ip ? 1 : 0);
+  json[F("staticip")] = (ip ? 1 : 0);
 
   if (ip)
-    doc["ip"] = ipToCString(ip);
+    json["ip"] = ipToCString(ip);
   if (gw)
-    doc["gw"] = ipToCString(gw);
+    json["gw"] = ipToCString(gw);
   else
-    doc["gw"] = F("0.0.0.0");
+    json["gw"] = F("0.0.0.0");
   if (mask)
-    doc[F("mask")] = ipToCString(mask);
+    json[F("mask")] = ipToCString(mask);
   else
-    doc[F("mask")] = F("0.0.0.0");
+    json[F("mask")] = F("0.0.0.0");
   if (dns1)
-    doc[F("dns1")] = ipToCString(dns1);
+    json[F("dns1")] = ipToCString(dns1);
   if (dns2)
-    doc[F("dns2")] = ipToCString(dns2);
+    json[F("dns2")] = ipToCString(dns2);
 }
 
-void WifiMan::fillStatusJSON(JsonDocument &doc)
+void WifiMan::fillStatusJSON(JsonVariant json)
 {
 
   if ((WiFi.getMode() & WIFI_AP))
   {
-    doc[F("apmode")] = F("on");
-    doc[F("apip")] = ipToCString(WiFi.softAPIP());
+    json[F("apmode")] = F("on");
+    json[F("apip")] = ipToCString(WiFi.softAPIP());
   }
   else
-    doc[F("apmode")] = F("off");
+    json[F("apmode")] = F("off");
 
   if (ssid[0])
   {
-    doc[F("stationmode")] = F("on");
+    json[F("stationmode")] = F("on");
     if (WiFi.isConnected())
     {
-      doc[F("stationip")] = ipToCString(WiFi.localIP());
-      doc[F("stationipsource")] = ip ? F("Static IP") : F("DHCP");
+      json[F("stationip")] = ipToCString(WiFi.localIP());
+      json[F("stationipsource")] = ip ? F("Static IP") : F("DHCP");
     }
   }
   else
-    doc[F("stationmode")] = F("off");
+    json[F("stationmode")] = F("off");
 
   uint8_t macBuf[6];
   char mac[18];
   WiFi.macAddress(macBuf);
   snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
-  doc[F("mac")] = mac;
+  json[F("mac")] = mac;
 }
 
 bool WifiMan::appInit(bool reInit = false)

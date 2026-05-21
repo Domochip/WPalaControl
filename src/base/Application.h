@@ -44,14 +44,14 @@ protected:
   bool loadConfig();
 
   static bool getLastestUpdateInfo(char *version, char *title, char *releaseDate, char *summary);
-  static void fillLatestUpdateInfoJson(JsonDocument &doc, bool forWebPage = false);
+  static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 
   // specialization required from the application
   virtual void setConfigDefaultValues() = 0;
-  virtual bool parseConfigJSON(JsonDocument &doc, bool fromWebPage = false) = 0;
-  virtual void fillConfigJSON(JsonDocument &doc, bool forSaveFile = false) = 0;
-  virtual void fillStatusJSON(JsonDocument &doc) = 0;
+  virtual bool parseConfigJSON(JsonVariant json, bool fromWebPage = false) = 0;
+  virtual void fillConfigJSON(JsonVariant json, bool forSaveFile = false) = 0;
+  virtual void fillStatusJSON(JsonVariant json) = 0;
   virtual bool appInit(bool reInit = false) = 0;
   virtual const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp) = 0;
   virtual size_t getHTMLContentSize(WebPageForPlaceHolder wp) = 0;

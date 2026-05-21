@@ -9,9 +9,9 @@
 #include "data/side-menu.js.gz.h"
 
 void Core::setConfigDefaultValues() {};
-bool Core::parseConfigJSON(JsonDocument &doc, bool fromWebPage = false) { return true; };
-void Core::fillConfigJSON(JsonDocument &doc, bool forSaveFile) {};
-void Core::fillStatusJSON(JsonDocument &doc)
+bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage = false) { return true; };
+void Core::fillConfigJSON(JsonVariant json, bool forSaveFile) {};
+void Core::fillStatusJSON(JsonVariant json)
 {
   char sn[9];
 #ifdef ESP8266
@@ -21,24 +21,24 @@ void Core::fillStatusJSON(JsonDocument &doc)
 #endif
   unsigned long minutes = millis() / 60000;
 
-  doc[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
-  doc[F("model")] = CUSTOM_APP_MODEL;
-  doc[F("sn")] = sn;
-  doc[F("baseversion")] = BASE_VERSION;
-  doc[F("version")] = VERSION;
+  json[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
+  json[F("model")] = CUSTOM_APP_MODEL;
+  json[F("sn")] = sn;
+  json[F("baseversion")] = BASE_VERSION;
+  json[F("version")] = VERSION;
   char uptime[12];
   snprintf_P(uptime, sizeof(uptime), PSTR("%dd%dh%dm"), (byte)(minutes / 1440), (byte)(minutes / 60 % 24), (byte)(minutes % 60));
-  doc[F("uptime")] = uptime;
-  doc[F("freeheap")] = ESP.getFreeHeap();
+  json[F("uptime")] = uptime;
+  json[F("freeheap")] = ESP.getFreeHeap();
 #ifdef ESP8266
-  doc[F("freestack")] = ESP.getFreeContStack();
-  doc[F("flashsize")] = ESP.getFlashChipRealSize();
+  json[F("freestack")] = ESP.getFreeContStack();
+  json[F("flashsize")] = ESP.getFlashChipRealSize();
 
   uint32_t crashCount = CrashSaver::count();
-  doc[F("crashcount")] = crashCount;
+  json[F("crashcount")] = crashCount;
 #else
-  doc[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
-  doc[F("crashcount")] = 0;
+  json[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
+  json[F("crashcount")] = 0;
 #endif
 }
 bool Core::appInit(bool reInit = false)

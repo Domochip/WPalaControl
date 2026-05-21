@@ -46,7 +46,7 @@ def sync_tree_left_to_right(src, dst):
     for item in comp.common_dirs:
         sync_tree_left_to_right(os.path.join(src,item),os.path.join(dst,item))
 
-print('---- Copying base files ----')
+print('---- pio_pre_copy_base.py start ----')
 
 sourceFolder = r'../WBase/src/base'
 destinationFolder = r'./src/base'
@@ -54,4 +54,5 @@ destinationFolder = r'./src/base'
 if not os.path.exists(r'./src/WBase.h') and os.path.exists(sourceFolder) and os.path.abspath(sourceFolder).lower() != os.path.abspath(destinationFolder).lower():
     sync_tree_left_to_right(sourceFolder, destinationFolder)
 
-print('----------------------------')
+print('---- pio_pre_copy_base.py end ----')
+print()

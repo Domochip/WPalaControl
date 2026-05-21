@@ -226,24 +226,24 @@ bool Application::getLastestUpdateInfo(char *version, char *title, char *release
   return version[0] != '\0';
 }
 
-void Application::fillLatestUpdateInfoJson(JsonDocument &doc, bool forWebPage /* = false */)
+void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* = false */)
 {
-  doc[F("installed_version")] = VERSION;
+  json[F("installed_version")] = VERSION;
 
   char version[10], title[64], releaseDate[11], summary[256];
 
   if (getLastestUpdateInfo(version, title, releaseDate, summary))
   {
-    doc[F("latest_version")] = version;
-    doc[F("title")] = title;
-    doc[F("release_summary")] = summary;
+    json[F("latest_version")] = version;
+    json[F("title")] = title;
+    json[F("release_summary")] = summary;
 
     char releaseUrl[128];
     snprintf_P(releaseUrl, sizeof(releaseUrl), PSTR("https://github.com/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/tag/%s"), version);
-    doc[F("release_url")] = releaseUrl;
+    json[F("release_url")] = releaseUrl;
 
     if (forWebPage)
-      doc[F("release_date")] = releaseDate;
+      json[F("release_date")] = releaseDate;
   }
 }
 
@@ -329,10 +329,10 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
 
 String Application::getStatusJSON()
 {
-  JsonDocument doc;
-  fillStatusJSON(doc);
+  JsonDocument jsonDoc;
+  fillStatusJSON(jsonDoc);
   String s;
-  serializeJson(doc, s);
+  serializeJson(jsonDoc, s);
   return s;
 }
 

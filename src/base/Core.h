@@ -16,9 +16,9 @@ class Core : public Application
 {
 private:
   void setConfigDefaultValues();
-  bool parseConfigJSON(JsonDocument &doc, bool fromWebPage);
-  void fillConfigJSON(JsonDocument &doc, bool forSaveFile);
-  void fillStatusJSON(JsonDocument &doc);
+  bool parseConfigJSON(JsonVariant json, bool fromWebPage);
+  void fillConfigJSON(JsonVariant json, bool forSaveFile);
+  void fillStatusJSON(JsonVariant json);
   bool appInit(bool reInit);
   const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp);
   size_t getHTMLContentSize(WebPageForPlaceHolder wp);

@@ -70,9 +70,10 @@ def convert_all_webfiles(dir):
                 convert_file_to_cppheader(file)
     os.chdir(curentDir)
 
-print('--- Converting web files ---')
+print('--- pio_pre_prepare_webfiles.py start ---')
 
 convert_all_webfiles(r'./src/base/data')
 convert_all_webfiles(r'./src/data')
 
-print('----------------------------')
+print('--- pio_pre_prepare_webfiles.py end ---')
+print()
