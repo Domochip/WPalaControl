@@ -2556,12 +2556,12 @@ void WPalaControl::publishTick()
   // if MQTT protocol is enabled and connected then publish Core, Wifi and WPalaControl status
   if (_ha.protocol == HA_PROTO_MQTT && _mqttMan.connected())
   {
-    JsonDocument doc;
-    doc[getAppIdName(CoreApp)] = serialized(_applicationList[CoreApp]->getStatusJSON());
-    doc[getAppIdName(WifiManApp)] = serialized(_applicationList[WifiManApp]->getStatusJSON());
-    doc[getAppIdName(CustomApp)] = serialized(getStatusJSON());
+    JsonDocument json;
+    _applicationList[CoreApp]->fillStatusJSON(json[getAppIdName(CoreApp)].to<JsonObject>());
+    _applicationList[WifiManApp]->fillStatusJSON(json[getAppIdName(WifiManApp)].to<JsonObject>());
+    fillStatusJSON(json[getAppIdName(CustomApp)].to<JsonObject>());
 
-    _mqttMan.publish(_preparedMqttBaseTopic, doc, true);
+    _mqttMan.publish(_preparedMqttBaseTopic, json, true);
   }
 
   // array of commands to execute
