@@ -1085,24 +1085,6 @@ bool WPalaControl::mqttHassDiscoveryStove()
 
   // publish Stove entities
   mqttPublishHassStoveConnectivity(stoveContext);
-
-  JsonDocument json;
-  String uniqueId;
-  String topic;
-
-  const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
-      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
-      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
-      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
-      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
-      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
-  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
-  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-
-  // ----- Stove Entities -----
-
   mqttPublishHassStoveConnectivity(stoveContext);
   mqttPublishHassStoveStatus(stoveContext);
   mqttPublishHassStoveStatusText(stoveContext);
