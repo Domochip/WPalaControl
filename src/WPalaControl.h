@@ -128,6 +128,24 @@ private:
   String buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE);
   void mqttPublishHassStoveConnectivity(const HassDiscoveryStoveContext &ctx);
   void mqttPublishHassStoveStatus(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveStatusText(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveThermostat(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveSupplyWaterTemp(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveMainTemp(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveFlueGasTemp(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStovePqt(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveServiceTime(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveFeeder(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveDpTarget(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveDpPressure(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveOnOff(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveSetPoint(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStovePower(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveRoomFan(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveRoomFanAuto(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveFan3(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveFan4(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveSetTime(const HassDiscoveryStoveContext &ctx);
   bool mqttHassDiscoveryStove();
   bool mqttHassDiscovery();
 
