@@ -1232,188 +1232,6 @@ bool WPalaControl::mqttPublishUpdate()
   return true;
 }
 
-bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
-{
-  bool cmdProcessed = false;                                                             // cmd has been processed
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR; // Palazzetti function calls successful
-
-  // Prepare answer structure --------------------------------------------------
-  jsonDoc.clear();
-  JsonObject info = jsonDoc["INFO"].to<JsonObject>();
-  JsonObject data = jsonDoc["DATA"].to<JsonObject>();
-  const __FlashStringHelper *palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
-
-  // Parse parameters ----------------------------------------------------------
-  byte cmdParamNumber = 0;
-  uint16_t cmdParams[6] = {};
-  char paramBuf[40] = {};
-
-  // if cmd length means there is parameters
-  if (cmd.length() > 9 && cmd[8] == ' ')
-  {
-    // check parameters length before copying to a temporary buffer
-    const char *rawParams = cmd.c_str() + 9;
-    if (strlen(rawParams) >= sizeof(paramBuf))
-    {
-      cmdProcessed = true;
-      info["MSG"] = F("Parameters too long");
-    }
-
-    if (!cmdProcessed)
-    {
-      // copy parameters to a temporary buffer for parsing
-      strlcpy(paramBuf, rawParams, sizeof(paramBuf));
-
-      // trim leading spaces
-      char *start = paramBuf;
-      while (*start == ' ')
-        start++;
-      if (start != paramBuf)
-        memmove(paramBuf, start, strlen(start) + 1);
-
-      // trim trailing spaces
-      int len = strlen(paramBuf);
-      while (len > 0 && paramBuf[len - 1] == ' ')
-        paramBuf[--len] = '\0';
-
-      // special case SET TIME: replace '-' and ':' with ' '
-      if (cmd.startsWith(F("SET TIME ")))
-      {
-        for (char *q = paramBuf; *q; q++)
-          if (*q == '-' || *q == ':')
-            *q = ' ';
-      }
-
-      // special case SET STPF: replace '.' with ' '
-      if (cmd.startsWith(F("SET STPF ")))
-      {
-        for (char *q = paramBuf; *q; q++)
-          if (*q == '.')
-            *q = ' ';
-      }
-
-      // collapse consecutive spaces into one
-      char *r = paramBuf, *w = paramBuf;
-      while (*r)
-      {
-        *w++ = *r++;
-        if (r[-1] == ' ')
-          while (*r == ' ')
-            r++;
-      }
-      *w = '\0';
-
-      // split parameters by space and convert to integer
-      char *tok = strtok(paramBuf, " ");
-      while (tok && cmdParamNumber < 6)
-      {
-        char *endPtr = nullptr;
-        long parsedValue = strtol(tok, &endPtr, 10);
-
-        // special case SET STPF (second parameter is the decimal part) (handle 19.8 instead of 19.80)
-        if (cmdParamNumber == 1 && cmd.startsWith(F("SET STPF ")) && strlen(tok) == 1)
-          parsedValue *= 10;
-
-        // special case EXT ADRD and EXT ADWR (first parameter is an hexadecimal address)
-        if (cmdParamNumber == 0 && (cmd.startsWith(F("EXT ADRD ")) || cmd.startsWith(F("EXT ADWR "))))
-          parsedValue = strtol(tok, &endPtr, 16);
-
-        // Conversion is valid only if the full token is numeric and the value fits uint16_t.
-        if (endPtr != tok && *endPtr == '\0' && parsedValue >= 0 && parsedValue <= 0xFFFF)
-          cmdParams[cmdParamNumber] = parsedValue;
-        else
-        {
-          cmdProcessed = true;
-          info["MSG"] = (String(F("Incorrect Parameter Value : ")) + tok).c_str();
-          break;
-        }
-
-        cmdParamNumber++;
-        tok = strtok(NULL, " ");
-      }
-
-      // too much parameters has been sent
-      if (!cmdProcessed && tok)
-      {
-        cmdProcessed = true;
-        info["MSG"] = F("Incorrect Parameter Number");
-      }
-    }
-  }
-
-  // Dispatch command ---------------------------------------------------------
-
-  if (!cmdProcessed)
-  {
-    if (cmd.startsWith(F("CMD ")))
-      cmdSuccess = executeCmdPalaCmd(cmd, data, info, palaCategory, cmdProcessed);
-    else if (cmd.startsWith(F("GET ")))
-      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
-    else if (cmd.startsWith(F("SET ")))
-      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
-    else if (cmd.startsWith(F("EXT ")))
-      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
-  }
-
-  // Process result -----------------------------------------------------------
-
-  // releases the unused memory before serialization
-  jsonDoc.shrinkToFit();
-
-  // if command has been processed
-  if (cmdProcessed)
-  {
-
-    // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
-    if (_ha.protocol == HaProtocol::Mqtt)
-      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
-
-    // if communication with stove was successful
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      info["CMD"] = cmd.substring(0, 8);
-
-      info["RSP"] = F("OK");
-      jsonDoc["SUCCESS"] = true;
-
-      if (publish && String(palaCategory).length() > 0)
-      {
-        _eventSourceMan.eventSourceBroadcast(data);
-
-        if (_ha.protocol == HaProtocol::Mqtt && _haSendResult)
-          _haSendResult &= mqttPublishData(_preparedMqttBaseTopic, palaCategory, jsonDoc);
-      }
-    }
-    else
-    {
-      info["CMD"] = cmd;
-
-      // if there is no MSG in info then stove communication failed
-      if (info["MSG"].isNull())
-      {
-        info["RSP"] = F("TIMEOUT");
-        info["MSG"] = F("Stove communication failed");
-      }
-      else
-        info["RSP"] = F("ERROR");
-
-      jsonDoc["SUCCESS"] = false;
-      data["NODATA"] = true;
-    }
-  }
-  else
-  {
-    // command is unknown and not processed
-    info["RSP"] = F("ERROR");
-    info["CMD"] = F("UNKNOWN");
-    info["MSG"] = F("No valid request received");
-    jsonDoc["SUCCESS"] = false;
-    data["NODATA"] = true;
-  }
-
-  return jsonDoc["SUCCESS"].as<bool>();
-}
-
 Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
@@ -2536,6 +2354,188 @@ Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, Jso
 #endif
 
   return cmdSuccess;
+}
+
+bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
+{
+  bool cmdProcessed = false;                                                             // cmd has been processed
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR; // Palazzetti function calls successful
+
+  // Prepare answer structure --------------------------------------------------
+  jsonDoc.clear();
+  JsonObject info = jsonDoc["INFO"].to<JsonObject>();
+  JsonObject data = jsonDoc["DATA"].to<JsonObject>();
+  const __FlashStringHelper *palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
+
+  // Parse parameters ----------------------------------------------------------
+  byte cmdParamNumber = 0;
+  uint16_t cmdParams[6] = {};
+  char paramBuf[40] = {};
+
+  // if cmd length means there is parameters
+  if (cmd.length() > 9 && cmd[8] == ' ')
+  {
+    // check parameters length before copying to a temporary buffer
+    const char *rawParams = cmd.c_str() + 9;
+    if (strlen(rawParams) >= sizeof(paramBuf))
+    {
+      cmdProcessed = true;
+      info["MSG"] = F("Parameters too long");
+    }
+
+    if (!cmdProcessed)
+    {
+      // copy parameters to a temporary buffer for parsing
+      strlcpy(paramBuf, rawParams, sizeof(paramBuf));
+
+      // trim leading spaces
+      char *start = paramBuf;
+      while (*start == ' ')
+        start++;
+      if (start != paramBuf)
+        memmove(paramBuf, start, strlen(start) + 1);
+
+      // trim trailing spaces
+      int len = strlen(paramBuf);
+      while (len > 0 && paramBuf[len - 1] == ' ')
+        paramBuf[--len] = '\0';
+
+      // special case SET TIME: replace '-' and ':' with ' '
+      if (cmd.startsWith(F("SET TIME ")))
+      {
+        for (char *q = paramBuf; *q; q++)
+          if (*q == '-' || *q == ':')
+            *q = ' ';
+      }
+
+      // special case SET STPF: replace '.' with ' '
+      if (cmd.startsWith(F("SET STPF ")))
+      {
+        for (char *q = paramBuf; *q; q++)
+          if (*q == '.')
+            *q = ' ';
+      }
+
+      // collapse consecutive spaces into one
+      char *r = paramBuf, *w = paramBuf;
+      while (*r)
+      {
+        *w++ = *r++;
+        if (r[-1] == ' ')
+          while (*r == ' ')
+            r++;
+      }
+      *w = '\0';
+
+      // split parameters by space and convert to integer
+      char *tok = strtok(paramBuf, " ");
+      while (tok && cmdParamNumber < 6)
+      {
+        char *endPtr = nullptr;
+        long parsedValue = strtol(tok, &endPtr, 10);
+
+        // special case SET STPF (second parameter is the decimal part) (handle 19.8 instead of 19.80)
+        if (cmdParamNumber == 1 && cmd.startsWith(F("SET STPF ")) && strlen(tok) == 1)
+          parsedValue *= 10;
+
+        // special case EXT ADRD and EXT ADWR (first parameter is an hexadecimal address)
+        if (cmdParamNumber == 0 && (cmd.startsWith(F("EXT ADRD ")) || cmd.startsWith(F("EXT ADWR "))))
+          parsedValue = strtol(tok, &endPtr, 16);
+
+        // Conversion is valid only if the full token is numeric and the value fits uint16_t.
+        if (endPtr != tok && *endPtr == '\0' && parsedValue >= 0 && parsedValue <= 0xFFFF)
+          cmdParams[cmdParamNumber] = parsedValue;
+        else
+        {
+          cmdProcessed = true;
+          info["MSG"] = (String(F("Incorrect Parameter Value : ")) + tok).c_str();
+          break;
+        }
+
+        cmdParamNumber++;
+        tok = strtok(NULL, " ");
+      }
+
+      // too much parameters has been sent
+      if (!cmdProcessed && tok)
+      {
+        cmdProcessed = true;
+        info["MSG"] = F("Incorrect Parameter Number");
+      }
+    }
+  }
+
+  // Dispatch command ---------------------------------------------------------
+
+  if (!cmdProcessed)
+  {
+    if (cmd.startsWith(F("CMD ")))
+      cmdSuccess = executeCmdPalaCmd(cmd, data, info, palaCategory, cmdProcessed);
+    else if (cmd.startsWith(F("GET ")))
+      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+    else if (cmd.startsWith(F("SET ")))
+      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+    else if (cmd.startsWith(F("EXT ")))
+      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+  }
+
+  // Process result -----------------------------------------------------------
+
+  // releases the unused memory before serialization
+  jsonDoc.shrinkToFit();
+
+  // if command has been processed
+  if (cmdProcessed)
+  {
+
+    // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
+    if (_ha.protocol == HaProtocol::Mqtt)
+      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
+
+    // if communication with stove was successful
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      info["CMD"] = cmd.substring(0, 8);
+
+      info["RSP"] = F("OK");
+      jsonDoc["SUCCESS"] = true;
+
+      if (publish && String(palaCategory).length() > 0)
+      {
+        _eventSourceMan.eventSourceBroadcast(data);
+
+        if (_ha.protocol == HaProtocol::Mqtt && _haSendResult)
+          _haSendResult &= mqttPublishData(_preparedMqttBaseTopic, palaCategory, jsonDoc);
+      }
+    }
+    else
+    {
+      info["CMD"] = cmd;
+
+      // if there is no MSG in info then stove communication failed
+      if (info["MSG"].isNull())
+      {
+        info["RSP"] = F("TIMEOUT");
+        info["MSG"] = F("Stove communication failed");
+      }
+      else
+        info["RSP"] = F("ERROR");
+
+      jsonDoc["SUCCESS"] = false;
+      data["NODATA"] = true;
+    }
+  }
+  else
+  {
+    // command is unknown and not processed
+    info["RSP"] = F("ERROR");
+    info["CMD"] = F("UNKNOWN");
+    info["MSG"] = F("No valid request received");
+    jsonDoc["SUCCESS"] = false;
+    data["NODATA"] = true;
+  }
+
+  return jsonDoc["SUCCESS"].as<bool>();
 }
 
 void WPalaControl::publishTick()
