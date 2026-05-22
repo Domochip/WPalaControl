@@ -9,8 +9,8 @@
 #include "data/side-menu.js.gz.h"
 
 void Core::setConfigDefaultValues() {};
-bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage = false) { return true; };
-void Core::fillConfigJSON(JsonVariant json, bool forSaveFile) {};
+bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */) { return true; };
+void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */) {};
 void Core::fillStatusJSON(JsonVariant json)
 {
   char sn[9];
@@ -41,7 +41,7 @@ void Core::fillStatusJSON(JsonVariant json)
   json[F("crashcount")] = 0;
 #endif
 }
-bool Core::appInit(bool reInit = false)
+bool Core::appInit(bool reInit /* = false */)
 {
   return true;
 };
@@ -51,10 +51,8 @@ const PROGMEM char *Core::getHTMLContent(WebPageForPlaceHolder wp)
   {
   case status:
     return status0htmlgz;
-    break;
   case config:
     return config0htmlgz;
-    break;
   };
   return nullptr;
 }
@@ -64,10 +62,8 @@ size_t Core::getHTMLContentSize(WebPageForPlaceHolder wp)
   {
   case status:
     return sizeof(status0htmlgz);
-    break;
   case config:
     return sizeof(config0htmlgz);
-    break;
   };
   return 0;
 }
@@ -124,12 +120,12 @@ void Core::appInitWebServer(WebServer &server)
       [this, &server]()
       {
         SERVER_KEEPALIVE_FALSE()
-        JsonDocument doc;
-        fillLatestUpdateInfoJson(doc, true);
-        server.setContentLength(measureJson(doc));
+        JsonDocument json;
+        fillLatestUpdateInfoJson(json, true);
+        server.setContentLength(measureJson(json));
         server.send(200, F("application/json"), "");
         WiFiClient client = server.client();
-        serializeJson(doc, client);
+        serializeJson(json, client);
       });
 
   // Update Firmware from Github ----------------------------------------------
@@ -256,7 +252,7 @@ void Core::appInitWebServer(WebServer &server)
               server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"crashes.txt\""));
               server.send(200, F("text/plain"), "");
               CrashSaver::iterateCrashLogFiles([&server](uint32_t, const char *fileName)
-                                                   {
+                                               {
                 File f = LittleFS.open(fileName, "r");
                 if (f) {
                   server.sendContent(F("--- "));

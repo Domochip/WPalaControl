@@ -45,14 +45,14 @@ private:
   uint8_t _refreshPeriod = 60;     // try to reconnect as station mode every 60 seconds
   uint8_t _reconnectDuration = 20; // duration to try to connect to Wifi in seconds
 
-  void enableAP(bool force);
+  void enableAP(bool force = false);
   void refreshWiFi();
 
   void setConfigDefaultValues();
-  bool parseConfigJSON(JsonVariant json, bool fromWebPage);
-  void fillConfigJSON(JsonVariant json, bool forSaveFile);
+  bool parseConfigJSON(JsonVariant json, bool fromWebPage = false);
+  void fillConfigJSON(JsonVariant json, bool forSaveFile = false);
   void fillStatusJSON(JsonVariant json);
-  bool appInit(bool reInit);
+  bool appInit(bool reInit = false);
   const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp);
   size_t getHTMLContentSize(WebPageForPlaceHolder wp);
   void appInitWebServer(WebServer &server);

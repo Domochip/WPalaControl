@@ -72,7 +72,7 @@ void EventSourceMan::initEventSourceServer(char appIdChar, WebServer &server)
 #endif
 }
 
-void EventSourceMan::eventSourceBroadcast(const char *message, const char *eventType) // default eventType is "message"
+void EventSourceMan::eventSourceBroadcast(const char *message, const char *eventType /* = "message" */)
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
@@ -87,7 +87,7 @@ void EventSourceMan::eventSourceBroadcast(const char *message, const char *event
     }
 }
 
-void EventSourceMan::eventSourceBroadcast(JsonVariantConst message, const char *eventType)
+void EventSourceMan::eventSourceBroadcast(JsonVariantConst message, const char *eventType /* = "message" */)
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {

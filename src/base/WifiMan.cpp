@@ -7,7 +7,7 @@ const char *WifiMan::ipToCString(IPAddress ip)
   return buf;
 }
 
-void WifiMan::enableAP(bool force = false)
+void WifiMan::enableAP(bool force /* = false */)
 {
   if (!(WiFi.getMode() & WIFI_AP) || force)
   {
@@ -104,7 +104,7 @@ void WifiMan::setConfigDefaultValues()
   dns2 = 0;
 }
 
-bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
+bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   JsonVariant jv;
 
@@ -165,7 +165,7 @@ bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
   return true;
 }
 
-void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile)
+void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json["s"] = ssid;
 
@@ -225,7 +225,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   json[F("mac")] = mac;
 }
 
-bool WifiMan::appInit(bool reInit = false)
+bool WifiMan::appInit(bool reInit /* = false */)
 {
 
   // make changes saved to flash
@@ -338,31 +338,23 @@ const PROGMEM char *WifiMan::getHTMLContent(WebPageForPlaceHolder wp)
   {
   case status:
     return status1htmlgz;
-    break;
   case config:
     return config1htmlgz;
-    break;
   default:
     return nullptr;
-    break;
-  };
-  return nullptr;
-};
+  }
+}
 size_t WifiMan::getHTMLContentSize(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
   case status:
     return sizeof(status1htmlgz);
-    break;
   case config:
     return sizeof(config1htmlgz);
-    break;
   default:
     return 0;
-    break;
-  };
-  return 0;
+  }
 }
 
 void WifiMan::appInitWebServer(WebServer &server)
@@ -386,19 +378,19 @@ void WifiMan::appInitWebServer(WebServer &server)
               }
               else
               {
-                JsonDocument doc;
-                doc["r"] = n;
-                JsonArray wnl = doc[F("wnl")].to<JsonArray>();
+                JsonDocument json;
+                json["r"] = n;
+                JsonArray wnl = json[F("wnl")].to<JsonArray>();
                 for (byte i = 0; i < n; i++)
                 {
                   JsonObject wnl0 = wnl.add<JsonObject>();
                   wnl0["SSID"] = WiFi.SSID(i);
                   wnl0["RSSI"] = WiFi.RSSI(i);
                 }
-                server.setContentLength(measureJson(doc));
+                server.setContentLength(measureJson(json));
                 server.send(200, F("text/json"), "");
                 WiFiClient client = server.client();
-                serializeJson(doc, client);
+                serializeJson(json, client);
                 WiFi.scanDelete();
               }
             });

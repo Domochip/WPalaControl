@@ -133,7 +133,7 @@ MQTTMan &MQTTMan::setDisconnectedCallback(DISCONNECTED_CALLBACK_SIGNATURE discon
     return *this;
 }
 
-bool MQTTMan::connect(const char *username, const char *password)
+bool MQTTMan::connect(const char *username, const char *password /* = nullptr */)
 {
     // check logins
     if (username && strlen(username) >= sizeof(_username))
@@ -179,7 +179,7 @@ bool MQTTMan::publishToConnectedTopic(const char *payload)
     return false;
 }
 
-bool MQTTMan::publish(const char *topic, JsonVariantConst payload, bool retained)
+bool MQTTMan::publish(const char *topic, JsonVariantConst payload, bool retained /* = false */)
 {
     const size_t payloadLen = measureJson(payload);
     if (!beginPublish(topic, payloadLen, retained))

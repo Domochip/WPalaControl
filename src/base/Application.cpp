@@ -47,7 +47,7 @@ bool Application::loadConfig()
   if (_appId == CoreApp)
     return true;
 
-  bool result = false;
+  bool result = true; // missing file is not an error: default values are already set
   char configPath[32];
   snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName(_appId));
   File configFile = LittleFS.open(configPath, "r");
@@ -62,6 +62,7 @@ bool Application::loadConfig()
     {
       LOG_SERIAL_PRINTF_P(PSTR("deserializeJson() failed : %s\n"), deserializeJsonError.c_str());
       saveConfig();
+      result = false;
     }
     else
     { // otherwise pass it to application
@@ -73,7 +74,7 @@ bool Application::loadConfig()
   return result;
 }
 
-bool Application::getLastestUpdateInfo(char *version, char *title, char *releaseDate, char *summary)
+bool Application::getLatestUpdateInfo(char *version, char *title, char *releaseDate, char *summary)
 {
   version[0] = title[0] = releaseDate[0] = summary[0] = '\0';
 
@@ -100,22 +101,39 @@ bool Application::getLastestUpdateInfo(char *version, char *title, char *release
   char keyBuffer[17] = {0};        // Shifting buffer used to find keys
   uint8_t keyLen = 0;              // current length of the key in the buffer (up to maxKeyLength)
   uint8_t treeLevel = 0;           // used to skip unwanted data
+  bool inOuterString = false;      // true while the outer loop is inside a JSON string value
+  bool prevWasBackslash = false;   // used to detect escaped quotes inside strings
 
-  // sometime the stream is not yet ready (no data available yet)
-  for (byte i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
-    ;
+  // readNextChar waits briefly for the next byte, allowing the WiFi stack to
+  // process incoming TCP segments that haven't arrived yet (fixes premature exit
+  // when the receive buffer empties between two TCP segments)
+  auto readNextChar = [&](char &c) -> bool
+  {
+    for (uint8_t i = 0; i < 200 && !stream->available(); i++) // available includes an optimistic_yield of 100us
+      ;
+    if (!stream->available())
+      return false;
+    c = stream->read();
+    return true;
+  };
 
   // while there is data to read
-  while (http.connected() && stream->available())
+  char c;
+  while (readNextChar(c))
   {
-    // read the next character
-    char c = stream->read();
 
-    // if c is a brace or bracket, increment or decrement the treeLevel
-    if (c == '{' || c == '[')
-      treeLevel++;
-    else if (c == '}' || c == ']')
-      treeLevel--;
+    // toggle string mode on unescaped quotes; only count braces/brackets outside strings
+    if (c == '"' && !prevWasBackslash)
+      inOuterString = !inOuterString;
+    prevWasBackslash = !prevWasBackslash && (c == '\\');
+
+    if (!inOuterString)
+    {
+      if (c == '{' || c == '[')
+        treeLevel++;
+      else if (c == '}' || c == ']')
+        treeLevel--;
+    }
 
     // if we are not at the first treeLevel, skip the character
     // (there is some "name" key in assets that we don't want to parse)
@@ -172,18 +190,17 @@ bool Application::getLastestUpdateInfo(char *version, char *title, char *release
     size_t curLen = 0;
 
     // skip until opening doublequote
-    while (stream->available() && stream->read() != '"')
+    while (readNextChar(c) && c != '"')
       ;
 
     // for title, skip version prefix up to first space
     if (targetPtr == title)
-      while (stream->available() && stream->read() != ' ')
+      while (readNextChar(c) && c != ' ')
         ;
 
     // read the value
-    while (stream->available())
+    while (readNextChar(c))
     {
-      c = stream->read();
 
       // endsWithBackslash is used to handle escaped characters in JSON (e.g. \n, \r, \") and avoid stopping at an escaped double quote
       bool endsWithBackslash = (curLen > 0 && targetPtr[curLen - 1] == '\\');
@@ -199,6 +216,8 @@ bool Application::getLastestUpdateInfo(char *version, char *title, char *release
           targetPtr[curLen - 1] = '\r';
         else if (c == '"')
           targetPtr[curLen - 1] = '"';
+        else if (c == '\\')
+          targetPtr[curLen - 1] = '\\';
       }
       else if (curLen < targetMaxLen)
       {
@@ -229,7 +248,7 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
 
   char version[10], title[64], releaseDate[11], summary[256];
 
-  if (getLastestUpdateInfo(version, title, releaseDate, summary))
+  if (getLatestUpdateInfo(version, title, releaseDate, summary))
   {
     json[F("latest_version")] = version;
     json[F("title")] = title;
