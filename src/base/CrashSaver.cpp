@@ -88,7 +88,7 @@ uint32_t CrashSaver::_ntpMillis = 0;
 
 char CrashSaver::_nextLogFilePath[LOG_FILE_PATH_LEN] = {0};
 
-void CrashSaver::init(FS &fs, const char *ntpServer)
+void CrashSaver::init(FS &fs, const char *ntpServer /* = "pool.ntp.org" */)
 {
     _fs = &fs;
     configTime(0, 0, ntpServer);

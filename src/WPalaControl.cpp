@@ -2640,7 +2640,7 @@ void WPalaControl::setConfigDefaultValues()
 
 //------------------------------------------
 // Parse JSON object into configuration properties
-bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
+bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   JsonVariant jv;
 
@@ -2709,7 +2709,7 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
 
 //------------------------------------------
 // Generate JSON from configuration properties
-void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile = false)
+void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json[F("hwdetection")] = _hwDetection;
 
@@ -2760,7 +2760,7 @@ void WPalaControl::fillStatusJSON(JsonVariant json)
 
 //------------------------------------------
 // code to execute during initialization and reinitialization of the app
-bool WPalaControl::appInit(bool reInit)
+bool WPalaControl::appInit(bool reInit /* = false */)
 {
   // Stop UdpServer
   _udpServer.stop();
