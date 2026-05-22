@@ -99,11 +99,36 @@ private:
   void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
   void mqttPublishStoveConnected(bool stoveConnected);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
+
+  struct HassDiscoveryStoveContext
+  {
+    const String &device;
+    const String &uniqueIdPrefixStove;
+    const __FlashStringHelper *availabilityJSON;
+    uint16_t SPLMIN;
+    uint16_t SPLMAX;
+    byte UICONFIG;
+    byte MAINTPROBE;
+    const uint16_t *FANLMINMAX;
+    bool hasSetPoint;
+    bool hasPower;
+    bool hasOnOff;
+    bool hasRoomFan;
+    bool hasFan3;
+    bool ifFan3SwitchEntity;
+    bool hasFan4;
+    bool ifFan4SwitchEntity;
+    bool isAirType;
+    bool isHydroType;
+    bool hasFanAuto;
+  };
+
   String prepareHassDiscoveryTopic(const String &type, const String &uniqueId);
   bool mqttPublishHassDiscoveryGateway();
   String buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE);
   bool mqttPublishHassDiscoveryStove();
   bool mqttPublishHassDiscovery();
+
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
   Palazzetti::CommandResult executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);

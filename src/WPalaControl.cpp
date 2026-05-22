@@ -373,6 +373,28 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
   // prepare Stove device JSON
   String device = buildStoveDeviceString(uniqueIdPrefixStove, MOD, VER, FWDATE);
 
+  // prepare context used by entity building functions
+  HassDiscoveryStoveContext context = {
+      .device = device,
+      .uniqueIdPrefixStove = uniqueIdPrefixStove,
+      .availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}"),
+      .SPLMIN = SPLMIN,
+      .SPLMAX = SPLMAX,
+      .UICONFIG = UICONFIG,
+      .MAINTPROBE = MAINTPROBE,
+      .FANLMINMAX = FANLMINMAX,
+      .hasSetPoint = hasSetPoint,
+      .hasPower = hasPower,
+      .hasOnOff = hasOnOff,
+      .hasRoomFan = hasRoomFan,
+      .hasFan3 = hasFan3,
+      .ifFan3SwitchEntity = ifFan3SwitchEntity,
+      .hasFan4 = hasFan4,
+      .ifFan4SwitchEntity = ifFan4SwitchEntity,
+      .isAirType = isAirType,
+      .isHydroType = isHydroType,
+      .hasFanAuto = hasFanAuto};
+
   JsonDocument json;
   String uniqueId;
   String topic;
