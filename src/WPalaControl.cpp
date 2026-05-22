@@ -342,11 +342,30 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
   bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
   bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
-  // ---------- Usefull variables for entities building ----------
+  // ---------- variables for entities building ----------
 
+  // prepare unique id prefix for stove entities
+  String uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
+  uniqueIdPrefixStove += SN;
+
+  // prepare Stove device JSON
   JsonDocument json;
   String device;
-  String uniqueIdPrefixStove;
+  deserializeJson(json, F("{"
+                          "\"configuration_url\":\"http://wpalacontrol.local\","
+                          "\"name\":\"Stove\""
+                          "}"));
+  json[F("identifiers")][0] = uniqueIdPrefixStove;
+  json[F("model")] = String(MOD);
+  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
+  {
+    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+    uniqueIdPrefix += WiFi.macAddress();
+    uniqueIdPrefix.replace(":", "");
+    json[F("via_device")] = uniqueIdPrefix; // uniqueIdPrefix of the module
+  }
+  serializeJson(json, device); // serialize to device String
+
   String uniqueId;
   String topic;
 
@@ -360,28 +379,6 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
       {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
   const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
   const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-
-  // ---------- Stove Device ----------
-
-  // prepare unique id prefix for Stove
-  uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
-  uniqueIdPrefixStove += SN;
-
-  // prepare Stove device JSON
-  deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://wpalacontrol.local\","
-                          "\"name\":\"Stove\""
-                          "}"));
-  json[F("identifiers")][0] = uniqueIdPrefixStove;
-  json[F("model")] = String(MOD);
-  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
-  {
-    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-    uniqueIdPrefix += WiFi.macAddress();
-    uniqueIdPrefix.replace(":", "");
-    json[F("via_device")] = uniqueIdPrefix;
-  }
-  serializeJson(json, device); // serialize to device String
 
   // ----- Stove Entities -----
 
