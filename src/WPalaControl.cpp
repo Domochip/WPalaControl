@@ -2851,7 +2851,7 @@ bool WPalaControl::appInit(bool reInit)
   _publishTicker.attach(_ha.uploadPeriod, [this]()
                         { this->_needPublish = true; });
 #else
-  _publishTicker.attach<typeof this>(_ha.uploadPeriod, [](typeof this palaControl)
+  _publishTicker.attach<WPalaControl *>(_ha.uploadPeriod, [](WPalaControl * palaControl)
                                      { palaControl->_needPublish = true; }, this);
 #endif
 
@@ -2863,7 +2863,7 @@ bool WPalaControl::appInit(bool reInit)
   _publishUpdateTicker.attach(86400, [this]()
                               { this->_needPublishUpdate = true; });
 #else
-  _publishUpdateTicker.attach<typeof this>(86400, [](typeof this palaSensor)
+  _publishUpdateTicker.attach<WPalaControl *>(86400, [](WPalaControl * palaSensor)
                                            { palaSensor->_needPublishUpdate = true; }, this);
 #endif
 
