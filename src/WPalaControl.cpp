@@ -242,7 +242,7 @@ String WPalaControl::prepareHassDiscoveryTopic(const String &type, const String 
   return topic;
 }
 
-bool WPalaControl::mqttPublishHassDiscoveryGateway()
+bool WPalaControl::mqttPublishHassGateway()
 {
   // variables
   JsonDocument json;
@@ -320,7 +320,26 @@ String WPalaControl::buildStoveDeviceString(const String &uniqueIdPrefixStove, u
   return device;
 }
 
-bool WPalaControl::mqttPublishHassDiscoveryStove()
+void WPalaControl::mqttPublishHassStoveConnectivity(const HassDiscoveryStoveContext &ctx)
+{
+  String uniqueId = ctx.uniqueIdPrefixStove + F("_Connectivity");
+  String topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
+  JsonDocument json;
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
+                          "\"device_class\":\"connectivity\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"object_id\":\"stove_connectivity\","
+                          "\"state_topic\":\"~/connected\","
+                          "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("device")] = serialized(ctx.device);
+  json[F("unique_id")] = uniqueId;
+  _mqttMan.publish(topic.c_str(), json, true);
+}
+
+bool WPalaControl::mqttHassDiscoveryStove()
 {
   // ---------- Get Stove Device data ----------
 
@@ -374,7 +393,7 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
   String device = buildStoveDeviceString(uniqueIdPrefixStove, MOD, VER, FWDATE);
 
   // prepare context used by entity building functions
-  HassDiscoveryStoveContext context = {
+  HassDiscoveryStoveContext stoveContext = {
       .device = device,
       .uniqueIdPrefixStove = uniqueIdPrefixStove,
       .availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}"),
@@ -395,6 +414,9 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
       .isHydroType = isHydroType,
       .hasFanAuto = hasFanAuto};
 
+  // publish Stove entities
+  mqttPublishHassStoveConnectivity(stoveContext);
+
   JsonDocument json;
   String uniqueId;
   String topic;
@@ -412,29 +434,7 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
 
   // ----- Stove Entities -----
 
-  //
-  // Connectivity entity
-  //
-
-  uniqueId = uniqueIdPrefixStove + F("_Connectivity");
-
-  topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
-
-  // prepare payload for Stove connectivity sensor
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
-                          "\"device_class\":\"connectivity\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"object_id\":\"stove_connectivity\","
-                          "\"state_topic\":\"~/connected\","
-                          "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("device")] = serialized(device);
-  json[F("unique_id")] = uniqueId;
-
-  // publish
-  _mqttMan.publish(topic.c_str(), json, true);
+  mqttPublishHassStoveConnectivity(stoveContext);
 
   //
   // Status entity
@@ -1171,7 +1171,7 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
   return true;
 }
 
-bool WPalaControl::mqttPublishHassDiscovery()
+bool WPalaControl::mqttHassDiscovery()
 {
   if (!_mqttMan.connected())
     return false;
@@ -1179,14 +1179,14 @@ bool WPalaControl::mqttPublishHassDiscovery()
   LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
 
   // publish this module entities
-  if (!mqttPublishHassDiscoveryGateway())
+  if (!mqttPublishHassGateway())
     return false;
 
   if (!_Pala.isInitialized())
     return true;
 
   // publish stove entities
-  return mqttPublishHassDiscoveryStove();
+  return mqttHassDiscoveryStove();
 }
 
 bool WPalaControl::mqttPublishUpdate()
@@ -3136,7 +3136,7 @@ void WPalaControl::appRun()
     _mqttMan.loop();
 
     // if Home Assistant discovery enabled and publish is needed (and publish is successful)
-    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery && mqttPublishHassDiscovery())
+    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery && mqttHassDiscovery())
     {
       _needPublishHassDiscovery = false;
       _needPublish = true; // force publishTick after discovery

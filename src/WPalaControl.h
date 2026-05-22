@@ -124,10 +124,11 @@ private:
   };
 
   String prepareHassDiscoveryTopic(const String &type, const String &uniqueId);
-  bool mqttPublishHassDiscoveryGateway();
+  bool mqttPublishHassGateway();
   String buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE);
-  bool mqttPublishHassDiscoveryStove();
-  bool mqttPublishHassDiscovery();
+  void mqttPublishHassStoveConnectivity(const HassDiscoveryStoveContext &ctx);
+  bool mqttHassDiscoveryStove();
+  bool mqttHassDiscovery();
 
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
