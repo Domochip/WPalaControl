@@ -242,17 +242,12 @@ String WPalaControl::prepareHassDiscoveryTopic(const String &type, const String 
   return topic;
 }
 
-bool WPalaControl::mqttPublishHassDiscovery()
+bool WPalaControl::mqttPublishHassDiscoveryGateway()
 {
-  if (!_mqttMan.connected())
-    return false;
-
-  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
-
   // variables
   JsonDocument json;
   String device;
-  String uniqueIdPrefix, uniqueIdPrefixStove;
+  String uniqueIdPrefix;
   String uniqueId;
   String topic;
 
@@ -300,8 +295,19 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   _mqttMan.publish(topic.c_str(), json, true);
 
-  // clean device JSON before switching to Stove entities
-  device = "";
+  return true;
+}
+
+bool WPalaControl::mqttPublishHassDiscovery()
+{
+  if (!_mqttMan.connected())
+    return false;
+
+  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
+
+  // publish entities for this module
+  if (!mqttPublishHassDiscoveryGateway())
+    return false;
 
   // ---------- Get Stove Device data ----------
 
@@ -350,6 +356,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // ---------- Usefull variables for entities building ----------
 
+  JsonDocument json;
+  String device;
+  String uniqueIdPrefixStove;
+  String uniqueId;
+  String topic;
+
   const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
   const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
   const __FlashStringHelper *tempProbeTopicListArray[][3] = {
@@ -375,7 +387,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("identifiers")][0] = uniqueIdPrefixStove;
   json[F("model")] = String(MOD);
   json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
-  json[F("via_device")] = uniqueIdPrefix;
+  {
+    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+    uniqueIdPrefix += WiFi.macAddress();
+    uniqueIdPrefix.replace(":", "");
+    json[F("via_device")] = uniqueIdPrefix;
+  }
   serializeJson(json, device); // serialize to device String
 
   // ----- Stove Entities -----
