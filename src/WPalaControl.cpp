@@ -63,9 +63,9 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 
   switch (_ha.mqtt.type) // switch on MQTT type
   {
-  case HA_MQTT_GENERIC:
-  case HA_MQTT_GENERIC_JSON:
-  case HA_MQTT_GENERIC_CATEGORIZED:
+  case HaMqttType::Generic:
+  case HaMqttType::GenericJson:
+  case HaMqttType::GenericCategorized:
     cmdTopic += F("/cmd");
     break;
   }
@@ -96,9 +96,9 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
 
   switch (_ha.mqtt.type) // switch on MQTT type
   {
-  case HA_MQTT_GENERIC:
-  case HA_MQTT_GENERIC_JSON:
-  case HA_MQTT_GENERIC_CATEGORIZED:
+  case HaMqttType::Generic:
+  case HaMqttType::GenericJson:
+  case HaMqttType::GenericCategorized:
     cmdTopic += F("/cmd");
     break;
   }
@@ -191,7 +191,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
 
   char topicBuf[sizeof(_preparedMqttBaseTopic) + sizeof("/TIME/STOVE_DATETIME")]; // longest possible topic
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC)
+  if (_ha.mqtt.type == HaMqttType::Generic)
   {
     for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
     {
@@ -204,7 +204,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
     }
   }
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
   {
     // prepare topic
     snprintf(topicBuf, sizeof(topicBuf), "%s/%s", baseTopic.c_str(), palaCategory.c_str());
@@ -212,7 +212,7 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
     res = _mqttMan.publish(topicBuf, jsonDoc["DATA"]);
   }
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::GenericCategorized)
   {
     int prefixLen = snprintf(topicBuf, sizeof(topicBuf), "%s/%s/", baseTopic.c_str(), palaCategory.c_str());
     for (JsonPairConst kv : jsonDoc["DATA"].as<JsonObjectConst>())
@@ -423,7 +423,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ value_json.STATUS }}");
 
   // publish
@@ -449,9 +449,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value }}{% endif %}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value_json.STATUS }}{% endif %}");
 
   // publish
@@ -488,14 +488,14 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "}"));
   json[F("~")] = _preparedMqttBaseTopic;
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
 
   json[F("action_topic")] = statusTopicList[_ha.mqtt.type];
   json[F("availability")] = serialized(availabilityJSON);
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
   json[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
   json[F("device")] = serialized(device);
@@ -505,9 +505,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     json[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
     json[F("fan_mode_command_topic")] = F("~/cmd");
-    if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
     json[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
 
@@ -518,15 +518,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("max_temp")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMAX : SPLMIN + 2 * (19 - SPLMIN);
   json[F("min_temp")] = SPLMIN;
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
 
   json[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
   // modes already in deserialized JSON
 
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("temperature_state_template")] = F("{{ value_json.SETP }}");
   json[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
@@ -559,14 +559,14 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("availability")] = serialized(availabilityJSON);
     json[F("device")] = serialized(device);
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC)
+    if (_ha.mqtt.type == HaMqttType::Generic)
       json[F("state_topic")] = F("~/T1");
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
     {
       json[F("state_topic")] = F("~/TMPS");
       json[F("value_template")] = F("{{ value_json.T1 }}");
     }
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    else if (_ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("state_topic")] = F("~/TMPS/T1");
 
     // publish
@@ -621,7 +621,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
 
   // publish
@@ -651,7 +651,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = tempProbeTopicListArray[2][_ha.mqtt.type];
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ value_json.T3 }}");
 
   // publish
@@ -682,7 +682,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ value_json.PQT }}");
 
   // publish
@@ -712,9 +712,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("state_topic")] = serviceTimeTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ value.split(':')[0] }}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
 
   // publish
@@ -743,7 +743,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("state_topic")] = feederTopicList[_ha.mqtt.type];
   json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ value_json.FDR }}");
 
   // publish
@@ -775,9 +775,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ (iif(int(value_json.DP_TARGET) > 0x7FFF, int(value_json.DP_TARGET) - 0x10000, int(value_json.DP_TARGET)) * 1000 /60) | round }}");
 
   // publish
@@ -809,9 +809,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("device")] = serialized(device);
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = dpTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("value_template")] = F("{{ (iif(int(value_json.DP_PRESS) > 0x7FFF, int(value_json.DP_PRESS) - 0x10000, int(value_json.DP_PRESS)) * 1000 / 60) | round }}");
 
   // publish
@@ -844,9 +844,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("device")] = serialized(device);
     json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("value_template")] = F("{{ iif(int(value) > 1 and int(value) != 10, 'ON', 'OFF') }}");
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
 
     // publish
@@ -881,7 +881,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("max")] = SPLMAX;
     json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ value_json.SETP }}");
 
     // publish
@@ -917,7 +917,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("device")] = serialized(device);
     json[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ value_json.PWR }}");
 
     // publish
@@ -958,15 +958,15 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     JsonObject availability_1 = availability.add<JsonObject>();
     availability_1["topic"] = f2lTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
       availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
 
     json[F("device")] = serialized(device);
     json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ value_json.F2L }}");
 
     // publish
@@ -1000,9 +1000,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("device")] = serialized(device);
     json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC || _ha.mqtt.type == HA_MQTT_GENERIC_CATEGORIZED)
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("value_template")] = F("{{ iif(int(value) == 7, 'ON', 'OFF') }}");
-    else if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
 
     // publish
@@ -1034,7 +1034,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("device")] = serialized(device);
     json[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ value_json.F3L }}");
 
     // add entity type specific configuration
@@ -1084,7 +1084,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("device")] = serialized(device);
     json[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
-    if (_ha.mqtt.type == HA_MQTT_GENERIC_JSON)
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("value_template")] = F("{{ value_json.F4L }}");
 
     // add entity type specific configuration
@@ -1376,7 +1376,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   {
 
     // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
-    if (_ha.protocol == HA_PROTO_MQTT)
+    if (_ha.protocol == HaProtocol::Mqtt)
       mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
 
     // if communication with stove was successful
@@ -1391,7 +1391,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
       {
         _eventSourceMan.eventSourceBroadcast(data);
 
-        if (_ha.protocol == HA_PROTO_MQTT && _haSendResult)
+        if (_ha.protocol == HaProtocol::Mqtt && _haSendResult)
           _haSendResult &= mqttPublishData(_preparedMqttBaseTopic, palaCategory, jsonDoc);
       }
     }
@@ -2554,7 +2554,7 @@ void WPalaControl::publishTick()
   LOG_SERIAL_PRINTLN(F("PublishTick"));
 
   // if MQTT protocol is enabled and connected then publish Core, Wifi and WPalaControl status
-  if (_ha.protocol == HA_PROTO_MQTT && _mqttMan.connected())
+  if (_ha.protocol == HaProtocol::Mqtt && _mqttMan.connected())
   {
     JsonDocument json;
     _applicationList[CoreApp]->fillStatusJSON(json[getAppIdName(CoreApp)].to<JsonObject>());
@@ -2623,13 +2623,13 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 // Used to initialize configuration properties to default values
 void WPalaControl::setConfigDefaultValues()
 {
-  _hwDetection = HW_AUTODETECT;
+  _hwDetection = HwDetection::AutoDetect;
 
-  _ha.protocol = HA_PROTO_DISABLED;
+  _ha.protocol = HaProtocol::Disabled;
   _ha.hostname[0] = 0;
   _ha.uploadPeriod = 60;
 
-  _ha.mqtt.type = HA_MQTT_GENERIC_JSON;
+  _ha.mqtt.type = HaMqttType::GenericJson;
   _ha.mqtt.port = 1883;
   _ha.mqtt.username[0] = 0;
   _ha.mqtt.password[0] = 0;
@@ -2646,14 +2646,14 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
 
   // parse hardware detection mode
   if ((jv = json[F("hwdetection")]).is<JsonVariant>())
-    _hwDetection = jv;
+    _hwDetection = static_cast<HwDetection>(jv.as<byte>());
 
   // Parse HA protocol
   if ((jv = json[F("haproto")]).is<JsonVariant>())
-    _ha.protocol = jv;
+    _ha.protocol = static_cast<HaProtocol>(jv.as<byte>());
 
   // if an home Automation protocol has been selected then get common param
-  if (_ha.protocol != HA_PROTO_DISABLED)
+  if (_ha.protocol != HaProtocol::Disabled)
   {
     if ((jv = json[F("hahost")]).is<const char *>())
       strlcpy(_ha.hostname, jv, sizeof(_ha.hostname));
@@ -2664,11 +2664,13 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
   // Now get specific param
   switch (_ha.protocol)
   {
+  case HaProtocol::Disabled:
+    break;
 
-  case HA_PROTO_MQTT:
+  case HaProtocol::Mqtt:
 
     if ((jv = json[F("hamtype")]).is<JsonVariant>())
-      _ha.mqtt.type = jv;
+      _ha.mqtt.type = static_cast<HaMqttType>(jv.as<byte>());
     if ((jv = json[F("hamport")]).is<JsonVariant>())
       _ha.mqtt.port = jv;
     if ((jv = json[F("hamu")]).is<const char *>())
@@ -2683,14 +2685,14 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage = false)
 
     switch (_ha.mqtt.type)
     {
-    case HA_MQTT_GENERIC:
-    case HA_MQTT_GENERIC_JSON:
-    case HA_MQTT_GENERIC_CATEGORIZED:
+    case HaMqttType::Generic:
+    case HaMqttType::GenericJson:
+    case HaMqttType::GenericCategorized:
       if ((jv = json[F("hamgbt")]).is<const char *>())
         strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
 
       if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
-        _ha.protocol = HA_PROTO_DISABLED;
+        _ha.protocol = HaProtocol::Disabled;
       break;
     }
 
@@ -2716,7 +2718,7 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile = false)
   json[F("haupperiod")] = _ha.uploadPeriod;
 
   // if for WebPage or protocol selected is MQTT
-  if (!forSaveFile || _ha.protocol == HA_PROTO_MQTT)
+  if (!forSaveFile || _ha.protocol == HaProtocol::Mqtt)
   {
     json[F("hamtype")] = _ha.mqtt.type;
     json[F("hamport")] = _ha.mqtt.port;
@@ -2737,17 +2739,17 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile = false)
 // Generate JSON of application status
 void WPalaControl::fillStatusJSON(JsonVariant json)
 {
-  json[F("hwversion")] = _detectedHwVersion == HW_V1 ? F("V1.x") : (_detectedHwVersion == HW_V2 ? F("V2.x") : F("Unknown"));
-  json[F("hwdetection")] = _hwDetection == HW_AUTODETECT ? F(" (Auto-Detected)") : F(" (Forced)");
+  json[F("hwversion")] = _detectedHwVersion == HwVersion::V1 ? F("V1.x") : (_detectedHwVersion == HwVersion::V2 ? F("V2.x") : F("Unknown"));
+  json[F("hwdetection")] = _hwDetection == HwDetection::AutoDetect ? F(" (Auto-Detected)") : F(" (Forced)");
 
   // Home Automation protocol
-  if (_ha.protocol == HA_PROTO_MQTT)
+  if (_ha.protocol == HaProtocol::Mqtt)
     json[F("haprotocol")] = F("MQTT");
   else
     json[F("haprotocol")] = F("Disabled");
 
   // Home automation connection status
-  if (_ha.protocol == HA_PROTO_MQTT)
+  if (_ha.protocol == HaProtocol::Mqtt)
   {
     json[F("hamqttstatus")] = _mqttMan.getStateString();
 
@@ -2770,7 +2772,7 @@ bool WPalaControl::appInit(bool reInit)
   _mqttMan.disconnect();
 
   // if MQTT used so configure it
-  if (_ha.protocol == HA_PROTO_MQTT)
+  if (_ha.protocol == HaProtocol::Mqtt)
   {
     // prepare base topic
     MQTTMan::prepareTopic(_ha.mqtt.generic.baseTopic, _preparedMqttBaseTopic, sizeof(_preparedMqttBaseTopic));
@@ -2800,22 +2802,22 @@ bool WPalaControl::appInit(bool reInit)
   uint8_t hwDetectPin = 22;
 #endif
 
-  if (_hwDetection == HW_AUTODETECT)
+  if (_hwDetection == HwDetection::AutoDetect)
   {
     pinMode(hwDetectPin, INPUT_PULLUP);
     delay(2);
 
     if (digitalRead(hwDetectPin) == HIGH)
-      _detectedHwVersion = HW_V1;
+      _detectedHwVersion = HwVersion::V1;
     else
-      _detectedHwVersion = HW_V2;
+      _detectedHwVersion = HwVersion::V2;
   }
-  else if (_hwDetection == HW_FORCED_V1)
-    _detectedHwVersion = HW_V1;
+  else if (_hwDetection == HwDetection::ForcedV1)
+    _detectedHwVersion = HwVersion::V1;
   else
-    _detectedHwVersion = HW_V2;
+    _detectedHwVersion = HwVersion::V2;
 
-  if (_detectedHwVersion == HW_V1)
+  if (_detectedHwVersion == HwVersion::V1)
     LOG_SERIAL_PRINT(F("HW1..."));
   else
     LOG_SERIAL_PRINT(F("HW2..."));
@@ -2830,7 +2832,7 @@ bool WPalaControl::appInit(bool reInit)
       std::bind(&WPalaControl::myDrainSerial, this),
       std::bind(&WPalaControl::myFlushSerial, this),
       std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1),
-      _detectedHwVersion == HW_V1);
+      _detectedHwVersion == HwVersion::V1);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
@@ -3078,7 +3080,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
 // Run for timer
 void WPalaControl::appRun()
 {
-  if (_ha.protocol == HA_PROTO_MQTT)
+  if (_ha.protocol == HaProtocol::Mqtt)
   {
     _mqttMan.loop();
 

@@ -18,13 +18,14 @@ const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 class WPalaControl : public Application
 {
 private:
-#define HA_MQTT_GENERIC 0
-#define HA_MQTT_GENERIC_JSON 1
-#define HA_MQTT_GENERIC_CATEGORIZED 2
+  enum HaMqttType : byte { Generic = 0, GenericJson = 1, GenericCategorized = 2 };
+  enum HaProtocol : byte { Disabled = 0, Mqtt = 1 };
+  enum HwDetection : byte { AutoDetect = 0, ForcedV1 = 1, ForcedV2 = 2 };
+  enum HwVersion : byte { Unknown = 0, V1 = 1, V2 = 2 };
 
   typedef struct
   {
-    byte type = HA_MQTT_GENERIC_JSON;
+    HaMqttType type = HaMqttType::GenericJson;
     uint32_t port = 1883;
     char username[32 + 1] = {0};
     char password[64 + 1] = {0};
@@ -36,26 +37,16 @@ private:
     char hassDiscoveryPrefix[32 + 1] = {0};
   } MQTT;
 
-#define HA_PROTO_DISABLED 0
-#define HA_PROTO_MQTT 1
-
   typedef struct
   {
-    byte protocol = HA_PROTO_DISABLED;
+    HaProtocol protocol = HaProtocol::Disabled;
     char hostname[64 + 1] = {0};
     uint16_t uploadPeriod = 60;
     MQTT mqtt;
   } HomeAutomation;
 
-#define HW_AUTODETECT 0
-#define HW_FORCED_V1 1
-#define HW_FORCED_V2 2
-  byte _hwDetection = 0;
-
-#define HW_UNKNOWN 0
-#define HW_V1 1
-#define HW_V2 2
-  byte _detectedHwVersion = 0;
+  HwDetection _hwDetection = HwDetection::AutoDetect;
+  HwVersion _detectedHwVersion = HwVersion::Unknown;
 
   HomeAutomation _ha;
   int _haSendResult = 0;
