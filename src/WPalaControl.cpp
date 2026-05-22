@@ -339,6 +339,28 @@ void WPalaControl::mqttPublishHassStoveConnectivity(const HassDiscoveryStoveCont
   _mqttMan.publish(topic.c_str(), json, true);
 }
 
+void WPalaControl::mqttPublishHassStoveStatus(const HassDiscoveryStoveContext &ctx)
+{
+  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
+  String uniqueId = ctx.uniqueIdPrefixStove + F("_STATUS");
+  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+  JsonDocument json;
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_status\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"Status\","
+                          "\"object_id\":\"stove_status\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(ctx.availabilityJSON);
+  json[F("device")] = serialized(ctx.device);
+  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.STATUS }}");
+  _mqttMan.publish(topic.c_str(), json, true);
+}
+
 bool WPalaControl::mqttHassDiscoveryStove()
 {
   // ---------- Get Stove Device data ----------
@@ -435,32 +457,7 @@ bool WPalaControl::mqttHassDiscoveryStove()
   // ----- Stove Entities -----
 
   mqttPublishHassStoveConnectivity(stoveContext);
-
-  //
-  // Status entity
-  //
-
-  uniqueId = uniqueIdPrefixStove + F("_STATUS");
-
-  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  // prepare payload for Stove status sensor
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_status\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"name\":\"Status\","
-                          "\"object_id\":\"stove_status\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(availabilityJSON);
-  json[F("device")] = serialized(device);
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.STATUS }}");
-
-  // publish
-  _mqttMan.publish(topic.c_str(), json, true);
+  mqttPublishHassStoveStatus(stoveContext);
 
   //
   // Status Text entity

@@ -127,6 +127,7 @@ private:
   bool mqttPublishHassGateway();
   String buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE);
   void mqttPublishHassStoveConnectivity(const HassDiscoveryStoveContext &ctx);
+  void mqttPublishHassStoveStatus(const HassDiscoveryStoveContext &ctx);
   bool mqttHassDiscoveryStove();
   bool mqttHassDiscovery();
 
