@@ -18,10 +18,29 @@ const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 class WPalaControl : public Application
 {
 private:
-  enum HaMqttType : byte { Generic = 0, GenericJson = 1, GenericCategorized = 2 };
-  enum HaProtocol : byte { Disabled = 0, Mqtt = 1 };
-  enum HwDetection : byte { AutoDetect = 0, ForcedV1 = 1, ForcedV2 = 2 };
-  enum HwVersion : byte { Unknown = 0, V1 = 1, V2 = 2 };
+  enum HaMqttType : byte
+  {
+    Generic = 0,
+    GenericJson = 1,
+    GenericCategorized = 2
+  };
+  enum HaProtocol : byte
+  {
+    Disabled = 0,
+    Mqtt = 1
+  };
+  enum HwDetection : byte
+  {
+    AutoDetect = 0,
+    ForcedV1 = 1,
+    ForcedV2 = 2
+  };
+  enum HwVersion : byte
+  {
+    Unknown = 0,
+    V1 = 1,
+    V2 = 2
+  };
 
   typedef struct
   {
