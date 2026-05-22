@@ -229,26 +229,25 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
   return res;
 }
 
+String WPalaControl::prepareHassDiscoveryTopic(const String &type, const String &uniqueId)
+{
+  String topic;
+  topic.reserve(strlen(_ha.mqtt.hassDiscoveryPrefix) + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
+  topic += _ha.mqtt.hassDiscoveryPrefix;
+  topic += F("/");
+  topic += type;
+  topic += F("/");
+  topic += uniqueId;
+  topic += F("/config");
+  return topic;
+}
+
 bool WPalaControl::mqttPublishHassDiscovery()
 {
   if (!_mqttMan.connected())
     return false;
 
   LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
-
-  // Helper lambda to prepare entity topic
-  auto prepareHassDiscoveryTopic = [&](const String &type, const String &uniqueId)
-  {
-    String topic;
-    topic.reserve(strlen(_ha.mqtt.hassDiscoveryPrefix) + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
-    topic += _ha.mqtt.hassDiscoveryPrefix;
-    topic += F("/");
-    topic += type;
-    topic += F("/");
-    topic += uniqueId;
-    topic += F("/config");
-    return topic;
-  };
 
   // variables
   JsonDocument json;
