@@ -2477,9 +2477,9 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
     else if (cmdParams[1] < 1 || cmdParams[1] > 12)
       info["MSG"] = F("Incorrect Month");
     else if ((cmdParams[2] < 1 || cmdParams[2] > 31) ||
-             ((cmdParams[2] == 4 || cmdParams[2] == 6 || cmdParams[2] == 9 || cmdParams[2] == 11) && cmdParams[3] > 30) ||                        // 30 days month control
-             (cmdParams[2] == 2 && cmdParams[3] > 29) ||                                                                                          // February leap year control
-             (cmdParams[2] == 2 && cmdParams[3] == 29 && !(((cmdParams[0] % 4 == 0) && (cmdParams[0] % 100 != 0)) || (cmdParams[0] % 400 == 0)))) // February not leap year control
+             ((cmdParams[1] == 4 || cmdParams[1] == 6 || cmdParams[1] == 9 || cmdParams[1] == 11) && cmdParams[2] > 30) ||                        // 30 days month control
+             (cmdParams[1] == 2 && cmdParams[2] > 29) ||                                                                                          // February leap year control
+             (cmdParams[1] == 2 && cmdParams[2] == 29 && !(((cmdParams[0] % 4 == 0) && (cmdParams[0] % 100 != 0)) || (cmdParams[0] % 400 == 0)))) // February not leap year control
       info["MSG"] = F("Incorrect Day");
     else if (cmdParams[3] > 23)
       info["MSG"] = F("Incorrect Hour");
