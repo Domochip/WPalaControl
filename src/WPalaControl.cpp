@@ -1050,19 +1050,19 @@ bool WPalaControl::mqttHassDiscoveryStove()
 
   // prepare context used by entity building functions
   HassDiscoveryStoveContext stoveContext = {
-      //useful variables/values
+      // useful variables/values
       .device = device,
       .uniqueIdPrefixStove = uniqueIdPrefixStove,
       .availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}"),
 
-      //static data
+      // static data
       .SPLMIN = SPLMIN,
       .SPLMAX = SPLMAX,
       .UICONFIG = UICONFIG,
       .MAINTPROBE = MAINTPROBE,
       .FANLMINMAX = FANLMINMAX,
 
-      //calculated flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
+      // calculated flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
       .hasSetPoint = (SETP != 0),
       .hasPower = (STOVETYPE != 8),
       .hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8),
