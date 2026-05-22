@@ -35,7 +35,7 @@ int WPalaControl::mySelectSerial(unsigned long timeout)
 {
   size_t avail;
   unsigned long startmillis = millis();
-  while ((avail = PALA_SERIAL.available()) == 0 && (startmillis + timeout) > millis())
+  while ((avail = PALA_SERIAL.available()) == 0 && (millis() - startmillis) < timeout)
     ;
 
   return avail;
