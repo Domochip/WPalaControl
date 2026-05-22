@@ -298,21 +298,9 @@ bool WPalaControl::mqttPublishHassDiscoveryGateway()
   return true;
 }
 
-bool WPalaControl::mqttPublishHassDiscovery()
+bool WPalaControl::mqttPublishHassDiscoveryStove()
 {
-  if (!_mqttMan.connected())
-    return false;
-
-  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
-
-  // publish entities for this module
-  if (!mqttPublishHassDiscoveryGateway())
-    return false;
-
   // ---------- Get Stove Device data ----------
-
-  if (!_Pala.isInitialized())
-    return true;
 
   // read static data from stove
   char SN[28];
@@ -1154,6 +1142,24 @@ bool WPalaControl::mqttPublishHassDiscovery()
   _mqttMan.publish(topic.c_str(), json, true);
 
   return true;
+}
+
+bool WPalaControl::mqttPublishHassDiscovery()
+{
+  if (!_mqttMan.connected())
+    return false;
+
+  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
+
+  // publish this module entities
+  if (!mqttPublishHassDiscoveryGateway())
+    return false;
+
+  if (!_Pala.isInitialized())
+    return true;
+
+  // publish stove entities
+  return mqttPublishHassDiscoveryStove();
 }
 
 bool WPalaControl::mqttPublishUpdate()

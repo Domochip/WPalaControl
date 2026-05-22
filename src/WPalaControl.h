@@ -101,6 +101,7 @@ private:
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   String prepareHassDiscoveryTopic(const String &type, const String &uniqueId);
   bool mqttPublishHassDiscoveryGateway();
+  bool mqttPublishHassDiscoveryStove();
   bool mqttPublishHassDiscovery();
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
