@@ -1039,19 +1039,6 @@ bool WPalaControl::mqttHassDiscoveryStove()
   else if (refreshStatus)
     _lastAllStatusRefreshMillis = currentMillis;
 
-  // calculate flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
-  bool hasSetPoint = (SETP != 0);
-  bool hasPower = (STOVETYPE != 8);
-  bool hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8);
-  bool hasRoomFan = (FAN2TYPE > 1);
-  bool hasFan3 = (FAN2TYPE > 3); // Fan order is not the expected one
-  bool ifFan3SwitchEntity = (FANLMINMAX[2] == 0 && FANLMINMAX[3] == 1);
-  bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
-  bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
-  bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
-  bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
-  bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
-
   // ---------- variables for entities building ----------
 
   // prepare unique id prefix for stove entities
@@ -1063,25 +1050,30 @@ bool WPalaControl::mqttHassDiscoveryStove()
 
   // prepare context used by entity building functions
   HassDiscoveryStoveContext stoveContext = {
+      //useful variables/values
       .device = device,
       .uniqueIdPrefixStove = uniqueIdPrefixStove,
       .availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}"),
+
+      //static data
       .SPLMIN = SPLMIN,
       .SPLMAX = SPLMAX,
       .UICONFIG = UICONFIG,
       .MAINTPROBE = MAINTPROBE,
       .FANLMINMAX = FANLMINMAX,
-      .hasSetPoint = hasSetPoint,
-      .hasPower = hasPower,
-      .hasOnOff = hasOnOff,
-      .hasRoomFan = hasRoomFan,
-      .hasFan3 = hasFan3,
-      .ifFan3SwitchEntity = ifFan3SwitchEntity,
-      .hasFan4 = hasFan4,
-      .ifFan4SwitchEntity = ifFan4SwitchEntity,
-      .isAirType = isAirType,
-      .isHydroType = isHydroType,
-      .hasFanAuto = hasFanAuto};
+
+      //calculated flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
+      .hasSetPoint = (SETP != 0),
+      .hasPower = (STOVETYPE != 8),
+      .hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8),
+      .hasRoomFan = (FAN2TYPE > 1),
+      .hasFan3 = (FAN2TYPE > 3), // Fan order is not the expected one
+      .ifFan3SwitchEntity = (FANLMINMAX[2] == 0 && FANLMINMAX[3] == 1),
+      .hasFan4 = (FAN2TYPE > 2), // Fan order is not the expected one
+      .ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1),
+      .isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8),
+      .isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6),
+      .hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3)};
 
   // publish Stove entities
   mqttPublishHassStoveConnectivity(stoveContext);
