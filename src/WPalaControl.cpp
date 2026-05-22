@@ -2975,7 +2975,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.json\""));
         server.setContentLength(measureJson(json));
         server.send(200, F("text/json"), "");
-        serializeJson(json, server.client());
+        { auto client = server.client(); serializeJson(json, client); }
       }
 
       return;
@@ -3034,7 +3034,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.json\""));
         server.setContentLength(measureJson(json));
         server.send(200, F("text/json"), "");
-        serializeJson(json, server.client());
+        { auto client = server.client(); serializeJson(json, client); }
       }
 
       return;
@@ -3049,7 +3049,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
     SERVER_KEEPALIVE_FALSE()
     server.setContentLength(measureJson(json));
     server.send(200, F("text/json"), "");
-    serializeJson(json, server.client()); });
+    { auto client = server.client(); serializeJson(json, client); } });
 
   // Handle HTTP POST requests (Body contains a JSON)
   server.on(
@@ -3070,7 +3070,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         SERVER_KEEPALIVE_FALSE()
         server.setContentLength(measureJson(json));
         server.send(200, F("text/json"), "");
-        serializeJson(json, server.client()); });
+        { auto client = server.client(); serializeJson(json, client); } });
 
   // register EventSource
   _eventSourceMan.initEventSourceServer(getAppIdChar(_appId), server);
