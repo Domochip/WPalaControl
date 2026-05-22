@@ -298,6 +298,28 @@ bool WPalaControl::mqttPublishHassDiscoveryGateway()
   return true;
 }
 
+String WPalaControl::buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE)
+{
+  JsonDocument json;
+  String device;
+
+  deserializeJson(json, F("{"
+                          "\"configuration_url\":\"http://wpalacontrol.local\","
+                          "\"name\":\"Stove\""
+                          "}"));
+  json[F("identifiers")][0] = uniqueIdPrefixStove;
+  json[F("model")] = String(MOD);
+  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
+  {
+    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+    uniqueIdPrefix += WiFi.macAddress();
+    uniqueIdPrefix.replace(":", "");
+    json[F("via_device")] = uniqueIdPrefix; // uniqueIdPrefix of the module
+  }
+  serializeJson(json, device);
+  return device;
+}
+
 bool WPalaControl::mqttPublishHassDiscoveryStove()
 {
   // ---------- Get Stove Device data ----------
@@ -349,23 +371,9 @@ bool WPalaControl::mqttPublishHassDiscoveryStove()
   uniqueIdPrefixStove += SN;
 
   // prepare Stove device JSON
-  JsonDocument json;
-  String device;
-  deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://wpalacontrol.local\","
-                          "\"name\":\"Stove\""
-                          "}"));
-  json[F("identifiers")][0] = uniqueIdPrefixStove;
-  json[F("model")] = String(MOD);
-  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
-  {
-    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-    uniqueIdPrefix += WiFi.macAddress();
-    uniqueIdPrefix.replace(":", "");
-    json[F("via_device")] = uniqueIdPrefix; // uniqueIdPrefix of the module
-  }
-  serializeJson(json, device); // serialize to device String
+  String device = buildStoveDeviceString(uniqueIdPrefixStove, MOD, VER, FWDATE);
 
+  JsonDocument json;
   String uniqueId;
   String topic;
 

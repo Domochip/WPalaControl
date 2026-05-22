@@ -101,6 +101,7 @@ private:
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   String prepareHassDiscoveryTopic(const String &type, const String &uniqueId);
   bool mqttPublishHassDiscoveryGateway();
+  String buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE);
   bool mqttPublishHassDiscoveryStove();
   bool mqttPublishHassDiscovery();
   bool mqttPublishUpdate();
