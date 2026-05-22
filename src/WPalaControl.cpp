@@ -237,11 +237,11 @@ bool WPalaControl::mqttPublishHassDiscovery()
   LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
 
   // Helper lambda to prepare entity topic
-  auto prepareHassDiscoveryTopic = [&](const String &prefix, const String &type, const String &uniqueId)
+  auto prepareHassDiscoveryTopic = [&](const String &type, const String &uniqueId)
   {
     String topic;
-    topic.reserve(prefix.length() + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
-    topic = prefix;
+    topic.reserve(strlen(_ha.mqtt.hassDiscoveryPrefix) + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
+    topic += _ha.mqtt.hassDiscoveryPrefix;
     topic += F("/");
     topic += type;
     topic += F("/");
@@ -284,7 +284,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // prepare uniqueId, topic and payload for connectivity sensor
   uniqueId = uniqueIdPrefix + F("_Connectivity");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
 
   // prepare payload for connectivity sensor
   deserializeJson(json, F("{"
@@ -387,7 +387,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_Connectivity");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("binary_sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
 
   // prepare payload for Stove connectivity sensor
   deserializeJson(json, F("{"
@@ -411,7 +411,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_STATUS");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove status sensor
   deserializeJson(json, F("{"
@@ -437,7 +437,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_STATUS_Text");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove status text sensor
   deserializeJson(json, F("{"
@@ -470,7 +470,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_Thermostat");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("climate"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("climate"), uniqueId);
 
   // prepare payload for Stove thermostat
   deserializeJson(json, F("{"
@@ -545,7 +545,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
     uniqueId = uniqueIdPrefixStove + F("_SupplyWaterTemp");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
     // prepare payload for Stove supply water temperature sensor
     deserializeJson(json, F("{"
@@ -603,7 +603,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   uniqueId = uniqueIdPrefixStove + '_' + tempSensorNameList[tempSensorNameIndex] + F("Temp");
   uniqueId.replace(F(" "), "");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove main temperature sensor
   deserializeJson(json, F("{"
@@ -635,7 +635,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_FlueGasTemp");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove flue gas temperature sensor
   deserializeJson(json, F("{"
@@ -667,7 +667,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_PQT");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove pellet consumption sensor
   deserializeJson(json, F("{"
@@ -698,7 +698,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_ServiceTimeCounter");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove service time counter sensor
   deserializeJson(json, F("{"
@@ -730,7 +730,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_Feeder");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove feeder sensor
   deserializeJson(json, F("{"
@@ -759,7 +759,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_TargetDifferentialPressure");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove target differential pressure sensor
   deserializeJson(json, F("{"
@@ -793,7 +793,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_DifferentialPressure");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("sensor"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
 
   // prepare payload for Stove differential pressure sensor
   deserializeJson(json, F("{"
@@ -827,7 +827,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
     uniqueId = uniqueIdPrefixStove + F("_ON_OFF");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
 
     // prepare payload for Stove onoff switch
     deserializeJson(json, F("{"
@@ -863,7 +863,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
     uniqueId = uniqueIdPrefixStove + F("_SETP");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
 
     // prepare payload for Stove setpoint number
     deserializeJson(json, F("{"
@@ -900,7 +900,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
     uniqueId = uniqueIdPrefixStove + F("_PWR");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
 
     // prepare payload for Stove power number
     deserializeJson(json, F("{"
@@ -934,7 +934,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
     uniqueId = uniqueIdPrefixStove + F("_RFAN");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("number"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
 
     // prepare payload for Stove room fan
     deserializeJson(json, F("{"
@@ -983,7 +983,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   {
     uniqueId = uniqueIdPrefixStove + F("_RFAN_Auto");
 
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("switch"), uniqueId);
+    topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
 
     // prepare payload for Stove room fan auto mode
     deserializeJson(json, F("{"
@@ -1022,7 +1022,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     uniqueId = uniqueIdPrefixStove + F("_FAN3");
 
     // entity type depends on Min and Max value of FAN3
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
+    topic = prepareHassDiscoveryTopic(ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan3 number
     deserializeJson(json, F("{"
@@ -1072,7 +1072,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     uniqueId = uniqueIdPrefixStove + F("_FAN4");
 
     // entity type depends on Min and Max value of FAN4
-    topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
+    topic = prepareHassDiscoveryTopic(ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
 
     // prepare payload for Stove fan4 number
     deserializeJson(json, F("{"
@@ -1117,7 +1117,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   uniqueId = uniqueIdPrefixStove + F("_SET_TIME");
 
-  topic = prepareHassDiscoveryTopic(_ha.mqtt.hassDiscoveryPrefix, F("button"), uniqueId);
+  topic = prepareHassDiscoveryTopic(F("button"), uniqueId);
 
   // prepare payload for Stove set time button
   deserializeJson(json, F("{"
