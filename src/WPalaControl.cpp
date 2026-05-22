@@ -239,7 +239,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Helper lambda to prepare entity topic
   auto prepareHassDiscoveryTopic = [&](const String &prefix, const String &type, const String &uniqueId)
   {
-    String topic = prefix;
+    String topic;
+    topic.reserve(prefix.length() + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
+    topic = prefix;
     topic += F("/");
     topic += type;
     topic += F("/");
@@ -2851,8 +2853,8 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   _publishTicker.attach(_ha.uploadPeriod, [this]()
                         { this->_needPublish = true; });
 #else
-  _publishTicker.attach<WPalaControl *>(_ha.uploadPeriod, [](WPalaControl * palaControl)
-                                     { palaControl->_needPublish = true; }, this);
+  _publishTicker.attach<WPalaControl *>(_ha.uploadPeriod, [](WPalaControl *palaControl)
+                                        { palaControl->_needPublish = true; }, this);
 #endif
 
   // flag to force publish update (init and reinit)
@@ -2863,8 +2865,8 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   _publishUpdateTicker.attach(86400, [this]()
                               { this->_needPublishUpdate = true; });
 #else
-  _publishUpdateTicker.attach<WPalaControl *>(86400, [](WPalaControl * palaSensor)
-                                           { palaSensor->_needPublishUpdate = true; }, this);
+  _publishUpdateTicker.attach<WPalaControl *>(86400, [](WPalaControl *palaSensor)
+                                              { palaSensor->_needPublishUpdate = true; }, this);
 #endif
 
   // Start UDP Server
