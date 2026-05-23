@@ -1270,539 +1270,623 @@ Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetAlls(JsonObject &data)
+{
+  bool refreshStatus = false;
+  unsigned long currentMillis = millis();
+  if ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL) // refresh AllStatus data if it's 15sec old
+    refreshStatus = true;
+
+  int MBTYPE;
+  uint16_t MOD, VER, CORE;
+  char FWDATE[11];
+  char APLTS[20];
+  uint16_t APLWDAY;
+  byte CHRSTATUS;
+  uint16_t STATUS, LSTATUS;
+  bool isMFSTATUSValid;
+  uint16_t MFSTATUS;
+  float SETP;
+  byte PUMP;
+  uint16_t PQT;
+  uint16_t F1V;
+  uint16_t F1RPM;
+  uint16_t F2L;
+  uint16_t F2LF;
+  uint16_t FANLMINMAX[6];
+  uint16_t F2V;
+  bool isF3LF4LValid;
+  uint16_t F3L;
+  uint16_t F4L;
+  byte PWR;
+  float FDR;
+  uint16_t DPT;
+  uint16_t DP;
+  byte IN;
+  byte OUT;
+  float T1, T2, T3, T4, T5;
+  bool isSNValid;
+  char SN[28];
+  Palazzetti::CommandResult cmdSuccess = _Pala.getAllStatus(refreshStatus, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &APLTS, &APLWDAY, &CHRSTATUS, &STATUS, &LSTATUS, &isMFSTATUSValid, &MFSTATUS, &SETP, &PUMP, &PQT, &F1V, &F1RPM, &F2L, &F2LF, &FANLMINMAX, &F2V, &isF3LF4LValid, &F3L, &F4L, &PWR, &FDR, &DPT, &DP, &IN, &OUT, &T1, &T2, &T3, &T4, &T5, &isSNValid, &SN);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    char floatBuf[8];
+    if (refreshStatus)
+      _lastAllStatusRefreshMillis = currentMillis;
+
+    data["MBTYPE"] = MBTYPE;
+    data["MAC"] = WiFi.macAddress();
+    data["MOD"] = MOD;
+    data["VER"] = VER;
+    data["CORE"] = CORE;
+    data["FWDATE"] = FWDATE;
+    data["APLTS"] = APLTS;
+    data["APLWDAY"] = APLWDAY;
+    data["CHRSTATUS"] = CHRSTATUS;
+    data["STATUS"] = STATUS;
+    data["LSTATUS"] = LSTATUS;
+    if (isMFSTATUSValid)
+      data["MFSTATUS"] = MFSTATUS;
+    dtostrf(SETP, 1, 2, floatBuf);
+    data["SETP"] = serialized(floatBuf);
+    data["PUMP"] = PUMP;
+    data["PQT"] = PQT;
+    data["F1V"] = F1V;
+    data["F1RPM"] = F1RPM;
+    data["F2L"] = F2L;
+    data["F2LF"] = F2LF;
+    JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
+    fanlminmax.add(FANLMINMAX[0]);
+    fanlminmax.add(FANLMINMAX[1]);
+    fanlminmax.add(FANLMINMAX[2]);
+    fanlminmax.add(FANLMINMAX[3]);
+    fanlminmax.add(FANLMINMAX[4]);
+    fanlminmax.add(FANLMINMAX[5]);
+    data["F2V"] = F2V;
+    if (isF3LF4LValid)
+    {
+      data["F3L"] = F3L;
+      data["F4L"] = F4L;
+    }
+    data["PWR"] = PWR;
+    dtostrf(FDR, 1, 2, floatBuf);
+    data["FDR"] = serialized(floatBuf);
+    data["DPT"] = DPT;
+    data["DP"] = DP;
+    data["IN"] = IN;
+    data["OUT"] = OUT;
+    dtostrf(T1, 1, 2, floatBuf);
+    data["T1"] = serialized(floatBuf);
+    dtostrf(T2, 1, 2, floatBuf);
+    data["T2"] = serialized(floatBuf);
+    dtostrf(T3, 1, 2, floatBuf);
+    data["T3"] = serialized(floatBuf);
+    dtostrf(T4, 1, 2, floatBuf);
+    data["T4"] = serialized(floatBuf);
+    dtostrf(T5, 1, 2, floatBuf);
+    data["T5"] = serialized(floatBuf);
+
+    data["EFLAGS"] = 0; // new ErrorFlags not implemented
+    if (isSNValid)
+      data["SN"] = SN;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetChrd(JsonObject &data)
+{
+  byte CHRSTATUS;
+  float PCHRSETP[6];
+  byte PSTART[6][2];
+  byte PSTOP[6][2];
+  byte DM[7][3];
+  Palazzetti::CommandResult cmdSuccess = _Pala.getChronoData(&CHRSTATUS, &PCHRSETP, &PSTART, &PSTOP, &DM);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    char floatBuf[8];
+    data["CHRSTATUS"] = CHRSTATUS;
+
+    // Add Programs (P1->P6)
+    char programName[3] = {'P', 'X', 0};
+    char time[6] = {'0', '0', ':', '0', '0', 0};
+    for (byte i = 0; i < 6; i++)
+    {
+      programName[1] = i + '1';
+      JsonObject px = data[programName].to<JsonObject>();
+      dtostrf(PCHRSETP[i], 1, 2, floatBuf);
+      px["CHRSETP"] = serialized(floatBuf);
+      time[0] = PSTART[i][0] / 10 + '0';
+      time[1] = PSTART[i][0] % 10 + '0';
+      time[3] = PSTART[i][1] / 10 + '0';
+      time[4] = PSTART[i][1] % 10 + '0';
+      px["START"] = time;
+      time[0] = PSTOP[i][0] / 10 + '0';
+      time[1] = PSTOP[i][0] % 10 + '0';
+      time[3] = PSTOP[i][1] / 10 + '0';
+      time[4] = PSTOP[i][1] % 10 + '0';
+      px["STOP"] = time;
+    }
+
+    // Add Days (D1->D7)
+    char dayName[3] = {'D', 'X', 0};
+    char memoryName[3] = {'M', 'X', 0};
+    for (byte dayNumber = 0; dayNumber < 7; dayNumber++)
+    {
+      dayName[1] = dayNumber + '1';
+      JsonObject dx = data[dayName].to<JsonObject>();
+      for (byte memoryNumber = 0; memoryNumber < 3; memoryNumber++)
+      {
+        memoryName[1] = memoryNumber + '1';
+        if (DM[dayNumber][memoryNumber])
+        {
+          programName[1] = DM[dayNumber][memoryNumber] + '0';
+          dx[memoryName] = programName;
+        }
+        else
+          dx[memoryName] = F("OFF");
+      }
+    }
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetCntr(JsonObject &data)
+{
+  uint16_t IGN, POWERTIMEh, POWERTIMEm, HEATTIMEh, HEATTIMEm, SERVICETIMEh, SERVICETIMEm, ONTIMEh, ONTIMEm, OVERTMPERRORS, IGNERRORS, PQT;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getCounters(&IGN, &POWERTIMEh, &POWERTIMEm, &HEATTIMEh, &HEATTIMEm, &SERVICETIMEh, &SERVICETIMEm, &ONTIMEh, &ONTIMEm, &OVERTMPERRORS, &IGNERRORS, &PQT);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    char timeBuf[16];
+    data["IGN"] = IGN;
+    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", POWERTIMEh, POWERTIMEm);
+    data["POWERTIME"] = timeBuf;
+    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", HEATTIMEh, HEATTIMEm);
+    data["HEATTIME"] = timeBuf;
+    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", SERVICETIMEh, SERVICETIMEm);
+    data["SERVICETIME"] = timeBuf;
+    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", ONTIMEh, ONTIMEm);
+    data["ONTIME"] = timeBuf;
+    data["OVERTMPERRORS"] = OVERTMPERRORS;
+    data["IGNERRORS"] = IGNERRORS;
+    data["PQT"] = PQT;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetDprs(JsonObject &data)
+{
+  uint16_t DP_TARGET, DP_PRESS;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getDPressData(&DP_TARGET, &DP_PRESS);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["DP_TARGET"] = DP_TARGET;
+    data["DP_PRESS"] = DP_PRESS;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetFand(JsonObject &data)
+{
+  uint16_t F1V, F2V, F1RPM, F2L, F2LF;
+  bool isF3SF4SValid;
+  float F3S, F4S;
+  bool isF3LF4LValid;
+  uint16_t F3L, F4L;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getFanData(&F1V, &F2V, &F1RPM, &F2L, &F2LF, &isF3SF4SValid, &F3S, &F4S, &isF3LF4LValid, &F3L, &F4L);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    char floatBuf[8];
+    data["F1V"] = F1V;
+    data["F2V"] = F2V;
+    data["F1RPM"] = F1RPM;
+    data["F2L"] = F2L;
+    data["F2LF"] = F2LF;
+    if (isF3SF4SValid)
+    {
+      dtostrf(F3S, 1, 2, floatBuf);
+      data["F3S"] = serialized(floatBuf);
+      dtostrf(F4S, 1, 2, floatBuf);
+      data["F4S"] = serialized(floatBuf);
+    }
+    if (isF3LF4LValid)
+    {
+      data["F3L"] = F3L;
+      data["F4L"] = F4L;
+    }
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetHpar(JsonObject &data, uint16_t hparAddress)
+{
+  uint16_t hiddenParamValue;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getHiddenParameter(hparAddress, &hiddenParamValue);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    String hiddenParamName("HPAR");
+    hiddenParamName += hparAddress;
+    data[hiddenParamName] = hiddenParamValue;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetIopt(JsonObject &data)
+{
+  byte IN_I01, IN_I02, IN_I03, IN_I04;
+  byte OUT_O01, OUT_O02, OUT_O03, OUT_O04, OUT_O05, OUT_O06, OUT_O07;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getIO(&IN_I01, &IN_I02, &IN_I03, &IN_I04, &OUT_O01, &OUT_O02, &OUT_O03, &OUT_O04, &OUT_O05, &OUT_O06, &OUT_O07);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["IN_I01"] = IN_I01;
+    data["IN_I02"] = IN_I02;
+    data["IN_I03"] = IN_I03;
+    data["IN_I04"] = IN_I04;
+    data["OUT_O01"] = OUT_O01;
+    data["OUT_O02"] = OUT_O02;
+    data["OUT_O03"] = OUT_O03;
+    data["OUT_O04"] = OUT_O04;
+    data["OUT_O05"] = OUT_O05;
+    data["OUT_O06"] = OUT_O06;
+    data["OUT_O07"] = OUT_O07;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetLabl(JsonObject &data)
+{
+  data["LABEL"] = WiFi.getHostname();
+  return Palazzetti::CommandResult::OK;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetMdve(JsonObject &data)
+{
+  uint16_t MOD, VER, CORE;
+  char FWDATE[11];
+  Palazzetti::CommandResult cmdSuccess = _Pala.getModelVersion(&MOD, &VER, &CORE, &FWDATE);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["MOD"] = MOD;
+    data["VER"] = VER;
+    data["CORE"] = CORE;
+    data["FWDATE"] = FWDATE;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetParm(JsonObject &data, uint16_t parmAddress)
+{
+  byte paramValue;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getParameter(parmAddress, &paramValue);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    String paramName("PAR");
+    paramName += parmAddress;
+    data[paramName] = paramValue;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetSetp(JsonObject &data)
+{
+  char floatBuf[8];
+  float SETP;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getSetPoint(&SETP);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    dtostrf(SETP, 1, 2, floatBuf);
+    data["SETP"] = serialized(floatBuf);
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetStat(JsonObject &data)
+{
+  uint16_t STATUS, LSTATUS, FSTATUS;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getStatus(&STATUS, &LSTATUS, &FSTATUS);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["STATUS"] = STATUS;
+    data["LSTATUS"] = LSTATUS;
+    data["FSTATUS"] = FSTATUS;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetStdt(JsonObject &data)
+{
+  char SN[28];
+  byte SNCHK;
+  int MBTYPE;
+  uint16_t MOD, VER, CORE;
+  char FWDATE[11];
+  uint16_t FLUID;
+  uint16_t SPLMIN, SPLMAX;
+  byte UICONFIG;
+  byte HWTYPE;
+  byte DSPTYPE;
+  byte DSPFWVER;
+  byte CONFIG;
+  byte PELLETTYPE;
+  uint16_t PSENSTYPE;
+  byte PSENSLMAX, PSENSLTSH, PSENSLMIN;
+  byte MAINTPROBE;
+  byte STOVETYPE;
+  byte FAN2TYPE;
+  byte FAN2MODE;
+  byte BLEMBMODE;
+  byte BLEDSPMODE;
+  byte CHRONOTYPE;
+  byte AUTONOMYTYPE;
+  byte NOMINALPWR;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getStaticData(&SN, &SNCHK, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, &HWTYPE, &DSPTYPE, &DSPFWVER, &CONFIG, &PELLETTYPE, &PSENSTYPE, &PSENSLMAX, &PSENSLTSH, &PSENSLMIN, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, &BLEMBMODE, &BLEDSPMODE, &CHRONOTYPE, &AUTONOMYTYPE, &NOMINALPWR);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    // ----- WPalaControl generated values -----
+    data["LABEL"] = WiFi.getHostname();
+
+    // Network infos
+    data["GWDEVICE"] = F("wlan0"); // always wifi
+    data["MAC"] = WiFi.macAddress();
+    data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
+    data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
+
+    // Wifi infos
+    data["WMAC"] = WiFi.macAddress();
+    data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
+    data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
+    data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
+    data["WENC"] = F("psk2");
+    data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
+    data["WSSID"] = WiFi.SSID();
+    data["WPR"] = (true) ? F("dhcp") : F("static");
+    data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
+    data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
+    data["WCH"] = String(WiFi.channel());
+
+    // Ethernet infos
+    data["EPR"] = F("dhcp");
+    data["EGW"] = F("0.0.0.0");
+    data["EMSK"] = F("0.0.0.0");
+    data["EADR"] = F("0.0.0.0");
+    data["EMAC"] = WiFi.macAddress();
+    data["ECBL"] = F("down");
+    data["EBCST"] = "";
+
+    data["APLCONN"] = 1; // appliance connected
+    data["ICONN"] = 0;   // internet connected
+
+    data["CBTYPE"] = F("miniembplug"); // CBox model
+    data["sendmsg"] = F("2.1.2 2018-03-28 10:19:09");
+    data["plzbridge"] = F("2.2.1 2022-10-24 11:13:21");
+    data["SYSTEM"] = F("2.5.3 2021-10-08 10:30:20 (657c8cf)");
+
+    data["CLOUD_ENABLED"] = true;
+
+    // ----- Values from stove -----
+    data["SN"] = SN;
+    data["SNCHK"] = SNCHK;
+    data["MBTYPE"] = MBTYPE;
+    data["MOD"] = MOD;
+    data["VER"] = VER;
+    data["CORE"] = CORE;
+    data["FWDATE"] = FWDATE;
+    data["FLUID"] = FLUID;
+    data["SPLMIN"] = SPLMIN;
+    data["SPLMAX"] = SPLMAX;
+    data["UICONFIG"] = UICONFIG;
+    data["HWTYPE"] = HWTYPE;
+    data["DSPTYPE"] = DSPTYPE;
+    data["DSPFWVER"] = DSPFWVER;
+    data["CONFIG"] = CONFIG;
+    data["PELLETTYPE"] = PELLETTYPE;
+    data["PSENSTYPE"] = PSENSTYPE;
+    data["PSENSLMAX"] = PSENSLMAX;
+    data["PSENSLTSH"] = PSENSLTSH;
+    data["PSENSLMIN"] = PSENSLMIN;
+    data["MAINTPROBE"] = MAINTPROBE;
+    data["STOVETYPE"] = STOVETYPE;
+    data["FAN2TYPE"] = FAN2TYPE;
+    data["FAN2MODE"] = FAN2MODE;
+    data["BLEMBMODE"] = BLEMBMODE;
+    data["BLEDSPMODE"] = BLEDSPMODE;
+    data["CHRONOTYPE"] = 0; // disable chronothermostat (no planning) (enabled if > 1)
+    data["AUTONOMYTYPE"] = AUTONOMYTYPE;
+    data["NOMINALPWR"] = NOMINALPWR;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetTime(JsonObject &data)
+{
+  char STOVE_DATETIME[20];
+  byte STOVE_WDAY;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getDateTime(&STOVE_DATETIME, &STOVE_WDAY);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["STOVE_DATETIME"] = STOVE_DATETIME;
+    data["STOVE_WDAY"] = STOVE_WDAY;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetTmps(JsonObject &data)
+{
+  char floatBuf[8];
+  float T1, T2, T3, T4, T5;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getAllTemps(&T1, &T2, &T3, &T4, &T5);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    dtostrf(T1, 1, 2, floatBuf);
+    data["T1"] = serialized(floatBuf);
+    dtostrf(T2, 1, 2, floatBuf);
+    data["T2"] = serialized(floatBuf);
+    dtostrf(T3, 1, 2, floatBuf);
+    data["T3"] = serialized(floatBuf);
+    dtostrf(T4, 1, 2, floatBuf);
+    data["T4"] = serialized(floatBuf);
+    dtostrf(T5, 1, 2, floatBuf);
+    data["T5"] = serialized(floatBuf);
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetPowr(JsonObject &data)
+{
+  char floatBuf[8];
+  byte PWR;
+  float FDR;
+  Palazzetti::CommandResult cmdSuccess = _Pala.getPower(&PWR, &FDR);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["PWR"] = PWR;
+    dtostrf(FDR, 1, 2, floatBuf);
+    data["FDR"] = serialized(floatBuf);
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdGetSern(JsonObject &data)
+{
+  char SN[28];
+  Palazzetti::CommandResult cmdSuccess = _Pala.getSN(&SN);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["SN"] = SN;
+  }
+  return cmdSuccess;
+}
+
 Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
-  char floatBuf[8];
-
   if (cmd == F("GET ALLS"))
   {
     cmdProcessed = true;
     palaCategory = F("ALLS");
-
-    bool refreshStatus = false;
-    unsigned long currentMillis = millis();
-    if ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL) // refresh AllStatus data if it's 15sec old
-      refreshStatus = true;
-
-    int MBTYPE;
-    uint16_t MOD, VER, CORE;
-    char FWDATE[11];
-    char APLTS[20];
-    uint16_t APLWDAY;
-    byte CHRSTATUS;
-    uint16_t STATUS, LSTATUS;
-    bool isMFSTATUSValid;
-    uint16_t MFSTATUS;
-    float SETP;
-    byte PUMP;
-    uint16_t PQT;
-    uint16_t F1V;
-    uint16_t F1RPM;
-    uint16_t F2L;
-    uint16_t F2LF;
-    uint16_t FANLMINMAX[6];
-    uint16_t F2V;
-    bool isF3LF4LValid;
-    uint16_t F3L;
-    uint16_t F4L;
-    byte PWR;
-    float FDR;
-    uint16_t DPT;
-    uint16_t DP;
-    byte IN;
-    byte OUT;
-    float T1, T2, T3, T4, T5;
-    bool isSNValid;
-    char SN[28];
-    cmdSuccess = _Pala.getAllStatus(refreshStatus, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &APLTS, &APLWDAY, &CHRSTATUS, &STATUS, &LSTATUS, &isMFSTATUSValid, &MFSTATUS, &SETP, &PUMP, &PQT, &F1V, &F1RPM, &F2L, &F2LF, &FANLMINMAX, &F2V, &isF3LF4LValid, &F3L, &F4L, &PWR, &FDR, &DPT, &DP, &IN, &OUT, &T1, &T2, &T3, &T4, &T5, &isSNValid, &SN);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      if (refreshStatus)
-        _lastAllStatusRefreshMillis = currentMillis;
-
-      data["MBTYPE"] = MBTYPE;
-      data["MAC"] = WiFi.macAddress();
-      data["MOD"] = MOD;
-      data["VER"] = VER;
-      data["CORE"] = CORE;
-      data["FWDATE"] = FWDATE;
-      data["APLTS"] = APLTS;
-      data["APLWDAY"] = APLWDAY;
-      data["CHRSTATUS"] = CHRSTATUS;
-      data["STATUS"] = STATUS;
-      data["LSTATUS"] = LSTATUS;
-      if (isMFSTATUSValid)
-        data["MFSTATUS"] = MFSTATUS;
-      dtostrf(SETP, 1, 2, floatBuf);
-      data["SETP"] = serialized(floatBuf);
-      data["PUMP"] = PUMP;
-      data["PQT"] = PQT;
-      data["F1V"] = F1V;
-      data["F1RPM"] = F1RPM;
-      data["F2L"] = F2L;
-      data["F2LF"] = F2LF;
-      JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
-      fanlminmax.add(FANLMINMAX[0]);
-      fanlminmax.add(FANLMINMAX[1]);
-      fanlminmax.add(FANLMINMAX[2]);
-      fanlminmax.add(FANLMINMAX[3]);
-      fanlminmax.add(FANLMINMAX[4]);
-      fanlminmax.add(FANLMINMAX[5]);
-      data["F2V"] = F2V;
-      if (isF3LF4LValid)
-      {
-        data["F3L"] = F3L;
-        data["F4L"] = F4L;
-      }
-      data["PWR"] = PWR;
-      dtostrf(FDR, 1, 2, floatBuf);
-      data["FDR"] = serialized(floatBuf);
-      data["DPT"] = DPT;
-      data["DP"] = DP;
-      data["IN"] = IN;
-      data["OUT"] = OUT;
-      dtostrf(T1, 1, 2, floatBuf);
-      data["T1"] = serialized(floatBuf);
-      dtostrf(T2, 1, 2, floatBuf);
-      data["T2"] = serialized(floatBuf);
-      dtostrf(T3, 1, 2, floatBuf);
-      data["T3"] = serialized(floatBuf);
-      dtostrf(T4, 1, 2, floatBuf);
-      data["T4"] = serialized(floatBuf);
-      dtostrf(T5, 1, 2, floatBuf);
-      data["T5"] = serialized(floatBuf);
-
-      data["EFLAGS"] = 0; // new ErrorFlags not implemented
-      if (isSNValid)
-        data["SN"] = SN;
-    }
+    return executePalaCmdGetAlls(data);
   }
-  else if (cmd == F("GET CHRD"))
+  if (cmd == F("GET CHRD"))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
-
-    byte CHRSTATUS;
-    float PCHRSETP[6];
-    byte PSTART[6][2];
-    byte PSTOP[6][2];
-    byte DM[7][3];
-    cmdSuccess = _Pala.getChronoData(&CHRSTATUS, &PCHRSETP, &PSTART, &PSTOP, &DM);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["CHRSTATUS"] = CHRSTATUS;
-
-      // Add Programs (P1->P6)
-      char programName[3] = {'P', 'X', 0};
-      char time[6] = {'0', '0', ':', '0', '0', 0};
-      for (byte i = 0; i < 6; i++)
-      {
-        programName[1] = i + '1';
-        JsonObject px = data[programName].to<JsonObject>();
-        dtostrf(PCHRSETP[i], 1, 2, floatBuf);
-        px["CHRSETP"] = serialized(floatBuf);
-        time[0] = PSTART[i][0] / 10 + '0';
-        time[1] = PSTART[i][0] % 10 + '0';
-        time[3] = PSTART[i][1] / 10 + '0';
-        time[4] = PSTART[i][1] % 10 + '0';
-        px["START"] = time;
-        time[0] = PSTOP[i][0] / 10 + '0';
-        time[1] = PSTOP[i][0] % 10 + '0';
-        time[3] = PSTOP[i][1] / 10 + '0';
-        time[4] = PSTOP[i][1] % 10 + '0';
-        px["STOP"] = time;
-      }
-
-      // Add Days (D1->D7)
-      char dayName[3] = {'D', 'X', 0};
-      char memoryName[3] = {'M', 'X', 0};
-      for (byte dayNumber = 0; dayNumber < 7; dayNumber++)
-      {
-        dayName[1] = dayNumber + '1';
-        JsonObject dx = data[dayName].to<JsonObject>();
-        for (byte memoryNumber = 0; memoryNumber < 3; memoryNumber++)
-        {
-          memoryName[1] = memoryNumber + '1';
-          if (DM[dayNumber][memoryNumber])
-          {
-            programName[1] = DM[dayNumber][memoryNumber] + '0';
-            dx[memoryName] = programName;
-          }
-          else
-            dx[memoryName] = F("OFF");
-        }
-      }
-    }
+    return executePalaCmdGetChrd(data);
   }
-  else if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
+  if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
   {
     cmdProcessed = true;
     palaCategory = F("CNTR");
-
-    uint16_t IGN, POWERTIMEh, POWERTIMEm, HEATTIMEh, HEATTIMEm, SERVICETIMEh, SERVICETIMEm, ONTIMEh, ONTIMEm, OVERTMPERRORS, IGNERRORS, PQT;
-    cmdSuccess = _Pala.getCounters(&IGN, &POWERTIMEh, &POWERTIMEm, &HEATTIMEh, &HEATTIMEm, &SERVICETIMEh, &SERVICETIMEm, &ONTIMEh, &ONTIMEm, &OVERTMPERRORS, &IGNERRORS, &PQT);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      char timeBuf[16];
-      data["IGN"] = IGN;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", POWERTIMEh, POWERTIMEm);
-      data["POWERTIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", HEATTIMEh, HEATTIMEm);
-      data["HEATTIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", SERVICETIMEh, SERVICETIMEm);
-      data["SERVICETIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", ONTIMEh, ONTIMEm);
-      data["ONTIME"] = timeBuf;
-      data["OVERTMPERRORS"] = OVERTMPERRORS;
-      data["IGNERRORS"] = IGNERRORS;
-      data["PQT"] = PQT;
-    }
+    return executePalaCmdGetCntr(data);
   }
-  else if (cmd == F("GET DPRS"))
+  if (cmd == F("GET DPRS"))
   {
     cmdProcessed = true;
     palaCategory = F("DPRS");
-
-    uint16_t DP_TARGET, DP_PRESS;
-    cmdSuccess = _Pala.getDPressData(&DP_TARGET, &DP_PRESS);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["DP_TARGET"] = DP_TARGET;
-      data["DP_PRESS"] = DP_PRESS;
-    }
+    return executePalaCmdGetDprs(data);
   }
-  else if (cmd == F("GET FAND"))
+  if (cmd == F("GET FAND"))
   {
     cmdProcessed = true;
     palaCategory = F("FAND");
-
-    uint16_t F1V, F2V, F1RPM, F2L, F2LF;
-    bool isF3SF4SValid;
-    float F3S, F4S;
-    bool isF3LF4LValid;
-    uint16_t F3L, F4L;
-    cmdSuccess = _Pala.getFanData(&F1V, &F2V, &F1RPM, &F2L, &F2LF, &isF3SF4SValid, &F3S, &F4S, &isF3LF4LValid, &F3L, &F4L);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["F1V"] = F1V;
-      data["F2V"] = F2V;
-      data["F1RPM"] = F1RPM;
-      data["F2L"] = F2L;
-      data["F2LF"] = F2LF;
-      if (isF3SF4SValid)
-      {
-        dtostrf(F3S, 1, 2, floatBuf);
-        data["F3S"] = serialized(floatBuf);
-        dtostrf(F4S, 1, 2, floatBuf);
-        data["F4S"] = serialized(floatBuf);
-      }
-      if (isF3LF4LValid)
-      {
-        data["F3L"] = F3L;
-        data["F4L"] = F4L;
-      }
-    }
+    return executePalaCmdGetFand(data);
   }
-  else if (cmd.startsWith(F("GET HPAR ")))
+  if (cmd.startsWith(F("GET HPAR ")))
   {
     cmdProcessed = true;
     palaCategory = F("HPAR");
-
     if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
     {
-      uint16_t hiddenParamValue;
-      cmdSuccess = _Pala.getHiddenParameter(cmdParams[0], &hiddenParamValue);
-
-      if (cmdSuccess == Palazzetti::CommandResult::OK)
-      {
-        String hiddenParamName("HPAR");
-        hiddenParamName += cmdParams[0];
-        data[hiddenParamName] = hiddenParamValue;
-      }
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
     }
+    return executePalaCmdGetHpar(data, cmdParams[0]);
   }
-  else if (cmd == F("GET IOPT"))
+  if (cmd == F("GET IOPT"))
   {
     cmdProcessed = true;
     palaCategory = F("IOPT");
-
-    byte IN_I01, IN_I02, IN_I03, IN_I04;
-    byte OUT_O01, OUT_O02, OUT_O03, OUT_O04, OUT_O05, OUT_O06, OUT_O07;
-    cmdSuccess = _Pala.getIO(&IN_I01, &IN_I02, &IN_I03, &IN_I04, &OUT_O01, &OUT_O02, &OUT_O03, &OUT_O04, &OUT_O05, &OUT_O06, &OUT_O07);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["IN_I01"] = IN_I01;
-      data["IN_I02"] = IN_I02;
-      data["IN_I03"] = IN_I03;
-      data["IN_I04"] = IN_I04;
-      data["OUT_O01"] = OUT_O01;
-      data["OUT_O02"] = OUT_O02;
-      data["OUT_O03"] = OUT_O03;
-      data["OUT_O04"] = OUT_O04;
-      data["OUT_O05"] = OUT_O05;
-      data["OUT_O06"] = OUT_O06;
-      data["OUT_O07"] = OUT_O07;
-    }
+    return executePalaCmdGetIopt(data);
   }
-  else if (cmd == F("GET LABL"))
+  if (cmd == F("GET LABL"))
   {
     cmdProcessed = true;
     palaCategory = F("LABL");
-    cmdSuccess = Palazzetti::CommandResult::OK;
-
-    data["LABEL"] = WiFi.getHostname();
+    return executePalaCmdGetLabl(data);
   }
-  else if (cmd == F("GET MDVE"))
+  if (cmd == F("GET MDVE"))
   {
     cmdProcessed = true;
     palaCategory = F("MDVE");
-
-    uint16_t MOD, VER, CORE;
-    char FWDATE[11];
-    cmdSuccess = _Pala.getModelVersion(&MOD, &VER, &CORE, &FWDATE);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["MOD"] = MOD;
-      data["VER"] = VER;
-      data["CORE"] = CORE;
-      data["FWDATE"] = FWDATE;
-    }
+    return executePalaCmdGetMdve(data);
   }
-  else if (cmd.startsWith(F("GET PARM ")))
+  if (cmd.startsWith(F("GET PARM ")))
   {
     cmdProcessed = true;
     palaCategory = F("PARM");
-
     if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
     {
-      byte paramValue;
-      cmdSuccess = _Pala.getParameter(cmdParams[0], &paramValue);
-
-      if (cmdSuccess == Palazzetti::CommandResult::OK)
-      {
-        String paramName("PAR");
-        paramName += cmdParams[0];
-        data[paramName] = paramValue;
-      }
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
     }
+    return executePalaCmdGetParm(data, cmdParams[0]);
   }
-  else if (cmd == F("GET SETP"))
+  if (cmd == F("GET SETP"))
   {
     cmdProcessed = true;
     palaCategory = F("SETP");
-
-    float SETP;
-    cmdSuccess = _Pala.getSetPoint(&SETP);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      dtostrf(SETP, 1, 2, floatBuf);
-      data["SETP"] = serialized(floatBuf);
-    }
+    return executePalaCmdGetSetp(data);
   }
-  else if (cmd == F("GET STAT"))
+  if (cmd == F("GET STAT"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
-
-    uint16_t STATUS, LSTATUS, FSTATUS;
-    cmdSuccess = _Pala.getStatus(&STATUS, &LSTATUS, &FSTATUS);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["STATUS"] = STATUS;
-      data["LSTATUS"] = LSTATUS;
-      data["FSTATUS"] = FSTATUS;
-    }
+    return executePalaCmdGetStat(data);
   }
-  else if (cmd == F("GET STDT"))
+  if (cmd == F("GET STDT"))
   {
     cmdProcessed = true;
     palaCategory = F("STDT");
-
-    char SN[28];
-    byte SNCHK;
-    int MBTYPE;
-    uint16_t MOD, VER, CORE;
-    char FWDATE[11];
-    uint16_t FLUID;
-    uint16_t SPLMIN, SPLMAX;
-    byte UICONFIG;
-    byte HWTYPE;
-    byte DSPTYPE;
-    byte DSPFWVER;
-    byte CONFIG;
-    byte PELLETTYPE;
-    uint16_t PSENSTYPE;
-    byte PSENSLMAX, PSENSLTSH, PSENSLMIN;
-    byte MAINTPROBE;
-    byte STOVETYPE;
-    byte FAN2TYPE;
-    byte FAN2MODE;
-    byte BLEMBMODE;
-    byte BLEDSPMODE;
-    byte CHRONOTYPE;
-    byte AUTONOMYTYPE;
-    byte NOMINALPWR;
-    cmdSuccess = _Pala.getStaticData(&SN, &SNCHK, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, &HWTYPE, &DSPTYPE, &DSPFWVER, &CONFIG, &PELLETTYPE, &PSENSTYPE, &PSENSLMAX, &PSENSLTSH, &PSENSLMIN, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, &BLEMBMODE, &BLEDSPMODE, &CHRONOTYPE, &AUTONOMYTYPE, &NOMINALPWR);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      // ----- WPalaControl generated values -----
-      data["LABEL"] = WiFi.getHostname();
-
-      // Network infos
-      data["GWDEVICE"] = F("wlan0"); // always wifi
-      data["MAC"] = WiFi.macAddress();
-      data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
-      data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
-
-      // Wifi infos
-      data["WMAC"] = WiFi.macAddress();
-      data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
-      data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
-      data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
-      data["WENC"] = F("psk2");
-      data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
-      data["WSSID"] = WiFi.SSID();
-      data["WPR"] = (true) ? F("dhcp") : F("static");
-      data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
-      data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
-      data["WCH"] = String(WiFi.channel());
-
-      // Ethernet infos
-      data["EPR"] = F("dhcp");
-      data["EGW"] = F("0.0.0.0");
-      data["EMSK"] = F("0.0.0.0");
-      data["EADR"] = F("0.0.0.0");
-      data["EMAC"] = WiFi.macAddress();
-      data["ECBL"] = F("down");
-      data["EBCST"] = "";
-
-      data["APLCONN"] = 1; // appliance connected
-      data["ICONN"] = 0;   // internet connected
-
-      data["CBTYPE"] = F("miniembplug"); // CBox model
-      data["sendmsg"] = F("2.1.2 2018-03-28 10:19:09");
-      data["plzbridge"] = F("2.2.1 2022-10-24 11:13:21");
-      data["SYSTEM"] = F("2.5.3 2021-10-08 10:30:20 (657c8cf)");
-
-      data["CLOUD_ENABLED"] = true;
-
-      // ----- Values from stove -----
-      data["SN"] = SN;
-      data["SNCHK"] = SNCHK;
-      data["MBTYPE"] = MBTYPE;
-      data["MOD"] = MOD;
-      data["VER"] = VER;
-      data["CORE"] = CORE;
-      data["FWDATE"] = FWDATE;
-      data["FLUID"] = FLUID;
-      data["SPLMIN"] = SPLMIN;
-      data["SPLMAX"] = SPLMAX;
-      data["UICONFIG"] = UICONFIG;
-      data["HWTYPE"] = HWTYPE;
-      data["DSPTYPE"] = DSPTYPE;
-      data["DSPFWVER"] = DSPFWVER;
-      data["CONFIG"] = CONFIG;
-      data["PELLETTYPE"] = PELLETTYPE;
-      data["PSENSTYPE"] = PSENSTYPE;
-      data["PSENSLMAX"] = PSENSLMAX;
-      data["PSENSLTSH"] = PSENSLTSH;
-      data["PSENSLMIN"] = PSENSLMIN;
-      data["MAINTPROBE"] = MAINTPROBE;
-      data["STOVETYPE"] = STOVETYPE;
-      data["FAN2TYPE"] = FAN2TYPE;
-      data["FAN2MODE"] = FAN2MODE;
-      data["BLEMBMODE"] = BLEMBMODE;
-      data["BLEDSPMODE"] = BLEDSPMODE;
-      data["CHRONOTYPE"] = 0; // disable chronothermostat (no planning) (enabled if > 1)
-      data["AUTONOMYTYPE"] = AUTONOMYTYPE;
-      data["NOMINALPWR"] = NOMINALPWR;
-    }
+    return executePalaCmdGetStdt(data);
   }
-  else if (cmd == F("GET TIME"))
+  if (cmd == F("GET TIME"))
   {
     cmdProcessed = true;
     palaCategory = F("TIME");
-
-    char STOVE_DATETIME[20];
-    byte STOVE_WDAY;
-    cmdSuccess = _Pala.getDateTime(&STOVE_DATETIME, &STOVE_WDAY);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["STOVE_DATETIME"] = STOVE_DATETIME;
-      data["STOVE_WDAY"] = STOVE_WDAY;
-    }
+    return executePalaCmdGetTime(data);
   }
-  else if (cmd == F("GET TMPS"))
+  if (cmd == F("GET TMPS"))
   {
     cmdProcessed = true;
     palaCategory = F("TMPS");
-
-    float T1, T2, T3, T4, T5;
-    cmdSuccess = _Pala.getAllTemps(&T1, &T2, &T3, &T4, &T5);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      dtostrf(T1, 1, 2, floatBuf);
-      data["T1"] = serialized(floatBuf);
-      dtostrf(T2, 1, 2, floatBuf);
-      data["T2"] = serialized(floatBuf);
-      dtostrf(T3, 1, 2, floatBuf);
-      data["T3"] = serialized(floatBuf);
-      dtostrf(T4, 1, 2, floatBuf);
-      data["T4"] = serialized(floatBuf);
-      dtostrf(T5, 1, 2, floatBuf);
-      data["T5"] = serialized(floatBuf);
-    }
+    return executePalaCmdGetTmps(data);
   }
-  else if (cmd == F("GET POWR"))
+  if (cmd == F("GET POWR"))
   {
     cmdProcessed = true;
     palaCategory = F("POWR");
-
-    byte PWR;
-    float FDR;
-    cmdSuccess = _Pala.getPower(&PWR, &FDR);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["PWR"] = PWR;
-      dtostrf(FDR, 1, 2, floatBuf);
-      data["FDR"] = serialized(floatBuf);
-    }
+    return executePalaCmdGetPowr(data);
   }
-  else if (cmd == F("GET SERN"))
+  if (cmd == F("GET SERN"))
   {
     cmdProcessed = true;
     palaCategory = F("SERN");
-
-    char SN[28];
-    cmdSuccess = _Pala.getSN(&SN);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["SN"] = SN;
-    }
+    return executePalaCmdGetSern(data);
   }
-
-  return cmdSuccess;
+  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
 Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)

@@ -151,6 +151,23 @@ private:
 
   bool mqttPublishUpdate();
 
+  Palazzetti::CommandResult executePalaCmdGetAlls(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetChrd(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetCntr(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetDprs(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetFand(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetHpar(JsonObject &data, uint16_t hparAddress);
+  Palazzetti::CommandResult executePalaCmdGetIopt(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetLabl(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetMdve(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetParm(JsonObject &data, uint16_t parmAddress);
+  Palazzetti::CommandResult executePalaCmdGetSetp(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetStat(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetStdt(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetTime(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetTmps(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetPowr(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdGetSern(JsonObject &data);
   Palazzetti::CommandResult executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
   Palazzetti::CommandResult executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
   Palazzetti::CommandResult executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
