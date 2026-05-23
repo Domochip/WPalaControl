@@ -2119,6 +2119,27 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSetTime(JsonObject &data, 
   return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
+Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdrd(JsonObject &data, uint16_t p0, uint16_t p1)
+{
+  uint16_t ADDR_DATA;
+  Palazzetti::CommandResult cmdSuccess = _Pala.readData(p0, p1, &ADDR_DATA);
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    String addrName(F("ADDR_"));
+    // append the first parameter as hex string
+    addrName += String(p0, HEX);
+    data[addrName] = ADDR_DATA;
+  }
+  return cmdSuccess;
+}
+
+#if DEVELOPPER_MODE
+Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdwr(uint16_t p0, uint16_t p1, uint16_t p2)
+{
+  return _Pala.writeData(p0, p1, p2);
+}
+#endif
+
 Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
   if (cmd == F("CMD OFF"))
@@ -2482,27 +2503,6 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
 
   return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdrd(JsonObject &data, uint16_t p0, uint16_t p1)
-{
-  uint16_t ADDR_DATA;
-  Palazzetti::CommandResult cmdSuccess = _Pala.readData(p0, p1, &ADDR_DATA);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    String addrName(F("ADDR_"));
-    // append the first parameter as hex string
-    addrName += String(p0, HEX);
-    data[addrName] = ADDR_DATA;
-  }
-  return cmdSuccess;
-}
-
-#if DEVELOPPER_MODE
-Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdwr(uint16_t p0, uint16_t p1, uint16_t p2)
-{
-  return _Pala.writeData(p0, p1, p2);
-}
-#endif
 
 Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
