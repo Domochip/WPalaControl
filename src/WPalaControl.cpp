@@ -2483,30 +2483,39 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
   return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
+Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdrd(JsonObject &data, uint16_t p0, uint16_t p1)
+{
+  uint16_t ADDR_DATA;
+  Palazzetti::CommandResult cmdSuccess = _Pala.readData(p0, p1, &ADDR_DATA);
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    String addrName(F("ADDR_"));
+    // append the first parameter as hex string
+    addrName += String(p0, HEX);
+    data[addrName] = ADDR_DATA;
+  }
+  return cmdSuccess;
+}
+
+#if DEVELOPPER_MODE
+Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdwr(uint16_t p0, uint16_t p1, uint16_t p2)
+{
+  return _Pala.writeData(p0, p1, p2);
+}
+#endif
+
 Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
-
   if (cmd.startsWith(F("EXT ADRD")))
   {
     cmdProcessed = true;
     palaCategory = F("ADRD");
-
-    if (cmdParamNumber != 2 && cmdParamNumber != 3)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    // the third parameter was designed for Micronova MB and is not used in Fumis board
-
-    uint16_t ADDR_DATA;
-    cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    if (cmdParamNumber != 2 /* && cmdParamNumber != 3*/) // the third parameter was designed for Micronova MB and is not used in Fumis board
     {
-      String addrName(F("ADDR_"));
-      // append the first parameter as hex string
-      addrName += String(cmdParams[0], HEX);
-      data[addrName] = ADDR_DATA;
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
     }
+    return executePalaCmdExtAdrd(data, cmdParams[0], cmdParams[1]);
   }
 #if DEVELOPPER_MODE
   // To be used only if you have good knowledge of Alpha motherboard
@@ -2514,17 +2523,16 @@ Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, Jso
   {
     cmdProcessed = true;
     palaCategory = F("ADWR");
-
-    if (cmdParamNumber != 3 && cmdParamNumber != 4)
+    if (cmdParamNumber != 3 /* && cmdParamNumber != 4*/) // the fourth parameter was designed for Micronova MB and is not used in Fumis board
+    {
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    // the fourth parameter was designed for Micronova MB and is not used in Fumis board
-
-    cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
+    }
+    return executePalaCmdExtAdwr(cmdParams[0], cmdParams[1], cmdParams[2]);
   }
 #endif
 
-  return cmdSuccess;
+  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)

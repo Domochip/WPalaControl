@@ -197,6 +197,8 @@ private:
   Palazzetti::CommandResult executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
   Palazzetti::CommandResult executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
   Palazzetti::CommandResult executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
+  Palazzetti::CommandResult executePalaCmdExtAdrd(JsonObject &data, uint16_t p0, uint16_t p1);
+  Palazzetti::CommandResult executePalaCmdExtAdwr(uint16_t p0, uint16_t p1, uint16_t p2);
   Palazzetti::CommandResult executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
 
