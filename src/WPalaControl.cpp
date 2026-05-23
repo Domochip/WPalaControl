@@ -1232,6 +1232,34 @@ bool WPalaControl::mqttPublishUpdate()
   return true;
 }
 
+Palazzetti::CommandResult WPalaControl::executePalaCmdCmdOff(JsonObject &data)
+{
+  uint16_t STATUS, LSTATUS, FSTATUS;
+  Palazzetti::CommandResult cmdSuccess = _Pala.switchOff(&STATUS, &LSTATUS, &FSTATUS);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["STATUS"] = STATUS;
+    data["LSTATUS"] = LSTATUS;
+    data["FSTATUS"] = FSTATUS;
+  }
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executePalaCmdCmdOn(JsonObject &data)
+{
+  uint16_t STATUS, LSTATUS, FSTATUS;
+  Palazzetti::CommandResult cmdSuccess = _Pala.switchOn(&STATUS, &LSTATUS, &FSTATUS);
+
+  if (cmdSuccess == Palazzetti::CommandResult::OK)
+  {
+    data["STATUS"] = STATUS;
+    data["LSTATUS"] = LSTATUS;
+    data["FSTATUS"] = FSTATUS;
+  }
+  return cmdSuccess;
+}
+
 Palazzetti::CommandResult WPalaControl::executePalaCmdGetAlls(JsonObject &data)
 {
   bool refreshStatus = false;
@@ -1736,40 +1764,19 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGetSern(JsonObject &data)
 
 Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
-
   if (cmd == F("CMD OFF"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
-
-    uint16_t STATUS, LSTATUS, FSTATUS;
-    cmdSuccess = _Pala.switchOff(&STATUS, &LSTATUS, &FSTATUS);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["STATUS"] = STATUS;
-      data["LSTATUS"] = LSTATUS;
-      data["FSTATUS"] = FSTATUS;
-    }
+    return executePalaCmdCmdOff(data);
   }
-  else if (cmd == F("CMD ON"))
+  if (cmd == F("CMD ON"))
   {
     cmdProcessed = true;
     palaCategory = F("STAT");
-
-    uint16_t STATUS, LSTATUS, FSTATUS;
-    cmdSuccess = _Pala.switchOn(&STATUS, &LSTATUS, &FSTATUS);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["STATUS"] = STATUS;
-      data["LSTATUS"] = LSTATUS;
-      data["FSTATUS"] = FSTATUS;
-    }
+    return executePalaCmdCmdOn(data);
   }
-
-  return cmdSuccess;
+  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
 Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)

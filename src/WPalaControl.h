@@ -151,6 +151,8 @@ private:
 
   bool mqttPublishUpdate();
 
+  Palazzetti::CommandResult executePalaCmdCmdOff(JsonObject &data);
+  Palazzetti::CommandResult executePalaCmdCmdOn(JsonObject &data);
   Palazzetti::CommandResult executePalaCmdGetAlls(JsonObject &data);
   Palazzetti::CommandResult executePalaCmdGetChrd(JsonObject &data);
   Palazzetti::CommandResult executePalaCmdGetCntr(JsonObject &data);
