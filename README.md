@@ -33,7 +33,7 @@ To determine if your stove is compatible with WPalaControl, look for the followi
 🔧 If you want to build it yourself, you can find all details here : [BUILD](BUILD.md) 🔧  
 
 🛍️🚀 Otherwise, I'm producing some small batches and offering it ready-to-use here :  
-[![Tindie product](./img/tindie-mediums.png)](https://www.tindie.com/products/35770/)  
+[![Lectronz product](./img/lectronz-medium.png)](https://lectronz.com/products/wpalacontrol)  
 
 ## Connect
 
