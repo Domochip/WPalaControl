@@ -1762,140 +1762,6 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGetSern(JsonObject &data)
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
-{
-  if (cmd == F("CMD OFF"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdCmdOff(data);
-  }
-  if (cmd == F("CMD ON"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdCmdOn(data);
-  }
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
-Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
-{
-  if (cmd == F("GET ALLS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("ALLS");
-    return executePalaCmdGetAlls(data);
-  }
-  if (cmd == F("GET CHRD"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CHRD");
-    return executePalaCmdGetChrd(data);
-  }
-  if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CNTR");
-    return executePalaCmdGetCntr(data);
-  }
-  if (cmd == F("GET DPRS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("DPRS");
-    return executePalaCmdGetDprs(data);
-  }
-  if (cmd == F("GET FAND"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    return executePalaCmdGetFand(data);
-  }
-  if (cmd.startsWith(F("GET HPAR ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("HPAR");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdGetHpar(data, cmdParams[0]);
-  }
-  if (cmd == F("GET IOPT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("IOPT");
-    return executePalaCmdGetIopt(data);
-  }
-  if (cmd == F("GET LABL"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("LABL");
-    return executePalaCmdGetLabl(data);
-  }
-  if (cmd == F("GET MDVE"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("MDVE");
-    return executePalaCmdGetMdve(data);
-  }
-  if (cmd.startsWith(F("GET PARM ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("PARM");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdGetParm(data, cmdParams[0]);
-  }
-  if (cmd == F("GET SETP"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    return executePalaCmdGetSetp(data);
-  }
-  if (cmd == F("GET STAT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdGetStat(data);
-  }
-  if (cmd == F("GET STDT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STDT");
-    return executePalaCmdGetStdt(data);
-  }
-  if (cmd == F("GET TIME"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("TIME");
-    return executePalaCmdGetTime(data);
-  }
-  if (cmd == F("GET TMPS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("TMPS");
-    return executePalaCmdGetTmps(data);
-  }
-  if (cmd == F("GET POWR"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("POWR");
-    return executePalaCmdGetPowr(data);
-  }
-  if (cmd == F("GET SERN"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SERN");
-    return executePalaCmdGetSern(data);
-  }
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
 Palazzetti::CommandResult WPalaControl::executePalaCmdSetCday(JsonObject &data, uint16_t p0, uint16_t p1, uint16_t p2)
 {
   Palazzetti::CommandResult cmdSuccess = _Pala.setChronoDay(p0, p1, p2);
@@ -2249,6 +2115,140 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSetTime(JsonObject &data, 
       data["STOVE_WDAY"] = STOVE_WDAYReturn;
     }
     return cmdSuccess;
+  }
+  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
+}
+
+Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
+{
+  if (cmd == F("CMD OFF"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+    return executePalaCmdCmdOff(data);
+  }
+  if (cmd == F("CMD ON"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+    return executePalaCmdCmdOn(data);
+  }
+  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
+}
+
+Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+{
+  if (cmd == F("GET ALLS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("ALLS");
+    return executePalaCmdGetAlls(data);
+  }
+  if (cmd == F("GET CHRD"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CHRD");
+    return executePalaCmdGetChrd(data);
+  }
+  if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CNTR");
+    return executePalaCmdGetCntr(data);
+  }
+  if (cmd == F("GET DPRS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("DPRS");
+    return executePalaCmdGetDprs(data);
+  }
+  if (cmd == F("GET FAND"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+    return executePalaCmdGetFand(data);
+  }
+  if (cmd.startsWith(F("GET HPAR ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("HPAR");
+    if (cmdParamNumber != 1)
+    {
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
+    }
+    return executePalaCmdGetHpar(data, cmdParams[0]);
+  }
+  if (cmd == F("GET IOPT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("IOPT");
+    return executePalaCmdGetIopt(data);
+  }
+  if (cmd == F("GET LABL"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("LABL");
+    return executePalaCmdGetLabl(data);
+  }
+  if (cmd == F("GET MDVE"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("MDVE");
+    return executePalaCmdGetMdve(data);
+  }
+  if (cmd.startsWith(F("GET PARM ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("PARM");
+    if (cmdParamNumber != 1)
+    {
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
+    }
+    return executePalaCmdGetParm(data, cmdParams[0]);
+  }
+  if (cmd == F("GET SETP"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+    return executePalaCmdGetSetp(data);
+  }
+  if (cmd == F("GET STAT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+    return executePalaCmdGetStat(data);
+  }
+  if (cmd == F("GET STDT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STDT");
+    return executePalaCmdGetStdt(data);
+  }
+  if (cmd == F("GET TIME"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("TIME");
+    return executePalaCmdGetTime(data);
+  }
+  if (cmd == F("GET TMPS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("TMPS");
+    return executePalaCmdGetTmps(data);
+  }
+  if (cmd == F("GET POWR"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("POWR");
+    return executePalaCmdGetPowr(data);
+  }
+  if (cmd == F("GET SERN"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SERN");
+    return executePalaCmdGetSern(data);
   }
   return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
