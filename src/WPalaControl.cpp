@@ -778,9 +778,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
+    json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (iif(int(value_json.DP_TARGET) > 0x7FFF, int(value_json.DP_TARGET) - 0x10000, int(value_json.DP_TARGET)) * 1000 /60) | round }}");
+    json[F("value_template")] = F("{{ (int(value_json.DP_TARGET) * 1000 /60) | round }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), json, true);
