@@ -229,25 +229,31 @@ bool WPalaControl::mqttPublishData(const String &baseTopic, const String &palaCa
   return res;
 }
 
-String WPalaControl::prepareHassDiscoveryTopic(const String &type, const String &uniqueId)
+bool WPalaControl::mqttPublishHassDiscovery()
 {
-  String topic;
-  topic.reserve(strlen(_ha.mqtt.hassDiscoveryPrefix) + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
-  topic += _ha.mqtt.hassDiscoveryPrefix;
-  topic += F("/");
-  topic += type;
-  topic += F("/");
-  topic += uniqueId;
-  topic += F("/config");
-  return topic;
-}
+  if (!_mqttMan.connected())
+    return false;
 
-bool WPalaControl::mqttPublishHassGateway()
-{
+  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
+
+  // Helper lambda to prepare entity topic
+  auto prepareHassDiscoveryTopic = [&](const String &type, const String &uniqueId)
+  {
+    String topic;
+    topic.reserve(strlen(_ha.mqtt.hassDiscoveryPrefix) + type.length() + uniqueId.length() + 9); // 9 = "/" + "/" + "/config"
+    topic += _ha.mqtt.hassDiscoveryPrefix;
+    topic += F("/");
+    topic += type;
+    topic += F("/");
+    topic += uniqueId;
+    topic += F("/config");
+    return topic;
+  };
+
   // variables
   JsonDocument json;
   String device;
-  String uniqueIdPrefix;
+  String uniqueIdPrefix, uniqueIdPrefixStove;
   String uniqueId;
   String topic;
 
@@ -295,722 +301,13 @@ bool WPalaControl::mqttPublishHassGateway()
 
   _mqttMan.publish(topic.c_str(), json, true);
 
-  return true;
-}
+  // clean device JSON before switching to Stove entities
+  device = "";
 
-String WPalaControl::buildStoveDeviceString(const String &uniqueIdPrefixStove, uint16_t MOD, uint16_t VER, const char *FWDATE)
-{
-  JsonDocument json;
-  String device;
-
-  deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://wpalacontrol.local\","
-                          "\"name\":\"Stove\""
-                          "}"));
-  json[F("identifiers")][0] = uniqueIdPrefixStove;
-  json[F("model")] = String(MOD);
-  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
-  {
-    String uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-    uniqueIdPrefix += WiFi.macAddress();
-    uniqueIdPrefix.replace(":", "");
-    json[F("via_device")] = uniqueIdPrefix; // uniqueIdPrefix of the module
-  }
-  serializeJson(json, device);
-  return device;
-}
-
-void WPalaControl::mqttPublishHassStoveConnectivity(const HassDiscoveryStoveContext &ctx)
-{
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_Connectivity");
-  String topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
-                          "\"device_class\":\"connectivity\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"object_id\":\"stove_connectivity\","
-                          "\"state_topic\":\"~/connected\","
-                          "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveStatus(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_STATUS");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_status\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"name\":\"Status\","
-                          "\"object_id\":\"stove_status\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.STATUS }}");
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveStatusText(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_STATUS_Text");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_status_text\","
-                          "\"device_class\":\"enum\","
-                          "\"name\":\"Status\","
-                          "\"object_id\":\"stove_status_text\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value }}{% endif %}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value_json.STATUS }}{% endif %}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveThermostat(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
-  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
-      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
-      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
-      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
-      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
-      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
-
-  // define probe number
-  byte probeNumber = ctx.MAINTPROBE;                                                    // default case covering AirType and other HydroType
-  if (ctx.isHydroType && (ctx.UICONFIG == 1 || ctx.UICONFIG == 3 || ctx.UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
-    probeNumber = 0;                                                                    // T1
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_Thermostat");
-  String topic = prepareHassDiscoveryTopic(F("climate"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"climate.stove_thermostat\","
-                          "\"mode_command_template\":\"CMD+{{ iif(value == 'off', 'OFF', 'ON') }}\","
-                          "\"mode_command_topic\":\"~/cmd\","
-                          "\"modes\":[\"off\",\"heat\"],"
-                          "\"name\":\"Thermostat\","
-                          "\"object_id\":\"stove_thermostat\","
-                          "\"optimistic\":false,"
-                          "\"payload_off\":\"CMD+OFF\","
-                          "\"payload_on\":\"CMD+ON\","
-                          "\"power_command_topic\":\"~/cmd\","
-                          "\"temperature_command_template\":\"SET+SETP+{{ value|int }}\","
-                          "\"temperature_command_topic\":\"~/cmd\","
-                          "\"temperature_unit\":\"C\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
-
-  json[F("action_topic")] = statusTopicList[_ha.mqtt.type];
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
-  json[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  json[F("device")] = serialized(ctx.device);
-
-  if (ctx.hasRoomFan)
-  {
-    json[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
-    json[F("fan_mode_command_topic")] = F("~/cmd");
-    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
-    else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
-    json[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
-    json[F("fan_modes")] = serialized((ctx.isAirType && ctx.hasFanAuto) ? F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\",\"auto\"]") : F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\"]"));
-  }
-
-  // Adjust max_temp for stove with air temperature setPoint, goal is to center the range around 19°C (Does someone really wants its room at 51°C ...)
-  json[F("max_temp")] = (ctx.isHydroType && (ctx.UICONFIG == 1 || ctx.UICONFIG == 3 || ctx.UICONFIG == 4)) ? ctx.SPLMAX : ctx.SPLMIN + 2 * (19 - ctx.SPLMIN);
-  json[F("min_temp")] = ctx.SPLMIN;
-
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
-
-  json[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
-
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("temperature_state_template")] = F("{{ value_json.SETP }}");
-  json[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveSupplyWaterTemp(const HassDiscoveryStoveContext &ctx)
-{
-  // T1 probe config is fixed for hydro type stove
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_SupplyWaterTemp");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_supplywatertemp\","
-                          "\"device_class\":\"temperature\","
-                          "\"name\":\"Supply Water Temperature\","
-                          "\"object_id\":\"stove_supplywatertemp\","
-                          "\"suggested_display_precision\":1,"
-                          "\"state_class\":\"measurement\","
-                          "\"unit_of_measurement\":\"°C\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::Generic)
-    json[F("state_topic")] = F("~/T1");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-  {
-    json[F("state_topic")] = F("~/TMPS");
-    json[F("value_template")] = F("{{ value_json.T1 }}");
-  }
-  else if (_ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("state_topic")] = F("~/TMPS/T1");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveMainTemp(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
-      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
-      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
-      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
-      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
-      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
-
-  // define probe number
-  byte probeNumber = ctx.MAINTPROBE; // default case covering AirType and other HydroType
-  if (ctx.isHydroType)
-  {
-    if (ctx.UICONFIG == 1)
-      probeNumber = 1; // T2
-    else if (ctx.UICONFIG == 10)
-      probeNumber = 4; // T5
-  }
-
-  // define sensor name
-  const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
-  byte tempSensorNameIndex = 0; // default case covering AirType
-  if (ctx.isHydroType)
-  {
-    if (ctx.UICONFIG == 1)
-      tempSensorNameIndex = 1; // Return Water
-    else if (ctx.UICONFIG == 3 || ctx.UICONFIG == 4)
-      tempSensorNameIndex = 2; // Tank Water
-  }
-
-  String uniqueId = ctx.uniqueIdPrefixStove + '_' + tempSensorNameList[tempSensorNameIndex] + F("Temp");
-  uniqueId.replace(F(" "), "");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"device_class\":\"temperature\","
-                          "\"suggested_display_precision\":1,"
-                          "\"state_class\":\"measurement\","
-                          "\"unit_of_measurement\":\"°C\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
-  defaultEntityIdSuffix.replace(F(" "), "");
-  defaultEntityIdSuffix.toLowerCase();
-  json[F("default_entity_id")] = String(F("sensor.stove_")) + defaultEntityIdSuffix + F("temp");
-  json[F("device")] = serialized(ctx.device);
-  json[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
-  json[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
-  json[F("unique_id")] = uniqueId;
-  json[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveFlueGasTemp(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *flueGasTopicList[] = {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_FlueGasTemp");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_fluegastemp\","
-                          "\"device_class\":\"temperature\","
-                          "\"enabled_by_default\":false,"
-                          "\"name\":\"Flue Gas Temperature\","
-                          "\"object_id\":\"stove_fluegastemp\","
-                          "\"suggested_display_precision\":1,"
-                          "\"state_class\":\"measurement\","
-                          "\"unit_of_measurement\":\"°C\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-  json[F("state_topic")] = flueGasTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.T3 }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStovePqt(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_PQT");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_pqt\","
-                          "\"device_class\":\"weight\","
-                          "\"icon\":\"mdi:chart-bell-curve-cumulative\","
-                          "\"name\":\"Pellet Consumed\","
-                          "\"object_id\":\"stove_pqt\","
-                          "\"state_class\":\"total_increasing\","
-                          "\"unit_of_measurement\":\"kg\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.PQT }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveServiceTime(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *serviceTimeTopicList[] = {F("~/SERVICETIME"), F("~/CNTR"), F("~/CNTR/SERVICETIME")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_ServiceTimeCounter");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_servicetimecounter\","
-                          "\"icon\":\"mdi:account-wrench-outline\","
-                          "\"name\":\"Service Time Counter\","
-                          "\"object_id\":\"stove_servicetimecounter\","
-                          "\"state_class\":\"total_increasing\","
-                          "\"unit_of_measurement\":\"h\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = serviceTimeTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ value.split(':')[0] }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveFeeder(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *feederTopicList[] = {F("~/FDR"), F("~/POWR"), F("~/POWR/FDR")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_Feeder");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_feeder\","
-                          "\"enabled_by_default\":false,"
-                          "\"entity_category\":\"diagnostic\","
-                          "\"name\":\"Feeder\","
-                          "\"object_id\":\"stove_feeder\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = feederTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.FDR }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveDpTarget(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *dpTargetTopicList[] = {F("~/DP_TARGET"), F("~/DPRS"), F("~/DPRS/DP_TARGET")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_TargetDifferentialPressure");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_targetdifferentialpressure\","
-                          "\"device_class\":\"pressure\","
-                          "\"enabled_by_default\":false,"
-                          "\"entity_category\":\"diagnostic\","
-                          "\"name\":\"Target Differential Pressure\","
-                          "\"object_id\":\"stove_targetdifferentialpressure\","
-                          "\"state_class\":\"measurement\","
-                          "\"unit_of_measurement\":\"mPa\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-  json[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (iif(int(value_json.DP_TARGET) > 0x7FFF, int(value_json.DP_TARGET) - 0x10000, int(value_json.DP_TARGET)) * 1000 /60) | round }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveDpPressure(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *dpTopicList[] = {F("~/DP_PRESS"), F("~/DPRS"), F("~/DPRS/DP_PRESS")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_DifferentialPressure");
-  String topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor.stove_differentialpressure\","
-                          "\"device_class\":\"pressure\","
-                          "\"enabled_by_default\":false,"
-                          "\"entity_category\":\"diagnostic\","
-                          "\"name\":\"Differential Pressure\","
-                          "\"object_id\":\"stove_differentialpressure\","
-                          "\"state_class\":\"measurement\","
-                          "\"unit_of_measurement\":\"mPa\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-  json[F("state_topic")] = dpTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (iif(int(value_json.DP_PRESS) > 0x7FFF, int(value_json.DP_PRESS) - 0x10000, int(value_json.DP_PRESS)) * 1000 / 60) | round }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveOnOff(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_ON_OFF");
-  String topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"switch.stove_on_off\","
-                          "\"icon\":\"mdi:power\","
-                          "\"name\":\"On/Off\","
-                          "\"object_id\":\"stove_on_off\","
-                          "\"payload_off\":\"CMD+OFF\","
-                          "\"payload_on\":\"CMD+ON\","
-                          "\"state_off\":\"OFF\","
-                          "\"state_on\":\"ON\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ iif(int(value) > 1 and int(value) != 10, 'ON', 'OFF') }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveSetPoint(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_SETP");
-  String topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_template\":\"SET+SETP+{{ value }}\","
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"number.stove_setp\","
-                          "\"device_class\":\"temperature\","
-                          "\"mode\":\"slider\","
-                          "\"name\":\"SetPoint\","
-                          "\"object_id\":\"stove_setp\","
-                          "\"unit_of_measurement\":\"°C\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("min")] = ctx.SPLMIN;
-  json[F("max")] = ctx.SPLMAX;
-  json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.SETP }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStovePower(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_PWR");
-  String topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_template\":\"SET+POWR+{{ value }}\","
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"number.stove_pwr\","
-                          "\"icon\":\"mdi:signal\","
-                          "\"min\":1,"
-                          "\"max\":5,"
-                          "\"mode\":\"slider\","
-                          "\"name\":\"Power\","
-                          "\"object_id\":\"stove_pwr\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.PWR }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveRoomFan(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_RFAN");
-  String topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
-  JsonDocument json;
-
-  deserializeJson(json, F("{"
-                          "\"availability_mode\":\"all\","
-                          "\"command_template\":\"SET+RFAN+{{ value }}\","
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"number.stove_rfan\","
-                          "\"icon\":\"mdi:fan\","
-                          "\"min\":0,"
-                          "\"max\":6,"
-                          "\"name\":\"Room Fan\","
-                          "\"object_id\":\"stove_rfan\","
-                          "\"payload_reset\":\"7\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-
-  // specific availability for room fan
-  JsonArray availability = json["availability"].to<JsonArray>();
-  JsonObject availability_0 = availability.add<JsonObject>();
-  availability_0["topic"] = F("~/connected");
-  availability_0["value_template"] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
-  JsonObject availability_1 = availability.add<JsonObject>();
-  availability_1["topic"] = f2lTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
-
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.F2L }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveRoomFanAuto(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_RFAN_Auto");
-  String topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"switch.stove_rfan_auto\","
-                          "\"icon\":\"mdi:fan-auto\","
-                          "\"name\":\"Room Fan Auto\","
-                          "\"object_id\":\"stove_rfan_auto\","
-                          "\"payload_off\":\"SET+RFAN+3\","
-                          "\"payload_on\":\"SET+RFAN+7\","
-                          "\"state_off\":\"OFF\","
-                          "\"state_on\":\"ON\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ iif(int(value) == 7, 'ON', 'OFF') }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveFan3(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_FAN3");
-  String topic = prepareHassDiscoveryTopic(ctx.ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_topic\":\"~/cmd\","
-                          "\"icon\":\"mdi:fan-speed-2\","
-                          "\"name\":\"Left Fan\","
-                          "\"object_id\":\"stove_fan3\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.F3L }}");
-  if (ctx.ifFan3SwitchEntity)
-  {
-    json[F("default_entity_id")] = F("switch.stove_fan3");
-    json[F("payload_off")] = F("SET+FN3L+0");
-    json[F("payload_on")] = F("SET+FN3L+1");
-    json[F("state_off")] = F("0");
-    json[F("state_on")] = F("1");
-  }
-  else
-  {
-    json[F("default_entity_id")] = F("number.stove_fan3");
-    json[F("command_template")] = F("SET+FN3L+{{ value }}");
-    json[F("min")] = ctx.FANLMINMAX[2];
-    json[F("max")] = ctx.FANLMINMAX[3];
-    json[F("mode")] = F("slider");
-  }
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveFan4(const HassDiscoveryStoveContext &ctx)
-{
-  const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
-
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_FAN4");
-  String topic = prepareHassDiscoveryTopic(ctx.ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_topic\":\"~/cmd\","
-                          "\"icon\":\"mdi:fan-speed-3\","
-                          "\"name\":\"Right Fan\","
-                          "\"object_id\":\"stove_fan4\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
-  json[F("unique_id")] = uniqueId;
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.F4L }}");
-  if (ctx.ifFan4SwitchEntity)
-  {
-    json[F("default_entity_id")] = F("switch.stove_fan4");
-    json[F("payload_off")] = F("SET+FN4L+0");
-    json[F("payload_on")] = F("SET+FN4L+1");
-    json[F("state_off")] = F("0");
-    json[F("state_on")] = F("1");
-  }
-  else
-  {
-    json[F("default_entity_id")] = F("number.stove_fan4");
-    json[F("command_template")] = F("SET+FN4L+{{ value }}");
-    json[F("min")] = ctx.FANLMINMAX[4];
-    json[F("max")] = ctx.FANLMINMAX[5];
-    json[F("mode")] = F("slider");
-  }
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-void WPalaControl::mqttPublishHassStoveSetTime(const HassDiscoveryStoveContext &ctx)
-{
-  String uniqueId = ctx.uniqueIdPrefixStove + F("_SET_TIME");
-  String topic = prepareHassDiscoveryTopic(F("button"), uniqueId);
-
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"command_template\":\"SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}\","
-                          "\"command_topic\":\"~/cmd\","
-                          "\"default_entity_id\":\"button.stove_set_time\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"icon\":\"mdi:clock-outline\","
-                          "\"name\":\"Set Time\","
-                          "\"object_id\":\"stove_set_time\""
-                          "}"));
-  json[F("~")] = _preparedMqttBaseTopic;
-  json[F("availability")] = serialized(ctx.availabilityJSON);
-  json[F("device")] = serialized(ctx.device);
-  json[F("unique_id")] = uniqueId;
-
-  _mqttMan.publish(topic.c_str(), json, true);
-}
-
-bool WPalaControl::mqttHassDiscoveryStove()
-{
   // ---------- Get Stove Device data ----------
+
+  if (!_Pala.isInitialized())
+    return true;
 
   // read static data from stove
   char SN[28];
@@ -1039,92 +336,808 @@ bool WPalaControl::mqttHassDiscoveryStove()
   else if (refreshStatus)
     _lastAllStatusRefreshMillis = currentMillis;
 
-  // ---------- variables for entities building ----------
+  // calculate flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
+  bool hasSetPoint = (SETP != 0);
+  bool hasPower = (STOVETYPE != 8);
+  bool hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8);
+  bool hasRoomFan = (FAN2TYPE > 1);
+  bool hasFan3 = (FAN2TYPE > 3); // Fan order is not the expected one
+  bool ifFan3SwitchEntity = (FANLMINMAX[2] == 0 && FANLMINMAX[3] == 1);
+  bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
+  bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
+  bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
+  bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
+  bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
 
-  // prepare unique id prefix for stove entities
-  String uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
+  // ---------- Usefull variables for entities building ----------
+
+  const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
+  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
+  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
+      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
+      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
+      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
+      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
+      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
+  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
+  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
+
+  // ---------- Stove Device ----------
+
+  // prepare unique id prefix for Stove
+  uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
   uniqueIdPrefixStove += SN;
 
   // prepare Stove device JSON
-  String device = buildStoveDeviceString(uniqueIdPrefixStove, MOD, VER, FWDATE);
+  deserializeJson(json, F("{"
+                          "\"configuration_url\":\"http://wpalacontrol.local\","
+                          "\"name\":\"Stove\""
+                          "}"));
+  json[F("identifiers")][0] = uniqueIdPrefixStove;
+  json[F("model")] = String(MOD);
+  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
+  json[F("via_device")] = uniqueIdPrefix;
+  serializeJson(json, device); // serialize to device String
 
-  // prepare context used by entity building functions
-  HassDiscoveryStoveContext stoveContext = {
-      // useful variables/values
-      .device = device,
-      .uniqueIdPrefixStove = uniqueIdPrefixStove,
-      .availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}"),
+  // ----- Stove Entities -----
 
-      // static data
-      .SPLMIN = SPLMIN,
-      .SPLMAX = SPLMAX,
-      .UICONFIG = UICONFIG,
-      .MAINTPROBE = MAINTPROBE,
-      .FANLMINMAX = FANLMINMAX,
+  //
+  // Connectivity entity
+  //
 
-      // calculated flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
-      .hasSetPoint = (SETP != 0),
-      .hasPower = (STOVETYPE != 8),
-      .hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8),
-      .hasRoomFan = (FAN2TYPE > 1),
-      .hasFan3 = (FAN2TYPE > 3), // Fan order is not the expected one
-      .ifFan3SwitchEntity = (FANLMINMAX[2] == 0 && FANLMINMAX[3] == 1),
-      .hasFan4 = (FAN2TYPE > 2), // Fan order is not the expected one
-      .ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1),
-      .isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8),
-      .isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6),
-      .hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3)};
+  uniqueId = uniqueIdPrefixStove + F("_Connectivity");
 
-  // publish Stove entities
-  mqttPublishHassStoveConnectivity(stoveContext);
-  mqttPublishHassStoveConnectivity(stoveContext);
-  mqttPublishHassStoveStatus(stoveContext);
-  mqttPublishHassStoveStatusText(stoveContext);
-  mqttPublishHassStoveThermostat(stoveContext);
-  if (stoveContext.isHydroType)
-    mqttPublishHassStoveSupplyWaterTemp(stoveContext);
-  mqttPublishHassStoveMainTemp(stoveContext);
-  mqttPublishHassStoveFlueGasTemp(stoveContext);
-  mqttPublishHassStovePqt(stoveContext);
-  mqttPublishHassStoveServiceTime(stoveContext);
-  mqttPublishHassStoveFeeder(stoveContext);
-  mqttPublishHassStoveDpTarget(stoveContext);
-  mqttPublishHassStoveDpPressure(stoveContext);
-  if (stoveContext.hasOnOff)
-    mqttPublishHassStoveOnOff(stoveContext);
-  if (stoveContext.hasSetPoint)
-    mqttPublishHassStoveSetPoint(stoveContext);
-  if (stoveContext.hasPower)
-    mqttPublishHassStovePower(stoveContext);
-  if (stoveContext.hasRoomFan)
-    mqttPublishHassStoveRoomFan(stoveContext);
-  if (stoveContext.isAirType && stoveContext.hasFanAuto)
-    mqttPublishHassStoveRoomFanAuto(stoveContext);
-  if (stoveContext.hasFan3)
-    mqttPublishHassStoveFan3(stoveContext);
-  if (stoveContext.hasFan4)
-    mqttPublishHassStoveFan4(stoveContext);
-  mqttPublishHassStoveSetTime(stoveContext);
+  topic = prepareHassDiscoveryTopic(F("binary_sensor"), uniqueId);
+
+  // prepare payload for Stove connectivity sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
+                          "\"device_class\":\"connectivity\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"object_id\":\"stove_connectivity\","
+                          "\"state_topic\":\"~/connected\","
+                          "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Status entity
+  //
+
+  uniqueId = uniqueIdPrefixStove + F("_STATUS");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove status sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_status\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"Status\","
+                          "\"object_id\":\"stove_status\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.STATUS }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Status Text entity
+  //
+
+  uniqueId = uniqueIdPrefixStove + F("_STATUS_Text");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove status text sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_status_text\","
+                          "\"device_class\":\"enum\","
+                          "\"name\":\"Status\","
+                          "\"object_id\":\"stove_status_text\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value }}{% endif %}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value_json.STATUS }}{% endif %}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Thermostat entity
+  //
+
+  // define probe number
+  byte probeNumber = MAINTPROBE;                                        // default case covering AirType and other HydroType
+  if (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
+    probeNumber = 0;                                                    // T1
+
+  uniqueId = uniqueIdPrefixStove + F("_Thermostat");
+
+  topic = prepareHassDiscoveryTopic(F("climate"), uniqueId);
+
+  // prepare payload for Stove thermostat
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"climate.stove_thermostat\","
+                          "\"mode_command_template\":\"CMD+{{ iif(value == 'off', 'OFF', 'ON') }}\","
+                          "\"mode_command_topic\":\"~/cmd\","
+                          "\"modes\":[\"off\",\"heat\"],"
+                          "\"name\":\"Thermostat\","
+                          "\"object_id\":\"stove_thermostat\","
+                          "\"optimistic\":false,"
+                          "\"payload_off\":\"CMD+OFF\","
+                          "\"payload_on\":\"CMD+ON\","
+                          "\"power_command_topic\":\"~/cmd\","
+                          "\"temperature_command_template\":\"SET+SETP+{{ value|int }}\","
+                          "\"temperature_command_topic\":\"~/cmd\","
+                          "\"temperature_unit\":\"C\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+
+  json[F("action_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("availability")] = serialized(availabilityJSON);
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
+  json[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
+  json[F("device")] = serialized(device);
+
+  if (hasRoomFan)
+  {
+
+    json[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
+    json[F("fan_mode_command_topic")] = F("~/cmd");
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
+    json[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
+
+    json[F("fan_modes")] = serialized((isAirType && hasFanAuto) ? F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\",\"auto\"]") : F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\"]"));
+  }
+
+  // Adjust max_temp for stove with air temperature setPoint, goal is to center the range around 19°C (Does someone really wants its room at 51°C ...)
+  json[F("max_temp")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMAX : SPLMIN + 2 * (19 - SPLMIN);
+  json[F("min_temp")] = SPLMIN;
+
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
+
+  json[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
+  // modes already in deserialized JSON
+
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("temperature_state_template")] = F("{{ value_json.SETP }}");
+  json[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  // T1 probe config is fixed for hydro type stove
+  if (isHydroType)
+  {
+    //
+    // Supply Water temperature entity
+    //
+
+    uniqueId = uniqueIdPrefixStove + F("_SupplyWaterTemp");
+
+    topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+    // prepare payload for Stove supply water temperature sensor
+    deserializeJson(json, F("{"
+                            "\"default_entity_id\":\"sensor.stove_supplywatertemp\","
+                            "\"device_class\":\"temperature\","
+                            "\"name\":\"Supply Water Temperature\","
+                            "\"object_id\":\"stove_supplywatertemp\","
+                            "\"suggested_display_precision\":1,"
+                            "\"state_class\":\"measurement\","
+                            "\"unit_of_measurement\":\"°C\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::Generic)
+      json[F("state_topic")] = F("~/T1");
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    {
+      json[F("state_topic")] = F("~/TMPS");
+      json[F("value_template")] = F("{{ value_json.T1 }}");
+    }
+    else if (_ha.mqtt.type == HaMqttType::GenericCategorized)
+      json[F("state_topic")] = F("~/TMPS/T1");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // Room/Tank Water/Return Water temperature entity
+  //
+
+  // define probe number
+  probeNumber = MAINTPROBE; // default case covering AirType and other HydroType
+  if (isHydroType)
+  {
+    if (UICONFIG == 1)
+      probeNumber = 1; // T2
+    else if (UICONFIG == 10)
+      probeNumber = 4; // T5
+  }
+
+  // define sensor name
+  const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
+  byte tempSensorNameIndex = 0; // default case covering AirType
+  if (isHydroType)
+  {
+    if (UICONFIG == 1)
+      tempSensorNameIndex = 1; // Return Water
+    else if (UICONFIG == 3 || UICONFIG == 4)
+      tempSensorNameIndex = 2; // Tank Water
+  }
+
+  uniqueId = uniqueIdPrefixStove + '_' + tempSensorNameList[tempSensorNameIndex] + F("Temp");
+  uniqueId.replace(F(" "), "");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove main temperature sensor
+  deserializeJson(json, F("{"
+                          "\"device_class\":\"temperature\","
+                          "\"suggested_display_precision\":1,"
+                          "\"state_class\":\"measurement\","
+                          "\"unit_of_measurement\":\"°C\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  String defaultEntityIdSuffix = tempSensorNameList[tempSensorNameIndex];
+  defaultEntityIdSuffix.replace(F(" "), "");
+  defaultEntityIdSuffix.toLowerCase();
+  json[F("default_entity_id")] = String(F("sensor.stove_")) + defaultEntityIdSuffix + F("temp");
+  json[F("device")] = serialized(device);
+  json[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
+  json[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
+  json[F("unique_id")] = uniqueId;
+  json[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Flue Gas temperature entity (T3)
+  //
+
+  uniqueId = uniqueIdPrefixStove + F("_FlueGasTemp");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove flue gas temperature sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_fluegastemp\","
+                          "\"device_class\":\"temperature\","
+                          "\"enabled_by_default\":false,"
+                          "\"name\":\"Flue Gas Temperature\","
+                          "\"object_id\":\"stove_fluegastemp\","
+                          "\"suggested_display_precision\":1,"
+                          "\"state_class\":\"measurement\","
+                          "\"unit_of_measurement\":\"°C\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+  json[F("state_topic")] = tempProbeTopicListArray[2][_ha.mqtt.type];
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.T3 }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Pellet consumption entity
+  //
+
+  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
+
+  uniqueId = uniqueIdPrefixStove + F("_PQT");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove pellet consumption sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_pqt\","
+                          "\"device_class\":\"weight\","
+                          "\"icon\":\"mdi:chart-bell-curve-cumulative\","
+                          "\"name\":\"Pellet Consumed\","
+                          "\"object_id\":\"stove_pqt\","
+                          "\"state_class\":\"total_increasing\","
+                          "\"unit_of_measurement\":\"kg\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.PQT }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Service time counter entity
+  //
+
+  const __FlashStringHelper *serviceTimeTopicList[] = {F("~/SERVICETIME"), F("~/CNTR"), F("~/CNTR/SERVICETIME")};
+
+  uniqueId = uniqueIdPrefixStove + F("_ServiceTimeCounter");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove service time counter sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_servicetimecounter\","
+                          "\"icon\":\"mdi:account-wrench-outline\","
+                          "\"name\":\"Service Time Counter\","
+                          "\"object_id\":\"stove_servicetimecounter\","
+                          "\"state_class\":\"total_increasing\","
+                          "\"unit_of_measurement\":\"h\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("state_topic")] = serviceTimeTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("value_template")] = F("{{ value.split(':')[0] }}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Feeder entity
+  //
+
+  const __FlashStringHelper *feederTopicList[] = {F("~/FDR"), F("~/POWR"), F("~/POWR/FDR")};
+
+  uniqueId = uniqueIdPrefixStove + F("_Feeder");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove feeder sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_feeder\","
+                          "\"enabled_by_default\":false,"
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"Feeder\","
+                          "\"object_id\":\"stove_feeder\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("state_topic")] = feederTopicList[_ha.mqtt.type];
+  json[F("unique_id")] = uniqueId;
+  if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ value_json.FDR }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Target Differential Pressure entity
+  //
+
+  const __FlashStringHelper *dpTargetTopicList[] = {F("~/DP_TARGET"), F("~/DPRS"), F("~/DPRS/DP_TARGET")};
+
+  uniqueId = uniqueIdPrefixStove + F("_TargetDifferentialPressure");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove target differential pressure sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_targetdifferentialpressure\","
+                          "\"device_class\":\"pressure\","
+                          "\"enabled_by_default\":false,"
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"Target Differential Pressure\","
+                          "\"object_id\":\"stove_targetdifferentialpressure\","
+                          "\"state_class\":\"measurement\","
+                          "\"unit_of_measurement\":\"mPa\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+  json[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ (iif(int(value_json.DP_TARGET) > 0x7FFF, int(value_json.DP_TARGET) - 0x10000, int(value_json.DP_TARGET)) * 1000 /60) | round }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // Differential Pressure entity
+  //
+
+  const __FlashStringHelper *dpTopicList[] = {F("~/DP_PRESS"), F("~/DPRS"), F("~/DPRS/DP_PRESS")};
+
+  uniqueId = uniqueIdPrefixStove + F("_DifferentialPressure");
+
+  topic = prepareHassDiscoveryTopic(F("sensor"), uniqueId);
+
+  // prepare payload for Stove differential pressure sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor.stove_differentialpressure\","
+                          "\"device_class\":\"pressure\","
+                          "\"enabled_by_default\":false,"
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"Differential Pressure\","
+                          "\"object_id\":\"stove_differentialpressure\","
+                          "\"state_class\":\"measurement\","
+                          "\"unit_of_measurement\":\"mPa\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+  json[F("state_topic")] = dpTopicList[_ha.mqtt.type];
+  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
+  else if (_ha.mqtt.type == HaMqttType::GenericJson)
+    json[F("value_template")] = F("{{ (iif(int(value_json.DP_PRESS) > 0x7FFF, int(value_json.DP_PRESS) - 0x10000, int(value_json.DP_PRESS)) * 1000 / 60) | round }}");
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
+  //
+  // OnOff entity
+  //
+
+  if (hasOnOff)
+  {
+    uniqueId = uniqueIdPrefixStove + F("_ON_OFF");
+
+    topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
+
+    // prepare payload for Stove onoff switch
+    deserializeJson(json, F("{"
+                            "\"command_topic\":\"~/cmd\","
+                            "\"default_entity_id\":\"switch.stove_on_off\","
+                            "\"icon\":\"mdi:power\","
+                            "\"name\":\"On/Off\","
+                            "\"object_id\":\"stove_on_off\","
+                            "\"payload_off\":\"CMD+OFF\","
+                            "\"payload_on\":\"CMD+ON\","
+                            "\"state_off\":\"OFF\","
+                            "\"state_on\":\"ON\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+      json[F("value_template")] = F("{{ iif(int(value) > 1 and int(value) != 10, 'ON', 'OFF') }}");
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // SetPoint entity
+  //
+
+  if (hasSetPoint)
+  {
+    uniqueId = uniqueIdPrefixStove + F("_SETP");
+
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
+
+    // prepare payload for Stove setpoint number
+    deserializeJson(json, F("{"
+                            "\"command_template\":\"SET+SETP+{{ value }}\","
+                            "\"command_topic\":\"~/cmd\","
+                            "\"default_entity_id\":\"number.stove_setp\","
+                            "\"device_class\":\"temperature\","
+                            "\"mode\":\"slider\","
+                            "\"name\":\"SetPoint\","
+                            "\"object_id\":\"stove_setp\","
+                            "\"unit_of_measurement\":\"°C\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("min")] = SPLMIN;
+    json[F("max")] = SPLMAX;
+    json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ value_json.SETP }}");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // Power entity
+  //
+
+  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
+
+  if (hasPower)
+  {
+    uniqueId = uniqueIdPrefixStove + F("_PWR");
+
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
+
+    // prepare payload for Stove power number
+    deserializeJson(json, F("{"
+                            "\"command_template\":\"SET+POWR+{{ value }}\","
+                            "\"command_topic\":\"~/cmd\","
+                            "\"default_entity_id\":\"number.stove_pwr\","
+                            "\"icon\":\"mdi:signal\","
+                            "\"min\":1,"
+                            "\"max\":5,"
+                            "\"mode\":\"slider\","
+                            "\"name\":\"Power\","
+                            "\"object_id\":\"stove_pwr\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ value_json.PWR }}");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // RoomFan entity
+  //
+
+  if (hasRoomFan)
+  {
+    uniqueId = uniqueIdPrefixStove + F("_RFAN");
+
+    topic = prepareHassDiscoveryTopic(F("number"), uniqueId);
+
+    // prepare payload for Stove room fan
+    deserializeJson(json, F("{"
+                            "\"availability_mode\":\"all\","
+                            "\"command_template\":\"SET+RFAN+{{ value }}\","
+                            "\"command_topic\":\"~/cmd\","
+                            "\"default_entity_id\":\"number.stove_rfan\","
+                            "\"icon\":\"mdi:fan\","
+                            "\"min\":0,"
+                            "\"max\":6,"
+                            "\"name\":\"Room Fan\","
+                            "\"object_id\":\"stove_rfan\","
+                            "\"payload_reset\":\"7\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+
+    // specific availibility for room fan
+    JsonArray availability = json["availability"].to<JsonArray>();
+
+    JsonObject availability_0 = availability.add<JsonObject>();
+    availability_0["topic"] = F("~/connected");
+    availability_0["value_template"] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
+
+    JsonObject availability_1 = availability.add<JsonObject>();
+    availability_1["topic"] = f2lTopicList[_ha.mqtt.type];
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+      availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
+      availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
+
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ value_json.F2L }}");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // RoomFan Auto entity
+  //
+
+  if (isAirType && hasFanAuto)
+  {
+    uniqueId = uniqueIdPrefixStove + F("_RFAN_Auto");
+
+    topic = prepareHassDiscoveryTopic(F("switch"), uniqueId);
+
+    // prepare payload for Stove room fan auto mode
+    deserializeJson(json, F("{"
+                            "\"command_topic\":\"~/cmd\","
+                            "\"default_entity_id\":\"switch.stove_rfan_auto\","
+                            "\"icon\":\"mdi:fan-auto\","
+                            "\"name\":\"Room Fan Auto\","
+                            "\"object_id\":\"stove_rfan_auto\","
+                            "\"payload_off\":\"SET+RFAN+3\","
+                            "\"payload_on\":\"SET+RFAN+7\","
+                            "\"state_off\":\"OFF\","
+                            "\"state_on\":\"ON\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+      json[F("value_template")] = F("{{ iif(int(value) == 7, 'ON', 'OFF') }}");
+    else if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // Fan3 entity
+  //
+
+  if (hasFan3)
+  {
+    const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
+
+    uniqueId = uniqueIdPrefixStove + F("_FAN3");
+
+    // entity type depends on Min and Max value of FAN3
+    topic = prepareHassDiscoveryTopic(ifFan3SwitchEntity ? F("switch") : F("number"), uniqueId);
+
+    // prepare payload for Stove fan3 number
+    deserializeJson(json, F("{"
+                            "\"command_topic\":\"~/cmd\","
+                            "\"icon\":\"mdi:fan-speed-2\","
+                            "\"name\":\"Left Fan\","
+                            "\"object_id\":\"stove_fan3\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ value_json.F3L }}");
+
+    // add entity type specific configuration
+    if (ifFan3SwitchEntity)
+    {
+      json[F("default_entity_id")] = F("switch.stove_fan3");
+      json[F("payload_off")] = F("SET+FN3L+0");
+      json[F("payload_on")] = F("SET+FN3L+1");
+      json[F("state_off")] = F("0");
+      json[F("state_on")] = F("1");
+    }
+    else
+    {
+      json[F("default_entity_id")] = F("number.stove_fan3");
+      json[F("command_template")] = F("SET+FN3L+{{ value }}");
+      json[F("min")] = FANLMINMAX[2];
+      json[F("max")] = FANLMINMAX[3];
+      json[F("mode")] = F("slider");
+    }
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // Fan4 entity
+  //
+
+  if (hasFan4)
+  {
+    const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
+
+    uniqueId = uniqueIdPrefixStove + F("_FAN4");
+
+    // entity type depends on Min and Max value of FAN4
+    topic = prepareHassDiscoveryTopic(ifFan4SwitchEntity ? F("switch") : F("number"), uniqueId);
+
+    // prepare payload for Stove fan4 number
+    deserializeJson(json, F("{"
+                            "\"command_topic\":\"~/cmd\","
+                            "\"icon\":\"mdi:fan-speed-3\","
+                            "\"name\":\"Right Fan\","
+                            "\"object_id\":\"stove_fan4\""
+                            "}"));
+    json[F("~")] = _preparedMqttBaseTopic;
+    json[F("availability")] = serialized(availabilityJSON);
+    json[F("device")] = serialized(device);
+    json[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
+    json[F("unique_id")] = uniqueId;
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = F("{{ value_json.F4L }}");
+
+    // add entity type specific configuration
+    if (ifFan4SwitchEntity)
+    {
+      json[F("default_entity_id")] = F("switch.stove_fan4");
+      json[F("payload_off")] = F("SET+FN4L+0");
+      json[F("payload_on")] = F("SET+FN4L+1");
+      json[F("state_off")] = F("0");
+      json[F("state_on")] = F("1");
+    }
+    else
+    {
+      json[F("default_entity_id")] = F("number.stove_fan4");
+      json[F("command_template")] = F("SET+FN4L+{{ value }}");
+      json[F("min")] = FANLMINMAX[4];
+      json[F("max")] = FANLMINMAX[5];
+      json[F("mode")] = F("slider");
+    }
+
+    // publish
+    _mqttMan.publish(topic.c_str(), json, true);
+  }
+
+  //
+  // Set Time entity
+  //
+
+  uniqueId = uniqueIdPrefixStove + F("_SET_TIME");
+
+  topic = prepareHassDiscoveryTopic(F("button"), uniqueId);
+
+  // prepare payload for Stove set time button
+  deserializeJson(json, F("{"
+                          "\"command_template\":\"SET+TIME+{{ now().strftime('%Y-%m-%d+%H:%M:%S') }}\","
+                          "\"command_topic\":\"~/cmd\","
+                          "\"default_entity_id\":\"button.stove_set_time\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"icon\":\"mdi:clock-outline\","
+                          "\"name\":\"Set Time\","
+                          "\"object_id\":\"stove_set_time\""
+                          "}"));
+  json[F("~")] = _preparedMqttBaseTopic;
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
 
   return true;
-}
-
-bool WPalaControl::mqttHassDiscovery()
-{
-  if (!_mqttMan.connected())
-    return false;
-
-  LOG_SERIAL_PRINTLN(F("Publish Home Assistant Discovery data"));
-
-  // publish this module entities
-  if (!mqttPublishHassGateway())
-    return false;
-
-  if (!_Pala.isInitialized())
-    return true;
-
-  // publish stove entities
-  return mqttHassDiscoveryStove();
 }
 
 bool WPalaControl::mqttPublishUpdate()
@@ -1230,1309 +1243,6 @@ bool WPalaControl::mqttPublishUpdate()
   _mqttMan.publish(topic.c_str(), updateInfo, true);
 
   return true;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdCmdOff(JsonObject &data)
-{
-  uint16_t STATUS, LSTATUS, FSTATUS;
-  Palazzetti::CommandResult cmdSuccess = _Pala.switchOff(&STATUS, &LSTATUS, &FSTATUS);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["STATUS"] = STATUS;
-    data["LSTATUS"] = LSTATUS;
-    data["FSTATUS"] = FSTATUS;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdCmdOn(JsonObject &data)
-{
-  uint16_t STATUS, LSTATUS, FSTATUS;
-  Palazzetti::CommandResult cmdSuccess = _Pala.switchOn(&STATUS, &LSTATUS, &FSTATUS);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["STATUS"] = STATUS;
-    data["LSTATUS"] = LSTATUS;
-    data["FSTATUS"] = FSTATUS;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetAlls(JsonObject &data)
-{
-  bool refreshStatus = false;
-  unsigned long currentMillis = millis();
-  if ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL) // refresh AllStatus data if it's 15sec old
-    refreshStatus = true;
-
-  int MBTYPE;
-  uint16_t MOD, VER, CORE;
-  char FWDATE[11];
-  char APLTS[20];
-  uint16_t APLWDAY;
-  byte CHRSTATUS;
-  uint16_t STATUS, LSTATUS;
-  bool isMFSTATUSValid;
-  uint16_t MFSTATUS;
-  float SETP;
-  byte PUMP;
-  uint16_t PQT;
-  uint16_t F1V;
-  uint16_t F1RPM;
-  uint16_t F2L;
-  uint16_t F2LF;
-  uint16_t FANLMINMAX[6];
-  uint16_t F2V;
-  bool isF3LF4LValid;
-  uint16_t F3L;
-  uint16_t F4L;
-  byte PWR;
-  float FDR;
-  uint16_t DPT;
-  uint16_t DP;
-  byte IN;
-  byte OUT;
-  float T1, T2, T3, T4, T5;
-  bool isSNValid;
-  char SN[28];
-  Palazzetti::CommandResult cmdSuccess = _Pala.getAllStatus(refreshStatus, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &APLTS, &APLWDAY, &CHRSTATUS, &STATUS, &LSTATUS, &isMFSTATUSValid, &MFSTATUS, &SETP, &PUMP, &PQT, &F1V, &F1RPM, &F2L, &F2LF, &FANLMINMAX, &F2V, &isF3LF4LValid, &F3L, &F4L, &PWR, &FDR, &DPT, &DP, &IN, &OUT, &T1, &T2, &T3, &T4, &T5, &isSNValid, &SN);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char floatBuf[8];
-    if (refreshStatus)
-      _lastAllStatusRefreshMillis = currentMillis;
-
-    data["MBTYPE"] = MBTYPE;
-    data["MAC"] = WiFi.macAddress();
-    data["MOD"] = MOD;
-    data["VER"] = VER;
-    data["CORE"] = CORE;
-    data["FWDATE"] = FWDATE;
-    data["APLTS"] = APLTS;
-    data["APLWDAY"] = APLWDAY;
-    data["CHRSTATUS"] = CHRSTATUS;
-    data["STATUS"] = STATUS;
-    data["LSTATUS"] = LSTATUS;
-    if (isMFSTATUSValid)
-      data["MFSTATUS"] = MFSTATUS;
-    dtostrf(SETP, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-    data["PUMP"] = PUMP;
-    data["PQT"] = PQT;
-    data["F1V"] = F1V;
-    data["F1RPM"] = F1RPM;
-    data["F2L"] = F2L;
-    data["F2LF"] = F2LF;
-    JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
-    fanlminmax.add(FANLMINMAX[0]);
-    fanlminmax.add(FANLMINMAX[1]);
-    fanlminmax.add(FANLMINMAX[2]);
-    fanlminmax.add(FANLMINMAX[3]);
-    fanlminmax.add(FANLMINMAX[4]);
-    fanlminmax.add(FANLMINMAX[5]);
-    data["F2V"] = F2V;
-    if (isF3LF4LValid)
-    {
-      data["F3L"] = F3L;
-      data["F4L"] = F4L;
-    }
-    data["PWR"] = PWR;
-    dtostrf(FDR, 1, 2, floatBuf);
-    data["FDR"] = serialized(floatBuf);
-    data["DPT"] = DPT;
-    data["DP"] = DP;
-    data["IN"] = IN;
-    data["OUT"] = OUT;
-    dtostrf(T1, 1, 2, floatBuf);
-    data["T1"] = serialized(floatBuf);
-    dtostrf(T2, 1, 2, floatBuf);
-    data["T2"] = serialized(floatBuf);
-    dtostrf(T3, 1, 2, floatBuf);
-    data["T3"] = serialized(floatBuf);
-    dtostrf(T4, 1, 2, floatBuf);
-    data["T4"] = serialized(floatBuf);
-    dtostrf(T5, 1, 2, floatBuf);
-    data["T5"] = serialized(floatBuf);
-
-    data["EFLAGS"] = 0; // new ErrorFlags not implemented
-    if (isSNValid)
-      data["SN"] = SN;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetChrd(JsonObject &data)
-{
-  byte CHRSTATUS;
-  float PCHRSETP[6];
-  byte PSTART[6][2];
-  byte PSTOP[6][2];
-  byte DM[7][3];
-  Palazzetti::CommandResult cmdSuccess = _Pala.getChronoData(&CHRSTATUS, &PCHRSETP, &PSTART, &PSTOP, &DM);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char floatBuf[8];
-    data["CHRSTATUS"] = CHRSTATUS;
-
-    // Add Programs (P1->P6)
-    char programName[3] = {'P', 'X', 0};
-    char time[6] = {'0', '0', ':', '0', '0', 0};
-    for (byte i = 0; i < 6; i++)
-    {
-      programName[1] = i + '1';
-      JsonObject px = data[programName].to<JsonObject>();
-      dtostrf(PCHRSETP[i], 1, 2, floatBuf);
-      px["CHRSETP"] = serialized(floatBuf);
-      time[0] = PSTART[i][0] / 10 + '0';
-      time[1] = PSTART[i][0] % 10 + '0';
-      time[3] = PSTART[i][1] / 10 + '0';
-      time[4] = PSTART[i][1] % 10 + '0';
-      px["START"] = time;
-      time[0] = PSTOP[i][0] / 10 + '0';
-      time[1] = PSTOP[i][0] % 10 + '0';
-      time[3] = PSTOP[i][1] / 10 + '0';
-      time[4] = PSTOP[i][1] % 10 + '0';
-      px["STOP"] = time;
-    }
-
-    // Add Days (D1->D7)
-    char dayName[3] = {'D', 'X', 0};
-    char memoryName[3] = {'M', 'X', 0};
-    for (byte dayNumber = 0; dayNumber < 7; dayNumber++)
-    {
-      dayName[1] = dayNumber + '1';
-      JsonObject dx = data[dayName].to<JsonObject>();
-      for (byte memoryNumber = 0; memoryNumber < 3; memoryNumber++)
-      {
-        memoryName[1] = memoryNumber + '1';
-        if (DM[dayNumber][memoryNumber])
-        {
-          programName[1] = DM[dayNumber][memoryNumber] + '0';
-          dx[memoryName] = programName;
-        }
-        else
-          dx[memoryName] = F("OFF");
-      }
-    }
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetCntr(JsonObject &data)
-{
-  uint16_t IGN, POWERTIMEh, POWERTIMEm, HEATTIMEh, HEATTIMEm, SERVICETIMEh, SERVICETIMEm, ONTIMEh, ONTIMEm, OVERTMPERRORS, IGNERRORS, PQT;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getCounters(&IGN, &POWERTIMEh, &POWERTIMEm, &HEATTIMEh, &HEATTIMEm, &SERVICETIMEh, &SERVICETIMEm, &ONTIMEh, &ONTIMEm, &OVERTMPERRORS, &IGNERRORS, &PQT);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char timeBuf[16];
-    data["IGN"] = IGN;
-    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", POWERTIMEh, POWERTIMEm);
-    data["POWERTIME"] = timeBuf;
-    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", HEATTIMEh, HEATTIMEm);
-    data["HEATTIME"] = timeBuf;
-    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", SERVICETIMEh, SERVICETIMEm);
-    data["SERVICETIME"] = timeBuf;
-    snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", ONTIMEh, ONTIMEm);
-    data["ONTIME"] = timeBuf;
-    data["OVERTMPERRORS"] = OVERTMPERRORS;
-    data["IGNERRORS"] = IGNERRORS;
-    data["PQT"] = PQT;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetDprs(JsonObject &data)
-{
-  uint16_t DP_TARGET, DP_PRESS;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getDPressData(&DP_TARGET, &DP_PRESS);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["DP_TARGET"] = DP_TARGET;
-    data["DP_PRESS"] = DP_PRESS;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetFand(JsonObject &data)
-{
-  uint16_t F1V, F2V, F1RPM, F2L, F2LF;
-  bool isF3SF4SValid;
-  float F3S, F4S;
-  bool isF3LF4LValid;
-  uint16_t F3L, F4L;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getFanData(&F1V, &F2V, &F1RPM, &F2L, &F2LF, &isF3SF4SValid, &F3S, &F4S, &isF3LF4LValid, &F3L, &F4L);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char floatBuf[8];
-    data["F1V"] = F1V;
-    data["F2V"] = F2V;
-    data["F1RPM"] = F1RPM;
-    data["F2L"] = F2L;
-    data["F2LF"] = F2LF;
-    if (isF3SF4SValid)
-    {
-      dtostrf(F3S, 1, 2, floatBuf);
-      data["F3S"] = serialized(floatBuf);
-      dtostrf(F4S, 1, 2, floatBuf);
-      data["F4S"] = serialized(floatBuf);
-    }
-    if (isF3LF4LValid)
-    {
-      data["F3L"] = F3L;
-      data["F4L"] = F4L;
-    }
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetHpar(JsonObject &data, uint16_t hparAddress)
-{
-  uint16_t hiddenParamValue;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getHiddenParameter(hparAddress, &hiddenParamValue);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    String hiddenParamName("HPAR");
-    hiddenParamName += hparAddress;
-    data[hiddenParamName] = hiddenParamValue;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetIopt(JsonObject &data)
-{
-  byte IN_I01, IN_I02, IN_I03, IN_I04;
-  byte OUT_O01, OUT_O02, OUT_O03, OUT_O04, OUT_O05, OUT_O06, OUT_O07;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getIO(&IN_I01, &IN_I02, &IN_I03, &IN_I04, &OUT_O01, &OUT_O02, &OUT_O03, &OUT_O04, &OUT_O05, &OUT_O06, &OUT_O07);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["IN_I01"] = IN_I01;
-    data["IN_I02"] = IN_I02;
-    data["IN_I03"] = IN_I03;
-    data["IN_I04"] = IN_I04;
-    data["OUT_O01"] = OUT_O01;
-    data["OUT_O02"] = OUT_O02;
-    data["OUT_O03"] = OUT_O03;
-    data["OUT_O04"] = OUT_O04;
-    data["OUT_O05"] = OUT_O05;
-    data["OUT_O06"] = OUT_O06;
-    data["OUT_O07"] = OUT_O07;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetLabl(JsonObject &data)
-{
-  data["LABEL"] = WiFi.getHostname();
-  return Palazzetti::CommandResult::OK;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetMdve(JsonObject &data)
-{
-  uint16_t MOD, VER, CORE;
-  char FWDATE[11];
-  Palazzetti::CommandResult cmdSuccess = _Pala.getModelVersion(&MOD, &VER, &CORE, &FWDATE);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["MOD"] = MOD;
-    data["VER"] = VER;
-    data["CORE"] = CORE;
-    data["FWDATE"] = FWDATE;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetParm(JsonObject &data, uint16_t parmAddress)
-{
-  byte paramValue;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getParameter(parmAddress, &paramValue);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    String paramName("PAR");
-    paramName += parmAddress;
-    data[paramName] = paramValue;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetSetp(JsonObject &data)
-{
-  char floatBuf[8];
-  float SETP;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getSetPoint(&SETP);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(SETP, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetStat(JsonObject &data)
-{
-  uint16_t STATUS, LSTATUS, FSTATUS;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getStatus(&STATUS, &LSTATUS, &FSTATUS);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["STATUS"] = STATUS;
-    data["LSTATUS"] = LSTATUS;
-    data["FSTATUS"] = FSTATUS;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetStdt(JsonObject &data)
-{
-  char SN[28];
-  byte SNCHK;
-  int MBTYPE;
-  uint16_t MOD, VER, CORE;
-  char FWDATE[11];
-  uint16_t FLUID;
-  uint16_t SPLMIN, SPLMAX;
-  byte UICONFIG;
-  byte HWTYPE;
-  byte DSPTYPE;
-  byte DSPFWVER;
-  byte CONFIG;
-  byte PELLETTYPE;
-  uint16_t PSENSTYPE;
-  byte PSENSLMAX, PSENSLTSH, PSENSLMIN;
-  byte MAINTPROBE;
-  byte STOVETYPE;
-  byte FAN2TYPE;
-  byte FAN2MODE;
-  byte BLEMBMODE;
-  byte BLEDSPMODE;
-  byte CHRONOTYPE;
-  byte AUTONOMYTYPE;
-  byte NOMINALPWR;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getStaticData(&SN, &SNCHK, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, &HWTYPE, &DSPTYPE, &DSPFWVER, &CONFIG, &PELLETTYPE, &PSENSTYPE, &PSENSLMAX, &PSENSLTSH, &PSENSLMIN, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, &BLEMBMODE, &BLEDSPMODE, &CHRONOTYPE, &AUTONOMYTYPE, &NOMINALPWR);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    // ----- WPalaControl generated values -----
-    data["LABEL"] = WiFi.getHostname();
-
-    // Network infos
-    data["GWDEVICE"] = F("wlan0"); // always wifi
-    data["MAC"] = WiFi.macAddress();
-    data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
-    data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
-
-    // Wifi infos
-    data["WMAC"] = WiFi.macAddress();
-    data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
-    data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
-    data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
-    data["WENC"] = F("psk2");
-    data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
-    data["WSSID"] = WiFi.SSID();
-    data["WPR"] = (true) ? F("dhcp") : F("static");
-    data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
-    data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
-    data["WCH"] = String(WiFi.channel());
-
-    // Ethernet infos
-    data["EPR"] = F("dhcp");
-    data["EGW"] = F("0.0.0.0");
-    data["EMSK"] = F("0.0.0.0");
-    data["EADR"] = F("0.0.0.0");
-    data["EMAC"] = WiFi.macAddress();
-    data["ECBL"] = F("down");
-    data["EBCST"] = "";
-
-    data["APLCONN"] = 1; // appliance connected
-    data["ICONN"] = 0;   // internet connected
-
-    data["CBTYPE"] = F("miniembplug"); // CBox model
-    data["sendmsg"] = F("2.1.2 2018-03-28 10:19:09");
-    data["plzbridge"] = F("2.2.1 2022-10-24 11:13:21");
-    data["SYSTEM"] = F("2.5.3 2021-10-08 10:30:20 (657c8cf)");
-
-    data["CLOUD_ENABLED"] = true;
-
-    // ----- Values from stove -----
-    data["SN"] = SN;
-    data["SNCHK"] = SNCHK;
-    data["MBTYPE"] = MBTYPE;
-    data["MOD"] = MOD;
-    data["VER"] = VER;
-    data["CORE"] = CORE;
-    data["FWDATE"] = FWDATE;
-    data["FLUID"] = FLUID;
-    data["SPLMIN"] = SPLMIN;
-    data["SPLMAX"] = SPLMAX;
-    data["UICONFIG"] = UICONFIG;
-    data["HWTYPE"] = HWTYPE;
-    data["DSPTYPE"] = DSPTYPE;
-    data["DSPFWVER"] = DSPFWVER;
-    data["CONFIG"] = CONFIG;
-    data["PELLETTYPE"] = PELLETTYPE;
-    data["PSENSTYPE"] = PSENSTYPE;
-    data["PSENSLMAX"] = PSENSLMAX;
-    data["PSENSLTSH"] = PSENSLTSH;
-    data["PSENSLMIN"] = PSENSLMIN;
-    data["MAINTPROBE"] = MAINTPROBE;
-    data["STOVETYPE"] = STOVETYPE;
-    data["FAN2TYPE"] = FAN2TYPE;
-    data["FAN2MODE"] = FAN2MODE;
-    data["BLEMBMODE"] = BLEMBMODE;
-    data["BLEDSPMODE"] = BLEDSPMODE;
-    data["CHRONOTYPE"] = 0; // disable chronothermostat (no planning) (enabled if > 1)
-    data["AUTONOMYTYPE"] = AUTONOMYTYPE;
-    data["NOMINALPWR"] = NOMINALPWR;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetTime(JsonObject &data)
-{
-  char STOVE_DATETIME[20];
-  byte STOVE_WDAY;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getDateTime(&STOVE_DATETIME, &STOVE_WDAY);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["STOVE_DATETIME"] = STOVE_DATETIME;
-    data["STOVE_WDAY"] = STOVE_WDAY;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetTmps(JsonObject &data)
-{
-  char floatBuf[8];
-  float T1, T2, T3, T4, T5;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getAllTemps(&T1, &T2, &T3, &T4, &T5);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(T1, 1, 2, floatBuf);
-    data["T1"] = serialized(floatBuf);
-    dtostrf(T2, 1, 2, floatBuf);
-    data["T2"] = serialized(floatBuf);
-    dtostrf(T3, 1, 2, floatBuf);
-    data["T3"] = serialized(floatBuf);
-    dtostrf(T4, 1, 2, floatBuf);
-    data["T4"] = serialized(floatBuf);
-    dtostrf(T5, 1, 2, floatBuf);
-    data["T5"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetPowr(JsonObject &data)
-{
-  char floatBuf[8];
-  byte PWR;
-  float FDR;
-  Palazzetti::CommandResult cmdSuccess = _Pala.getPower(&PWR, &FDR);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["PWR"] = PWR;
-    dtostrf(FDR, 1, 2, floatBuf);
-    data["FDR"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdGetSern(JsonObject &data)
-{
-  char SN[28];
-  Palazzetti::CommandResult cmdSuccess = _Pala.getSN(&SN);
-
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["SN"] = SN;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCday(JsonObject &data, uint16_t p0, uint16_t p1, uint16_t p2)
-{
-  Palazzetti::CommandResult cmdSuccess = _Pala.setChronoDay(p0, p1, p2);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char dayName[3] = {'D', 'X', 0};
-    char memoryName[3] = {'M', 'X', 0};
-    char programName[3] = {'P', 'X', 0};
-    dayName[1] = p0 + '0';
-    memoryName[1] = p1 + '0';
-    programName[1] = p2 + '0';
-    JsonObject dx = data[dayName].to<JsonObject>();
-    if (p2)
-      dx[memoryName] = programName;
-    else
-      dx[memoryName] = F("OFF");
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCprd(JsonObject &data, uint16_t p0, uint16_t p1, uint16_t p2, uint16_t p3, uint16_t p4, uint16_t p5)
-{
-  Palazzetti::CommandResult cmdSuccess = _Pala.setChronoPrg(p0, p1, p2, p3, p4, p5);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    char programName[3] = {'P', 'X', 0};
-    char time[6] = {'0', '0', ':', '0', '0', 0};
-    programName[1] = p0 + '0';
-    JsonObject px = data[programName].to<JsonObject>();
-    px["CHRSETP"] = (float)p1;
-    time[0] = p2 / 10 + '0';
-    time[1] = p2 % 10 + '0';
-    time[3] = p3 / 10 + '0';
-    time[4] = p3 % 10 + '0';
-    px["START"] = time;
-    time[0] = p4 / 10 + '0';
-    time[1] = p4 % 10 + '0';
-    time[3] = p5 / 10 + '0';
-    time[4] = p5 % 10 + '0';
-    px["STOP"] = time;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCset(uint16_t p0, uint16_t p1)
-{
-  return _Pala.setChronoSetpoint(p0, p1);
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCsph(uint16_t p0, uint16_t p1)
-{
-  return _Pala.setChronoStopHH(p0, p1);
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCspm(uint16_t p0, uint16_t p1)
-{
-  return _Pala.setChronoStopMM(p0, p1);
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCsst(JsonObject &data, uint16_t p0)
-{
-  byte CHRSTATUSReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setChronoStatus(p0, &CHRSTATUSReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-    data["CHRSTATUS"] = CHRSTATUSReturn;
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCsth(uint16_t p0, uint16_t p1)
-{
-  return _Pala.setChronoStartHH(p0, p1);
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetCstm(uint16_t p0, uint16_t p1)
-{
-  return _Pala.setChronoStartMM(p0, p1);
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetFn2d(JsonObject &data)
-{
-  bool isPWRReturnValid;
-  byte PWRReturn;
-  uint16_t F2LReturn;
-  uint16_t F2LFReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setRoomFanDown(&isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    if (isPWRReturnValid)
-      data["PWR"] = PWRReturn;
-    data["F2L"] = F2LReturn;
-    data["F2LF"] = F2LFReturn;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetFn2u(JsonObject &data)
-{
-  bool isPWRReturnValid;
-  byte PWRReturn;
-  uint16_t F2LReturn;
-  uint16_t F2LFReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setRoomFanUp(&isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    if (isPWRReturnValid)
-      data["PWR"] = PWRReturn;
-    data["F2L"] = F2LReturn;
-    data["F2LF"] = F2LFReturn;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetFn3l(JsonObject &data, uint16_t p0)
-{
-  uint16_t F3LReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setRoomFan3(p0, &F3LReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-    data["F3L"] = F3LReturn;
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetFn4l(JsonObject &data, uint16_t p0)
-{
-  uint16_t F4LReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setRoomFan4(p0, &F4LReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-    data["F4L"] = F4LReturn;
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetHpar(JsonObject &data, uint16_t p0, uint16_t p1)
-{
-  Palazzetti::CommandResult cmdSuccess = _Pala.setHiddenParameter(p0, p1);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-    data[String(F("HPAR")) + p0] = p1;
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetParm(JsonObject &data, uint16_t p0, uint16_t p1)
-{
-  Palazzetti::CommandResult cmdSuccess = _Pala.setParameter(p0, p1);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-    data[String(F("PAR")) + p0] = p1;
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetPowr(JsonObject &data, uint16_t p0)
-{
-  byte PWRReturn;
-  bool isF2LReturnValid;
-  uint16_t _F2LReturn;
-  uint16_t FANLMINMAXReturn[6];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setPower(p0, &PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["PWR"] = PWRReturn;
-    if (isF2LReturnValid)
-      data["F2L"] = _F2LReturn;
-    JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
-    fanlminmax.add(FANLMINMAXReturn[0]);
-    fanlminmax.add(FANLMINMAXReturn[1]);
-    fanlminmax.add(FANLMINMAXReturn[2]);
-    fanlminmax.add(FANLMINMAXReturn[3]);
-    fanlminmax.add(FANLMINMAXReturn[4]);
-    fanlminmax.add(FANLMINMAXReturn[5]);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetPwrd(JsonObject &data)
-{
-  byte PWRReturn;
-  bool isF2LReturnValid;
-  uint16_t _F2LReturn;
-  uint16_t FANLMINMAXReturn[6];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setPowerDown(&PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["PWR"] = PWRReturn;
-    if (isF2LReturnValid)
-      data["F2L"] = _F2LReturn;
-    JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
-    fanlminmax.add(FANLMINMAXReturn[0]);
-    fanlminmax.add(FANLMINMAXReturn[1]);
-    fanlminmax.add(FANLMINMAXReturn[2]);
-    fanlminmax.add(FANLMINMAXReturn[3]);
-    fanlminmax.add(FANLMINMAXReturn[4]);
-    fanlminmax.add(FANLMINMAXReturn[5]);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetPwru(JsonObject &data)
-{
-  byte PWRReturn;
-  bool isF2LReturnValid;
-  uint16_t _F2LReturn;
-  uint16_t FANLMINMAXReturn[6];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setPowerUp(&PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["PWR"] = PWRReturn;
-    if (isF2LReturnValid)
-      data["F2L"] = _F2LReturn;
-    JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
-    fanlminmax.add(FANLMINMAXReturn[0]);
-    fanlminmax.add(FANLMINMAXReturn[1]);
-    fanlminmax.add(FANLMINMAXReturn[2]);
-    fanlminmax.add(FANLMINMAXReturn[3]);
-    fanlminmax.add(FANLMINMAXReturn[4]);
-    fanlminmax.add(FANLMINMAXReturn[5]);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetRfan(JsonObject &data, uint16_t p0)
-{
-  bool isPWRReturnValid;
-  byte PWRReturn;
-  uint16_t F2LReturn;
-  uint16_t F2LFReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setRoomFan(p0, &isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    if (isPWRReturnValid)
-      data["PWR"] = PWRReturn;
-    data["F2L"] = F2LReturn;
-    data["F2LF"] = F2LFReturn;
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetSetp(JsonObject &data, uint16_t p0)
-{
-  float SETPReturn;
-  char floatBuf[8];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setSetpoint((byte)p0, &SETPReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(SETPReturn, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetSlnt(JsonObject &data, uint16_t p0)
-{
-  byte SLNTReturn;
-  byte PWRReturn;
-  uint16_t F2LReturn;
-  uint16_t F2LFReturn;
-  bool isF3LF4LReturnValid;
-  uint16_t F3LReturn;
-  uint16_t F4LReturn;
-  Palazzetti::CommandResult cmdSuccess = _Pala.setSilentMode(p0, &SLNTReturn, &PWRReturn, &F2LReturn, &F2LFReturn, &isF3LF4LReturnValid, &F3LReturn, &F4LReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    data["SLNT"] = SLNTReturn;
-    data["PWR"] = PWRReturn;
-    data["F2L"] = F2LReturn;
-    data["F2LF"] = F2LFReturn;
-    if (isF3LF4LReturnValid)
-    {
-      data["F3L"] = F3LReturn;
-      data["F4L"] = F4LReturn;
-    }
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetStpd(JsonObject &data)
-{
-  float SETPReturn;
-  char floatBuf[8];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setSetPointDown(&SETPReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(SETPReturn, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetStpf(JsonObject &data, JsonObject &info, uint16_t p0, uint16_t p1)
-{
-  if (p1 > 80 || p1 % 20 != 0)
-  {
-    char msgBuf[64];
-    snprintf(msgBuf, sizeof(msgBuf), "Incorrect Parameter Value : %u.%02u", p0, p1);
-    info["MSG"] = msgBuf;
-    return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-  }
-
-  // convert splitted float string back to float
-  float setPointFloat = p1; // load decimal part
-  setPointFloat /= 100.0f;
-  setPointFloat += p0; // load integer part
-
-  float SETPReturn;
-  char floatBuf[8];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setSetpoint(setPointFloat, &SETPReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(SETPReturn, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetStpu(JsonObject &data)
-{
-  float SETPReturn;
-  char floatBuf[8];
-  Palazzetti::CommandResult cmdSuccess = _Pala.setSetPointUp(&SETPReturn);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    dtostrf(SETPReturn, 1, 2, floatBuf);
-    data["SETP"] = serialized(floatBuf);
-  }
-  return cmdSuccess;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdSetTime(JsonObject &data, JsonObject &info, uint16_t p0, uint16_t p1, uint16_t p2, uint16_t p3, uint16_t p4, uint16_t p5)
-{
-  // Check if date is valid
-  // basic control
-  if (p0 < 2000 || p0 > 2099)
-    info["MSG"] = F("Incorrect Year");
-  else if (p1 < 1 || p1 > 12)
-    info["MSG"] = F("Incorrect Month");
-  else if ((p2 < 1 || p2 > 31) ||
-           ((p1 == 4 || p1 == 6 || p1 == 9 || p1 == 11) && p2 > 30) ||                        // 30 days month control
-           (p1 == 2 && p2 > 29) ||                                                            // February leap year control
-           (p1 == 2 && p2 == 29 && !(((p0 % 4 == 0) && (p0 % 100 != 0)) || (p0 % 400 == 0)))) // February not leap year control
-    info["MSG"] = F("Incorrect Day");
-  else if (p3 > 23)
-    info["MSG"] = F("Incorrect Hour");
-  else if (p4 > 59)
-    info["MSG"] = F("Incorrect Minute");
-  else if (p5 > 59)
-    info["MSG"] = F("Incorrect Second");
-
-  if (info["MSG"].isNull())
-  {
-    char STOVE_DATETIMEReturn[20];
-    byte STOVE_WDAYReturn;
-    Palazzetti::CommandResult cmdSuccess = _Pala.setDateTime(p0, p1, p2, p3, p4, p5, &STOVE_DATETIMEReturn, &STOVE_WDAYReturn);
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
-    {
-      data["STOVE_DATETIME"] = STOVE_DATETIMEReturn;
-      data["STOVE_WDAY"] = STOVE_WDAYReturn;
-    }
-    return cmdSuccess;
-  }
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
-Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdrd(JsonObject &data, uint16_t p0, uint16_t p1)
-{
-  uint16_t ADDR_DATA;
-  Palazzetti::CommandResult cmdSuccess = _Pala.readData(p0, p1, &ADDR_DATA);
-  if (cmdSuccess == Palazzetti::CommandResult::OK)
-  {
-    String addrName(F("ADDR_"));
-    // append the first parameter as hex string
-    addrName += String(p0, HEX);
-    data[addrName] = ADDR_DATA;
-  }
-  return cmdSuccess;
-}
-
-#if DEVELOPPER_MODE
-Palazzetti::CommandResult WPalaControl::executePalaCmdExtAdwr(uint16_t p0, uint16_t p1, uint16_t p2)
-{
-  return _Pala.writeData(p0, p1, p2);
-}
-#endif
-
-Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
-{
-  if (cmd == F("CMD OFF"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdCmdOff(data);
-  }
-  if (cmd == F("CMD ON"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdCmdOn(data);
-  }
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
-Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
-{
-  if (cmd == F("GET ALLS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("ALLS");
-    return executePalaCmdGetAlls(data);
-  }
-  if (cmd == F("GET CHRD"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CHRD");
-    return executePalaCmdGetChrd(data);
-  }
-  if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CNTR");
-    return executePalaCmdGetCntr(data);
-  }
-  if (cmd == F("GET DPRS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("DPRS");
-    return executePalaCmdGetDprs(data);
-  }
-  if (cmd == F("GET FAND"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    return executePalaCmdGetFand(data);
-  }
-  if (cmd.startsWith(F("GET HPAR ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("HPAR");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdGetHpar(data, cmdParams[0]);
-  }
-  if (cmd == F("GET IOPT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("IOPT");
-    return executePalaCmdGetIopt(data);
-  }
-  if (cmd == F("GET LABL"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("LABL");
-    return executePalaCmdGetLabl(data);
-  }
-  if (cmd == F("GET MDVE"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("MDVE");
-    return executePalaCmdGetMdve(data);
-  }
-  if (cmd.startsWith(F("GET PARM ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("PARM");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdGetParm(data, cmdParams[0]);
-  }
-  if (cmd == F("GET SETP"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    return executePalaCmdGetSetp(data);
-  }
-  if (cmd == F("GET STAT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STAT");
-    return executePalaCmdGetStat(data);
-  }
-  if (cmd == F("GET STDT"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("STDT");
-    return executePalaCmdGetStdt(data);
-  }
-  if (cmd == F("GET TIME"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("TIME");
-    return executePalaCmdGetTime(data);
-  }
-  if (cmd == F("GET TMPS"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("TMPS");
-    return executePalaCmdGetTmps(data);
-  }
-  if (cmd == F("GET POWR"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("POWR");
-    return executePalaCmdGetPowr(data);
-  }
-  if (cmd == F("GET SERN"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SERN");
-    return executePalaCmdGetSern(data);
-  }
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
-Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
-{
-  if (cmd.startsWith(F("SET CDAY ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CHRD");
-    if (cmdParamNumber != 3)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCday(data, cmdParams[0], cmdParams[1], cmdParams[2]);
-  }
-  else if (cmd.startsWith(F("SET CPRD ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CHRD");
-    return executePalaCmdSetCprd(data, cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
-  }
-  else if (cmd.startsWith(F("SET CSET ")))
-  {
-    cmdProcessed = true;
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCset(cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET CSPH ")))
-  {
-    cmdProcessed = true;
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCsph(cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET CSPM ")))
-  {
-    cmdProcessed = true;
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCspm(cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET CSST ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("CHRD");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCsst(data, cmdParams[0]);
-  }
-  else if (cmd.startsWith(F("SET CSTH ")))
-  {
-    cmdProcessed = true;
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCsth(cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET CSTM ")))
-  {
-    cmdProcessed = true;
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetCstm(cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd == F("SET FN2D"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    return executePalaCmdSetFn2d(data);
-  }
-  else if (cmd == F("SET FN2U"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    return executePalaCmdSetFn2u(data);
-  }
-  else if (cmd.startsWith(F("SET FN3L ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetFn3l(data, cmdParams[0]);
-  }
-  else if (cmd.startsWith(F("SET FN4L ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetFn4l(data, cmdParams[0]);
-  }
-  else if (cmd.startsWith(F("SET HPAR ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("HPAR");
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetHpar(data, cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET PARM ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("PARM");
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetParm(data, cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd.startsWith(F("SET POWR ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("POWR");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetPowr(data, cmdParams[0]);
-  }
-  else if (cmd == F("SET PWRD"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("POWR");
-    return executePalaCmdSetPwrd(data);
-  }
-  else if (cmd == F("SET PWRU"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("POWR");
-    return executePalaCmdSetPwru(data);
-  }
-  else if (cmd.startsWith(F("SET RFAN ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetRfan(data, cmdParams[0]);
-  }
-  else if (cmd.startsWith(F("SET SETP ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetSetp(data, cmdParams[0]);
-  }
-  else if (cmd.startsWith(F("SET SLNT ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("FAND");
-    if (cmdParamNumber != 1)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetSlnt(data, cmdParams[0]);
-  }
-  else if (cmd == F("SET STPD"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    return executePalaCmdSetStpd(data);
-  }
-  else if (cmd.startsWith(F("SET STPF ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    if (cmdParamNumber != 2)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetStpf(data, info, cmdParams[0], cmdParams[1]);
-  }
-  else if (cmd == F("SET STPU"))
-  {
-    cmdProcessed = true;
-    palaCategory = F("SETP");
-    return executePalaCmdSetStpu(data);
-  }
-  else if (cmd.startsWith(F("SET TIME ")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("TIME");
-    if (cmdParamNumber != 6)
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdSetTime(data, info, cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
-  }
-
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-}
-
-Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
-{
-  if (cmd.startsWith(F("EXT ADRD")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("ADRD");
-    if (cmdParamNumber != 2 /* && cmdParamNumber != 3*/) // the third parameter was designed for Micronova MB and is not used in Fumis board
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdExtAdrd(data, cmdParams[0], cmdParams[1]);
-  }
-#if DEVELOPPER_MODE
-  // To be used only if you have good knowledge of Alpha motherboard
-  else if (cmd.startsWith(F("EXT ADWR")))
-  {
-    cmdProcessed = true;
-    palaCategory = F("ADWR");
-    if (cmdParamNumber != 3 /* && cmdParamNumber != 4*/) // the fourth parameter was designed for Micronova MB and is not used in Fumis board
-    {
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-      return Palazzetti::CommandResult::COMMUNICATION_ERROR;
-    }
-    return executePalaCmdExtAdwr(cmdParams[0], cmdParams[1], cmdParams[2]);
-  }
-#endif
-
-  return Palazzetti::CommandResult::COMMUNICATION_ERROR;
 }
 
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
@@ -2715,6 +1425,1130 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   }
 
   return jsonDoc["SUCCESS"].as<bool>();
+}
+
+Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd == F("CMD OFF"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+
+    uint16_t STATUS, LSTATUS, FSTATUS;
+    cmdSuccess = _Pala.switchOff(&STATUS, &LSTATUS, &FSTATUS);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["STATUS"] = STATUS;
+      data["LSTATUS"] = LSTATUS;
+      data["FSTATUS"] = FSTATUS;
+    }
+  }
+  else if (cmd == F("CMD ON"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+
+    uint16_t STATUS, LSTATUS, FSTATUS;
+    cmdSuccess = _Pala.switchOn(&STATUS, &LSTATUS, &FSTATUS);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["STATUS"] = STATUS;
+      data["LSTATUS"] = LSTATUS;
+      data["FSTATUS"] = FSTATUS;
+    }
+  }
+
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  char floatBuf[8];
+
+  if (cmd == F("GET ALLS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("ALLS");
+
+    bool refreshStatus = false;
+    unsigned long currentMillis = millis();
+    if ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL) // refresh AllStatus data if it's 15sec old
+      refreshStatus = true;
+
+    int MBTYPE;
+    uint16_t MOD, VER, CORE;
+    char FWDATE[11];
+    char APLTS[20];
+    uint16_t APLWDAY;
+    byte CHRSTATUS;
+    uint16_t STATUS, LSTATUS;
+    bool isMFSTATUSValid;
+    uint16_t MFSTATUS;
+    float SETP;
+    byte PUMP;
+    uint16_t PQT;
+    uint16_t F1V;
+    uint16_t F1RPM;
+    uint16_t F2L;
+    uint16_t F2LF;
+    uint16_t FANLMINMAX[6];
+    uint16_t F2V;
+    bool isF3LF4LValid;
+    uint16_t F3L;
+    uint16_t F4L;
+    byte PWR;
+    float FDR;
+    uint16_t DPT;
+    uint16_t DP;
+    byte IN;
+    byte OUT;
+    float T1, T2, T3, T4, T5;
+    bool isSNValid;
+    char SN[28];
+    cmdSuccess = _Pala.getAllStatus(refreshStatus, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &APLTS, &APLWDAY, &CHRSTATUS, &STATUS, &LSTATUS, &isMFSTATUSValid, &MFSTATUS, &SETP, &PUMP, &PQT, &F1V, &F1RPM, &F2L, &F2LF, &FANLMINMAX, &F2V, &isF3LF4LValid, &F3L, &F4L, &PWR, &FDR, &DPT, &DP, &IN, &OUT, &T1, &T2, &T3, &T4, &T5, &isSNValid, &SN);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      if (refreshStatus)
+        _lastAllStatusRefreshMillis = currentMillis;
+
+      data["MBTYPE"] = MBTYPE;
+      data["MAC"] = WiFi.macAddress();
+      data["MOD"] = MOD;
+      data["VER"] = VER;
+      data["CORE"] = CORE;
+      data["FWDATE"] = FWDATE;
+      data["APLTS"] = APLTS;
+      data["APLWDAY"] = APLWDAY;
+      data["CHRSTATUS"] = CHRSTATUS;
+      data["STATUS"] = STATUS;
+      data["LSTATUS"] = LSTATUS;
+      if (isMFSTATUSValid)
+        data["MFSTATUS"] = MFSTATUS;
+      dtostrf(SETP, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
+      data["PUMP"] = PUMP;
+      data["PQT"] = PQT;
+      data["F1V"] = F1V;
+      data["F1RPM"] = F1RPM;
+      data["F2L"] = F2L;
+      data["F2LF"] = F2LF;
+      JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
+      fanlminmax.add(FANLMINMAX[0]);
+      fanlminmax.add(FANLMINMAX[1]);
+      fanlminmax.add(FANLMINMAX[2]);
+      fanlminmax.add(FANLMINMAX[3]);
+      fanlminmax.add(FANLMINMAX[4]);
+      fanlminmax.add(FANLMINMAX[5]);
+      data["F2V"] = F2V;
+      if (isF3LF4LValid)
+      {
+        data["F3L"] = F3L;
+        data["F4L"] = F4L;
+      }
+      data["PWR"] = PWR;
+      dtostrf(FDR, 1, 2, floatBuf);
+      data["FDR"] = serialized(floatBuf);
+      data["DPT"] = DPT;
+      data["DP"] = DP;
+      data["IN"] = IN;
+      data["OUT"] = OUT;
+      dtostrf(T1, 1, 2, floatBuf);
+      data["T1"] = serialized(floatBuf);
+      dtostrf(T2, 1, 2, floatBuf);
+      data["T2"] = serialized(floatBuf);
+      dtostrf(T3, 1, 2, floatBuf);
+      data["T3"] = serialized(floatBuf);
+      dtostrf(T4, 1, 2, floatBuf);
+      data["T4"] = serialized(floatBuf);
+      dtostrf(T5, 1, 2, floatBuf);
+      data["T5"] = serialized(floatBuf);
+
+      data["EFLAGS"] = 0; // new ErrorFlags not implemented
+      if (isSNValid)
+        data["SN"] = SN;
+    }
+  }
+  else if (cmd == F("GET CHRD"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CHRD");
+
+    byte CHRSTATUS;
+    float PCHRSETP[6];
+    byte PSTART[6][2];
+    byte PSTOP[6][2];
+    byte DM[7][3];
+    cmdSuccess = _Pala.getChronoData(&CHRSTATUS, &PCHRSETP, &PSTART, &PSTOP, &DM);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["CHRSTATUS"] = CHRSTATUS;
+
+      // Add Programs (P1->P6)
+      char programName[3] = {'P', 'X', 0};
+      char time[6] = {'0', '0', ':', '0', '0', 0};
+      for (byte i = 0; i < 6; i++)
+      {
+        programName[1] = i + '1';
+        JsonObject px = data[programName].to<JsonObject>();
+        dtostrf(PCHRSETP[i], 1, 2, floatBuf);
+        px["CHRSETP"] = serialized(floatBuf);
+        time[0] = PSTART[i][0] / 10 + '0';
+        time[1] = PSTART[i][0] % 10 + '0';
+        time[3] = PSTART[i][1] / 10 + '0';
+        time[4] = PSTART[i][1] % 10 + '0';
+        px["START"] = time;
+        time[0] = PSTOP[i][0] / 10 + '0';
+        time[1] = PSTOP[i][0] % 10 + '0';
+        time[3] = PSTOP[i][1] / 10 + '0';
+        time[4] = PSTOP[i][1] % 10 + '0';
+        px["STOP"] = time;
+      }
+
+      // Add Days (D1->D7)
+      char dayName[3] = {'D', 'X', 0};
+      char memoryName[3] = {'M', 'X', 0};
+      for (byte dayNumber = 0; dayNumber < 7; dayNumber++)
+      {
+        dayName[1] = dayNumber + '1';
+        JsonObject dx = data[dayName].to<JsonObject>();
+        for (byte memoryNumber = 0; memoryNumber < 3; memoryNumber++)
+        {
+          memoryName[1] = memoryNumber + '1';
+          if (DM[dayNumber][memoryNumber])
+          {
+            programName[1] = DM[dayNumber][memoryNumber] + '0';
+            dx[memoryName] = programName;
+          }
+          else
+            dx[memoryName] = F("OFF");
+        }
+      }
+    }
+  }
+  else if (cmd == F("GET CNTR") || cmd == F("GET CUNT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CNTR");
+
+    uint16_t IGN, POWERTIMEh, POWERTIMEm, HEATTIMEh, HEATTIMEm, SERVICETIMEh, SERVICETIMEm, ONTIMEh, ONTIMEm, OVERTMPERRORS, IGNERRORS, PQT;
+    cmdSuccess = _Pala.getCounters(&IGN, &POWERTIMEh, &POWERTIMEm, &HEATTIMEh, &HEATTIMEm, &SERVICETIMEh, &SERVICETIMEm, &ONTIMEh, &ONTIMEm, &OVERTMPERRORS, &IGNERRORS, &PQT);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      char timeBuf[16];
+      data["IGN"] = IGN;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", POWERTIMEh, POWERTIMEm);
+      data["POWERTIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", HEATTIMEh, HEATTIMEm);
+      data["HEATTIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", SERVICETIMEh, SERVICETIMEm);
+      data["SERVICETIME"] = timeBuf;
+      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", ONTIMEh, ONTIMEm);
+      data["ONTIME"] = timeBuf;
+      data["OVERTMPERRORS"] = OVERTMPERRORS;
+      data["IGNERRORS"] = IGNERRORS;
+      data["PQT"] = PQT;
+    }
+  }
+  else if (cmd == F("GET DPRS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("DPRS");
+
+    uint16_t DP_TARGET, DP_PRESS;
+    cmdSuccess = _Pala.getDPressData(&DP_TARGET, &DP_PRESS);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["DP_TARGET"] = DP_TARGET;
+      data["DP_PRESS"] = DP_PRESS;
+    }
+  }
+  else if (cmd == F("GET FAND"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    uint16_t F1V, F2V, F1RPM, F2L, F2LF;
+    bool isF3SF4SValid;
+    float F3S, F4S;
+    bool isF3LF4LValid;
+    uint16_t F3L, F4L;
+    cmdSuccess = _Pala.getFanData(&F1V, &F2V, &F1RPM, &F2L, &F2LF, &isF3SF4SValid, &F3S, &F4S, &isF3LF4LValid, &F3L, &F4L);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["F1V"] = F1V;
+      data["F2V"] = F2V;
+      data["F1RPM"] = F1RPM;
+      data["F2L"] = F2L;
+      data["F2LF"] = F2LF;
+      if (isF3SF4SValid)
+      {
+        dtostrf(F3S, 1, 2, floatBuf);
+        data["F3S"] = serialized(floatBuf);
+        dtostrf(F4S, 1, 2, floatBuf);
+        data["F4S"] = serialized(floatBuf);
+      }
+      if (isF3LF4LValid)
+      {
+        data["F3L"] = F3L;
+        data["F4L"] = F4L;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("GET HPAR ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("HPAR");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      uint16_t hiddenParamValue;
+      cmdSuccess = _Pala.getHiddenParameter(cmdParams[0], &hiddenParamValue);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        String hiddenParamName("HPAR");
+        hiddenParamName += cmdParams[0];
+        data[hiddenParamName] = hiddenParamValue;
+      }
+    }
+  }
+  else if (cmd == F("GET IOPT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("IOPT");
+
+    byte IN_I01, IN_I02, IN_I03, IN_I04;
+    byte OUT_O01, OUT_O02, OUT_O03, OUT_O04, OUT_O05, OUT_O06, OUT_O07;
+    cmdSuccess = _Pala.getIO(&IN_I01, &IN_I02, &IN_I03, &IN_I04, &OUT_O01, &OUT_O02, &OUT_O03, &OUT_O04, &OUT_O05, &OUT_O06, &OUT_O07);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["IN_I01"] = IN_I01;
+      data["IN_I02"] = IN_I02;
+      data["IN_I03"] = IN_I03;
+      data["IN_I04"] = IN_I04;
+      data["OUT_O01"] = OUT_O01;
+      data["OUT_O02"] = OUT_O02;
+      data["OUT_O03"] = OUT_O03;
+      data["OUT_O04"] = OUT_O04;
+      data["OUT_O05"] = OUT_O05;
+      data["OUT_O06"] = OUT_O06;
+      data["OUT_O07"] = OUT_O07;
+    }
+  }
+  else if (cmd == F("GET LABL"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("LABL");
+    cmdSuccess = Palazzetti::CommandResult::OK;
+
+    data["LABEL"] = WiFi.getHostname();
+  }
+  else if (cmd == F("GET MDVE"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("MDVE");
+
+    uint16_t MOD, VER, CORE;
+    char FWDATE[11];
+    cmdSuccess = _Pala.getModelVersion(&MOD, &VER, &CORE, &FWDATE);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["MOD"] = MOD;
+      data["VER"] = VER;
+      data["CORE"] = CORE;
+      data["FWDATE"] = FWDATE;
+    }
+  }
+  else if (cmd.startsWith(F("GET PARM ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("PARM");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      byte paramValue;
+      cmdSuccess = _Pala.getParameter(cmdParams[0], &paramValue);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        String paramName("PAR");
+        paramName += cmdParams[0];
+        data[paramName] = paramValue;
+      }
+    }
+  }
+  else if (cmd == F("GET SETP"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+
+    float SETP;
+    cmdSuccess = _Pala.getSetPoint(&SETP);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      dtostrf(SETP, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
+    }
+  }
+  else if (cmd == F("GET STAT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STAT");
+
+    uint16_t STATUS, LSTATUS, FSTATUS;
+    cmdSuccess = _Pala.getStatus(&STATUS, &LSTATUS, &FSTATUS);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["STATUS"] = STATUS;
+      data["LSTATUS"] = LSTATUS;
+      data["FSTATUS"] = FSTATUS;
+    }
+  }
+  else if (cmd == F("GET STDT"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("STDT");
+
+    char SN[28];
+    byte SNCHK;
+    int MBTYPE;
+    uint16_t MOD, VER, CORE;
+    char FWDATE[11];
+    uint16_t FLUID;
+    uint16_t SPLMIN, SPLMAX;
+    byte UICONFIG;
+    byte HWTYPE;
+    byte DSPTYPE;
+    byte DSPFWVER;
+    byte CONFIG;
+    byte PELLETTYPE;
+    uint16_t PSENSTYPE;
+    byte PSENSLMAX, PSENSLTSH, PSENSLMIN;
+    byte MAINTPROBE;
+    byte STOVETYPE;
+    byte FAN2TYPE;
+    byte FAN2MODE;
+    byte BLEMBMODE;
+    byte BLEDSPMODE;
+    byte CHRONOTYPE;
+    byte AUTONOMYTYPE;
+    byte NOMINALPWR;
+    cmdSuccess = _Pala.getStaticData(&SN, &SNCHK, &MBTYPE, &MOD, &VER, &CORE, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, &HWTYPE, &DSPTYPE, &DSPFWVER, &CONFIG, &PELLETTYPE, &PSENSTYPE, &PSENSLMAX, &PSENSLTSH, &PSENSLMIN, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, &BLEMBMODE, &BLEDSPMODE, &CHRONOTYPE, &AUTONOMYTYPE, &NOMINALPWR);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      // ----- WPalaControl generated values -----
+      data["LABEL"] = WiFi.getHostname();
+
+      // Network infos
+      data["GWDEVICE"] = F("wlan0"); // always wifi
+      data["MAC"] = WiFi.macAddress();
+      data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
+      data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
+
+      // Wifi infos
+      data["WMAC"] = WiFi.macAddress();
+      data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
+      data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
+      data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
+      data["WENC"] = F("psk2");
+      data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
+      data["WSSID"] = WiFi.SSID();
+      data["WPR"] = (true) ? F("dhcp") : F("static");
+      data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
+      data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
+      data["WCH"] = String(WiFi.channel());
+
+      // Ethernet infos
+      data["EPR"] = F("dhcp");
+      data["EGW"] = F("0.0.0.0");
+      data["EMSK"] = F("0.0.0.0");
+      data["EADR"] = F("0.0.0.0");
+      data["EMAC"] = WiFi.macAddress();
+      data["ECBL"] = F("down");
+      data["EBCST"] = "";
+
+      data["APLCONN"] = 1; // appliance connected
+      data["ICONN"] = 0;   // internet connected
+
+      data["CBTYPE"] = F("miniembplug"); // CBox model
+      data["sendmsg"] = F("2.1.2 2018-03-28 10:19:09");
+      data["plzbridge"] = F("2.2.1 2022-10-24 11:13:21");
+      data["SYSTEM"] = F("2.5.3 2021-10-08 10:30:20 (657c8cf)");
+
+      data["CLOUD_ENABLED"] = true;
+
+      // ----- Values from stove -----
+      data["SN"] = SN;
+      data["SNCHK"] = SNCHK;
+      data["MBTYPE"] = MBTYPE;
+      data["MOD"] = MOD;
+      data["VER"] = VER;
+      data["CORE"] = CORE;
+      data["FWDATE"] = FWDATE;
+      data["FLUID"] = FLUID;
+      data["SPLMIN"] = SPLMIN;
+      data["SPLMAX"] = SPLMAX;
+      data["UICONFIG"] = UICONFIG;
+      data["HWTYPE"] = HWTYPE;
+      data["DSPTYPE"] = DSPTYPE;
+      data["DSPFWVER"] = DSPFWVER;
+      data["CONFIG"] = CONFIG;
+      data["PELLETTYPE"] = PELLETTYPE;
+      data["PSENSTYPE"] = PSENSTYPE;
+      data["PSENSLMAX"] = PSENSLMAX;
+      data["PSENSLTSH"] = PSENSLTSH;
+      data["PSENSLMIN"] = PSENSLMIN;
+      data["MAINTPROBE"] = MAINTPROBE;
+      data["STOVETYPE"] = STOVETYPE;
+      data["FAN2TYPE"] = FAN2TYPE;
+      data["FAN2MODE"] = FAN2MODE;
+      data["BLEMBMODE"] = BLEMBMODE;
+      data["BLEDSPMODE"] = BLEDSPMODE;
+      data["CHRONOTYPE"] = 0; // disable chronothermostat (no planning) (enabled if > 1)
+      data["AUTONOMYTYPE"] = AUTONOMYTYPE;
+      data["NOMINALPWR"] = NOMINALPWR;
+    }
+  }
+  else if (cmd == F("GET TIME"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("TIME");
+
+    char STOVE_DATETIME[20];
+    byte STOVE_WDAY;
+    cmdSuccess = _Pala.getDateTime(&STOVE_DATETIME, &STOVE_WDAY);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["STOVE_DATETIME"] = STOVE_DATETIME;
+      data["STOVE_WDAY"] = STOVE_WDAY;
+    }
+  }
+  else if (cmd == F("GET TMPS"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("TMPS");
+
+    float T1, T2, T3, T4, T5;
+    cmdSuccess = _Pala.getAllTemps(&T1, &T2, &T3, &T4, &T5);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      dtostrf(T1, 1, 2, floatBuf);
+      data["T1"] = serialized(floatBuf);
+      dtostrf(T2, 1, 2, floatBuf);
+      data["T2"] = serialized(floatBuf);
+      dtostrf(T3, 1, 2, floatBuf);
+      data["T3"] = serialized(floatBuf);
+      dtostrf(T4, 1, 2, floatBuf);
+      data["T4"] = serialized(floatBuf);
+      dtostrf(T5, 1, 2, floatBuf);
+      data["T5"] = serialized(floatBuf);
+    }
+  }
+  else if (cmd == F("GET POWR"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("POWR");
+
+    byte PWR;
+    float FDR;
+    cmdSuccess = _Pala.getPower(&PWR, &FDR);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["PWR"] = PWR;
+      dtostrf(FDR, 1, 2, floatBuf);
+      data["FDR"] = serialized(floatBuf);
+    }
+  }
+  else if (cmd == F("GET SERN"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SERN");
+
+    char SN[28];
+    cmdSuccess = _Pala.getSN(&SN);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["SN"] = SN;
+    }
+  }
+
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  char floatBuf[8];
+
+  if (cmd.startsWith(F("SET CDAY ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CHRD");
+
+    if (cmdParamNumber != 3)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      cmdSuccess = _Pala.setChronoDay(cmdParams[0], cmdParams[1], cmdParams[2]);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        char dayName[3] = {'D', 'X', 0};
+        char memoryName[3] = {'M', 'X', 0};
+        char programName[3] = {'P', 'X', 0};
+
+        dayName[1] = cmdParams[0] + '0';
+        memoryName[1] = cmdParams[1] + '0';
+        programName[1] = cmdParams[2] + '0';
+
+        JsonObject dx = data[dayName].to<JsonObject>();
+        if (cmdParams[2])
+          dx[memoryName] = programName;
+        else
+          dx[memoryName] = F("OFF");
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET CPRD ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CHRD");
+
+    if (info["MSG"].isNull())
+    {
+      cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        char programName[3] = {'P', 'X', 0};
+        char time[6] = {'0', '0', ':', '0', '0', 0};
+
+        programName[1] = cmdParams[0] + '0';
+        JsonObject px = data[programName].to<JsonObject>();
+        px["CHRSETP"] = (float)cmdParams[1];
+        time[0] = cmdParams[2] / 10 + '0';
+        time[1] = cmdParams[2] % 10 + '0';
+        time[3] = cmdParams[3] / 10 + '0';
+        time[4] = cmdParams[3] % 10 + '0';
+        px["START"] = time;
+        time[0] = cmdParams[4] / 10 + '0';
+        time[1] = cmdParams[4] % 10 + '0';
+        time[3] = cmdParams[5] / 10 + '0';
+        time[4] = cmdParams[5] % 10 + '0';
+        px["STOP"] = time;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET CSET ")))
+  {
+    cmdProcessed = true;
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+      cmdSuccess = _Pala.setChronoSetpoint(cmdParams[0], cmdParams[1]);
+  }
+  else if (cmd.startsWith(F("SET CSPH ")))
+  {
+    cmdProcessed = true;
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+      cmdSuccess = _Pala.setChronoStopHH(cmdParams[0], cmdParams[1]);
+  }
+  else if (cmd.startsWith(F("SET CSPM ")))
+  {
+    cmdProcessed = true;
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+      cmdSuccess = _Pala.setChronoStopMM(cmdParams[0], cmdParams[1]);
+  }
+  else if (cmd.startsWith(F("SET CSST ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("CHRD");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      byte CHRSTATUSReturn;
+      cmdSuccess = _Pala.setChronoStatus(cmdParams[0], &CHRSTATUSReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["CHRSTATUS"] = CHRSTATUSReturn;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET CSTH ")))
+  {
+    cmdProcessed = true;
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+      cmdSuccess = _Pala.setChronoStartHH(cmdParams[0], cmdParams[1]);
+  }
+  else if (cmd.startsWith(F("SET CSTM ")))
+  {
+    cmdProcessed = true;
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+      cmdSuccess = _Pala.setChronoStartMM(cmdParams[0], cmdParams[1]);
+  }
+  else if (cmd == F("SET FN2D"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    bool isPWRReturnValid;
+    byte PWRReturn;
+    uint16_t F2LReturn;
+    uint16_t F2LFReturn;
+    cmdSuccess = _Pala.setRoomFanDown(&isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      if (isPWRReturnValid)
+        data["PWR"] = PWRReturn;
+      data["F2L"] = F2LReturn;
+      data["F2LF"] = F2LFReturn;
+    }
+  }
+  else if (cmd == F("SET FN2U"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    bool isPWRReturnValid;
+    byte PWRReturn;
+    uint16_t F2LReturn;
+    uint16_t F2LFReturn;
+    cmdSuccess = _Pala.setRoomFanUp(&isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      if (isPWRReturnValid)
+        data["PWR"] = PWRReturn;
+      data["F2L"] = F2LReturn;
+      data["F2LF"] = F2LFReturn;
+    }
+  }
+  else if (cmd.startsWith(F("SET FN3L ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      uint16_t F3LReturn;
+      cmdSuccess = _Pala.setRoomFan3(cmdParams[0], &F3LReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["F3L"] = F3LReturn;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET FN4L ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      uint16_t F4LReturn;
+      cmdSuccess = _Pala.setRoomFan4(cmdParams[0], &F4LReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["F4L"] = F4LReturn;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET HPAR ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("HPAR");
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data[String(F("HPAR")) + cmdParams[0]] = cmdParams[1];
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET PARM ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("PARM");
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      cmdSuccess = _Pala.setParameter(cmdParams[0], cmdParams[1]);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data[String(F("PAR")) + cmdParams[0]] = cmdParams[1];
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET POWR ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("POWR");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      byte PWRReturn;
+      bool isF2LReturnValid;
+      uint16_t _F2LReturn;
+      uint16_t FANLMINMAXReturn[6];
+      cmdSuccess = _Pala.setPower(cmdParams[0], &PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["PWR"] = PWRReturn;
+        if (isF2LReturnValid)
+          data["F2L"] = _F2LReturn;
+        JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
+        fanlminmax.add(FANLMINMAXReturn[0]);
+        fanlminmax.add(FANLMINMAXReturn[1]);
+        fanlminmax.add(FANLMINMAXReturn[2]);
+        fanlminmax.add(FANLMINMAXReturn[3]);
+        fanlminmax.add(FANLMINMAXReturn[4]);
+        fanlminmax.add(FANLMINMAXReturn[5]);
+      }
+    }
+  }
+  else if (cmd == F("SET PWRD"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("POWR");
+
+    byte PWRReturn;
+    bool isF2LReturnValid;
+    uint16_t _F2LReturn;
+    uint16_t FANLMINMAXReturn[6];
+    cmdSuccess = _Pala.setPowerDown(&PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["PWR"] = PWRReturn;
+      if (isF2LReturnValid)
+        data["F2L"] = _F2LReturn;
+      JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
+      fanlminmax.add(FANLMINMAXReturn[0]);
+      fanlminmax.add(FANLMINMAXReturn[1]);
+      fanlminmax.add(FANLMINMAXReturn[2]);
+      fanlminmax.add(FANLMINMAXReturn[3]);
+      fanlminmax.add(FANLMINMAXReturn[4]);
+      fanlminmax.add(FANLMINMAXReturn[5]);
+    }
+  }
+  else if (cmd == F("SET PWRU"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("POWR");
+
+    byte PWRReturn;
+    bool isF2LReturnValid;
+    uint16_t _F2LReturn;
+    uint16_t FANLMINMAXReturn[6];
+    cmdSuccess = _Pala.setPowerUp(&PWRReturn, &isF2LReturnValid, &_F2LReturn, &FANLMINMAXReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      data["PWR"] = PWRReturn;
+      if (isF2LReturnValid)
+        data["F2L"] = _F2LReturn;
+      JsonArray fanlminmax = data["FANLMINMAX"].to<JsonArray>();
+      fanlminmax.add(FANLMINMAXReturn[0]);
+      fanlminmax.add(FANLMINMAXReturn[1]);
+      fanlminmax.add(FANLMINMAXReturn[2]);
+      fanlminmax.add(FANLMINMAXReturn[3]);
+      fanlminmax.add(FANLMINMAXReturn[4]);
+      fanlminmax.add(FANLMINMAXReturn[5]);
+    }
+  }
+  else if (cmd.startsWith(F("SET RFAN ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      bool isPWRReturnValid;
+      byte PWRReturn;
+      uint16_t F2LReturn;
+      uint16_t F2LFReturn;
+      cmdSuccess = _Pala.setRoomFan(cmdParams[0], &isPWRReturnValid, &PWRReturn, &F2LReturn, &F2LFReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        if (isPWRReturnValid)
+          data["PWR"] = PWRReturn;
+        data["F2L"] = F2LReturn;
+        data["F2LF"] = F2LFReturn;
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET SETP ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      float SETPReturn;
+      cmdSuccess = _Pala.setSetpoint((byte)cmdParams[0], &SETPReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        dtostrf(SETPReturn, 1, 2, floatBuf);
+        data["SETP"] = serialized(floatBuf);
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET SLNT ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      byte SLNTReturn;
+      byte PWRReturn;
+      uint16_t F2LReturn;
+      uint16_t F2LFReturn;
+      bool isF3LF4LReturnValid;
+      uint16_t F3LReturn;
+      uint16_t F4LReturn;
+      cmdSuccess = _Pala.setSilentMode(cmdParams[0], &SLNTReturn, &PWRReturn, &F2LReturn, &F2LFReturn, &isF3LF4LReturnValid, &F3LReturn, &F4LReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["SLNT"] = SLNTReturn;
+        data["PWR"] = PWRReturn;
+        data["F2L"] = F2LReturn;
+        data["F2LF"] = F2LFReturn;
+        if (isF3LF4LReturnValid)
+        {
+          data["F3L"] = F3LReturn;
+          data["F4L"] = F4LReturn;
+        }
+      }
+    }
+  }
+  else if (cmd == F("SET STPD"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+
+    float SETPReturn;
+    cmdSuccess = _Pala.setSetPointDown(&SETPReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      dtostrf(SETPReturn, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
+    }
+  }
+  else if (cmd.startsWith(F("SET STPF ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+
+    if (cmdParamNumber != 2)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else if (cmdParams[1] > 80 || cmdParams[1] % 20 != 0)
+    {
+      char msgBuf[64];
+      snprintf(msgBuf, sizeof(msgBuf), "Incorrect Parameter Value : %u.%02u", cmdParams[0], cmdParams[1]);
+      info["MSG"] = msgBuf;
+    }
+
+    // convert splitted float string back to float
+    float setPointFloat = cmdParams[1]; // load decimal part
+    setPointFloat /= 100.0f;
+    setPointFloat += cmdParams[0]; // load integer part
+
+    if (info["MSG"].isNull())
+    {
+      float SETPReturn;
+      cmdSuccess = _Pala.setSetpoint(setPointFloat, &SETPReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        dtostrf(SETPReturn, 1, 2, floatBuf);
+        data["SETP"] = serialized(floatBuf);
+      }
+    }
+  }
+  else if (cmd == F("SET STPU"))
+  {
+    cmdProcessed = true;
+    palaCategory = F("SETP");
+
+    float SETPReturn;
+    cmdSuccess = _Pala.setSetPointUp(&SETPReturn);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      dtostrf(SETPReturn, 1, 2, floatBuf);
+      data["SETP"] = serialized(floatBuf);
+    }
+  }
+  else if (cmd.startsWith(F("SET TIME ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("TIME");
+
+    if (cmdParamNumber != 6)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    // Check if date is valid
+    // basic control
+    if (cmdParams[0] < 2000 || cmdParams[0] > 2099)
+      info["MSG"] = F("Incorrect Year");
+    else if (cmdParams[1] < 1 || cmdParams[1] > 12)
+      info["MSG"] = F("Incorrect Month");
+    else if ((cmdParams[2] < 1 || cmdParams[2] > 31) ||
+             ((cmdParams[1] == 4 || cmdParams[1] == 6 || cmdParams[1] == 9 || cmdParams[1] == 11) && cmdParams[2] > 30) ||                        // 30 days month control
+             (cmdParams[1] == 2 && cmdParams[2] > 29) ||                                                                                          // February leap year control
+             (cmdParams[1] == 2 && cmdParams[2] == 29 && !(((cmdParams[0] % 4 == 0) && (cmdParams[0] % 100 != 0)) || (cmdParams[0] % 400 == 0)))) // February not leap year control
+      info["MSG"] = F("Incorrect Day");
+    else if (cmdParams[3] > 23)
+      info["MSG"] = F("Incorrect Hour");
+    else if (cmdParams[4] > 59)
+      info["MSG"] = F("Incorrect Minute");
+    else if (cmdParams[5] > 59)
+      info["MSG"] = F("Incorrect Second");
+
+    if (info["MSG"].isNull())
+    {
+      char STOVE_DATETIMEReturn[20];
+      byte STOVE_WDAYReturn;
+      cmdSuccess = _Pala.setDateTime(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5], &STOVE_DATETIMEReturn, &STOVE_WDAYReturn);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        data["STOVE_DATETIME"] = STOVE_DATETIMEReturn;
+        data["STOVE_WDAY"] = STOVE_WDAYReturn;
+      }
+    }
+  }
+
+  return cmdSuccess;
+}
+
+Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+{
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+
+  if (cmd.startsWith(F("EXT ADRD")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("ADRD");
+
+    if (cmdParamNumber != 2 && cmdParamNumber != 3)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    // the third parameter was designed for Micronova MB and is not used in Fumis board
+
+    uint16_t ADDR_DATA;
+    cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    {
+      String addrName(F("ADDR_"));
+      // append the first parameter as hex string
+      addrName += String(cmdParams[0], HEX);
+      data[addrName] = ADDR_DATA;
+    }
+  }
+#if DEVELOPPER_MODE
+  // To be used only if you have good knowledge of Alpha motherboard
+  else if (cmd.startsWith(F("EXT ADWR")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("ADWR");
+
+    if (cmdParamNumber != 3 && cmdParamNumber != 4)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    // the fourth parameter was designed for Micronova MB and is not used in Fumis board
+
+    cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
+  }
+#endif
+
+  return cmdSuccess;
 }
 
 void WPalaControl::publishTick()
@@ -3253,7 +3087,7 @@ void WPalaControl::appRun()
     _mqttMan.loop();
 
     // if Home Assistant discovery enabled and publish is needed (and publish is successful)
-    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery && mqttHassDiscovery())
+    if (_ha.mqtt.hassDiscoveryEnabled && _needPublishHassDiscovery && mqttPublishHassDiscovery())
     {
       _needPublishHassDiscovery = false;
       _needPublish = true; // force publishTick after discovery
