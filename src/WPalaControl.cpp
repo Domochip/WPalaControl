@@ -40,8 +40,8 @@ int WPalaControl::mySelectSerial(unsigned long timeout)
 
   return avail;
 }
-size_t WPalaControl::myReadSerial(void *buf, size_t count) { return PALA_SERIAL.read((char *)buf, count); }
-size_t WPalaControl::myWriteSerial(const void *buf, size_t count) { return PALA_SERIAL.write((const uint8_t *)buf, count); }
+ssize_t WPalaControl::myReadSerial(void *buf, size_t count) { return PALA_SERIAL.read((char *)buf, count); }
+ssize_t WPalaControl::myWriteSerial(const void *buf, size_t count) { return PALA_SERIAL.write((const uint8_t *)buf, count); }
 int WPalaControl::myDrainSerial()
 {
   PALA_SERIAL.flush(); // On ESP, Serial.flush() is drain
@@ -812,9 +812,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("unique_id")] = uniqueId;
   json[F("state_topic")] = dpTopicList[_ha.mqtt.type];
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (iif(int(value) > 0x7FFF, int(value) - 0x10000, int(value)) * 1000 / 60) | round }}");
+    json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (iif(int(value_json.DP_PRESS) > 0x7FFF, int(value_json.DP_PRESS) - 0x10000, int(value_json.DP_PRESS)) * 1000 / 60) | round }}");
+    json[F("value_template")] = F("{{ (int(value_json.DP_PRESS) * 1000 / 60) | round }}");
 
   // publish
   _mqttMan.publish(topic.c_str(), json, true);
@@ -1504,7 +1504,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     byte PWR;
     float FDR;
     uint16_t DPT;
-    uint16_t DP;
+    int16_t DP;
     byte IN;
     byte OUT;
     float T1, T2, T3, T4, T5;
@@ -1662,7 +1662,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("DPRS");
 
-    uint16_t DP_TARGET, DP_PRESS;
+    uint16_t DP_TARGET;
+    int16_t DP_PRESS;
     cmdSuccess = _Pala.getDPressData(&DP_TARGET, &DP_PRESS);
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)

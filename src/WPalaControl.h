@@ -88,8 +88,8 @@ private:
   int myOpenSerial(uint32_t baudrate);
   void myCloseSerial();
   int mySelectSerial(unsigned long timeout);
-  size_t myReadSerial(void *buf, size_t count);
-  size_t myWriteSerial(const void *buf, size_t count);
+  ssize_t myReadSerial(void *buf, size_t count);
+  ssize_t myWriteSerial(const void *buf, size_t count);
   int myDrainSerial();
   int myFlushSerial();
   void myUSleep(unsigned long usecond);
