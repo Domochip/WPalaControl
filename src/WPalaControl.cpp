@@ -1359,13 +1359,13 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   if (!cmdProcessed)
   {
     if (cmd.startsWith(F("CMD ")))
-      cmdSuccess = executeCmdPalaCmd(cmd, data, info, palaCategory, cmdProcessed);
+      cmdSuccess = executePalaCmdCmd(cmd, data, info, palaCategory, cmdProcessed);
     else if (cmd.startsWith(F("GET ")))
-      cmdSuccess = executeGetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+      cmdSuccess = executePalaCmdGet(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
     else if (cmd.startsWith(F("SET ")))
-      cmdSuccess = executeSetPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+      cmdSuccess = executePalaCmdSet(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
     else if (cmd.startsWith(F("EXT ")))
-      cmdSuccess = executeExtPalaCmd(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
+      cmdSuccess = executePalaCmdExt(cmd, data, info, palaCategory, cmdProcessed, cmdParamNumber, cmdParams);
   }
 
   // Process result -----------------------------------------------------------
@@ -1427,7 +1427,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   return jsonDoc["SUCCESS"].as<bool>();
 }
 
-Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
+Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
@@ -1465,7 +1465,7 @@ Palazzetti::CommandResult WPalaControl::executeCmdPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -2000,7 +2000,7 @@ Palazzetti::CommandResult WPalaControl::executeGetPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -2507,7 +2507,7 @@ Palazzetti::CommandResult WPalaControl::executeSetPalaCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executeExtPalaCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
