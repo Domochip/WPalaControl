@@ -2826,16 +2826,17 @@ bool WPalaControl::appInit(bool reInit /* = false */)
     LOG_SERIAL_PRINT(F("HW2..."));
 
   Palazzetti::CommandResult cmdRes;
-  cmdRes = _Pala.initialize(
-      std::bind(&WPalaControl::myOpenSerial, this, std::placeholders::_1),
-      std::bind(&WPalaControl::myCloseSerial, this),
-      std::bind(&WPalaControl::mySelectSerial, this, std::placeholders::_1),
-      std::bind(&WPalaControl::myReadSerial, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&WPalaControl::myWriteSerial, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&WPalaControl::myDrainSerial, this),
-      std::bind(&WPalaControl::myFlushSerial, this),
-      std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1),
-      _detectedHwVersion == HwVersion::V1);
+  Palazzetti::SerialAdapter palaSerialAdapter = {
+      .open = std::bind(&WPalaControl::myOpenSerial, this, std::placeholders::_1),
+      .close = std::bind(&WPalaControl::myCloseSerial, this),
+      .select = std::bind(&WPalaControl::mySelectSerial, this, std::placeholders::_1),
+      .read = std::bind(&WPalaControl::myReadSerial, this, std::placeholders::_1, std::placeholders::_2),
+      .write = std::bind(&WPalaControl::myWriteSerial, this, std::placeholders::_1, std::placeholders::_2),
+      .drain = std::bind(&WPalaControl::myDrainSerial, this),
+      .flush = std::bind(&WPalaControl::myFlushSerial, this),
+      .uSleep = std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1)};
+
+  cmdRes = _Pala.initialize(palaSerialAdapter, _detectedHwVersion == HwVersion::V1);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
