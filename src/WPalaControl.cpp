@@ -310,18 +310,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     return true;
 
   // read static data from stove
-  char SN[28];
-  byte SNCHK;
-  uint16_t MOD, VER;
-  char FWDATE[11];
-  uint16_t FLUID;
-  uint16_t SPLMIN, SPLMAX;
-  byte UICONFIG;
-  byte MAINTPROBE;
-  byte STOVETYPE;
-  byte FAN2TYPE;
-  byte FAN2MODE;
-  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(&SN, &SNCHK, nullptr, &MOD, &VER, nullptr, &FWDATE, &FLUID, &SPLMIN, &SPLMAX, &UICONFIG, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &MAINTPROBE, &STOVETYPE, &FAN2TYPE, &FAN2MODE, nullptr, nullptr, nullptr, nullptr, nullptr))
+  Palazzetti::StaticData staticData;
+  if (Palazzetti::CommandResult::OK != _Pala.getStaticData(staticData))
     return false;
 
   // read all status from stove
@@ -329,25 +319,24 @@ bool WPalaControl::mqttPublishHassDiscovery()
   unsigned long currentMillis = millis();
   if ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL) // refresh AllStatus data if it's 15sec old
     refreshStatus = true;
-  float SETP;
-  uint16_t FANLMINMAX[6];
-  if (Palazzetti::CommandResult::OK != _Pala.getAllStatus(false, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &SETP, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &FANLMINMAX, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr))
+  Palazzetti::AllStatusData allStatusData;
+  if (Palazzetti::CommandResult::OK != _Pala.getAllStatus(false, allStatusData))
     return false;
   else if (refreshStatus)
     _lastAllStatusRefreshMillis = currentMillis;
 
   // calculate flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
-  bool hasSetPoint = (SETP != 0);
-  bool hasPower = (STOVETYPE != 8);
-  bool hasOnOff = (STOVETYPE != 7 && STOVETYPE != 8);
-  bool hasRoomFan = (FAN2TYPE > 1);
-  bool hasFan3 = (FAN2TYPE > 3); // Fan order is not the expected one
-  bool ifFan3SwitchEntity = (FANLMINMAX[2] == 0 && FANLMINMAX[3] == 1);
-  bool hasFan4 = (FAN2TYPE > 2); // Fan order is not the expected one
-  bool ifFan4SwitchEntity = (FANLMINMAX[4] == 0 && FANLMINMAX[5] == 1);
-  bool isAirType = (STOVETYPE == 1 || STOVETYPE == 3 || STOVETYPE == 5 || STOVETYPE == 7 || STOVETYPE == 8);
-  bool isHydroType = (STOVETYPE == 2 || STOVETYPE == 4 || STOVETYPE == 6);
-  bool hasFanAuto = (FAN2MODE == 2 || FAN2MODE == 3);
+  bool hasSetPoint = (allStatusData.SETP != 0);
+  bool hasPower = (staticData.STOVETYPE != 8);
+  bool hasOnOff = (staticData.STOVETYPE != 7 && staticData.STOVETYPE != 8);
+  bool hasRoomFan = (staticData.FAN2TYPE > 1);
+  bool hasFan3 = (staticData.FAN2TYPE > 3); // Fan order is not the expected one
+  bool ifFan3SwitchEntity = (allStatusData.FANLMINMAX[2] == 0 && allStatusData.FANLMINMAX[3] == 1);
+  bool hasFan4 = (staticData.FAN2TYPE > 2); // Fan order is not the expected one
+  bool ifFan4SwitchEntity = (allStatusData.FANLMINMAX[4] == 0 && allStatusData.FANLMINMAX[5] == 1);
+  bool isAirType = (staticData.STOVETYPE == 1 || staticData.STOVETYPE == 3 || staticData.STOVETYPE == 5 || staticData.STOVETYPE == 7 || staticData.STOVETYPE == 8);
+  bool isHydroType = (staticData.STOVETYPE == 2 || staticData.STOVETYPE == 4 || staticData.STOVETYPE == 6);
+  bool hasFanAuto = (staticData.FAN2MODE == 2 || staticData.FAN2MODE == 3);
 
   // ---------- Usefull variables for entities building ----------
 
@@ -366,7 +355,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare unique id prefix for Stove
   uniqueIdPrefixStove = F(CUSTOM_APP_MODEL "_");
-  uniqueIdPrefixStove += SN;
+  uniqueIdPrefixStove += staticData.SN;
 
   // prepare Stove device JSON
   deserializeJson(json, F("{"
@@ -374,8 +363,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"name\":\"Stove\""
                           "}"));
   json[F("identifiers")][0] = uniqueIdPrefixStove;
-  json[F("model")] = String(MOD);
-  json[F("sw_version")] = String(VER) + F(" (") + FWDATE + ')';
+  json[F("model")] = String(staticData.MOD);
+  json[F("sw_version")] = String(staticData.VER) + F(" (") + staticData.FWDATE + ')';
   json[F("via_device")] = uniqueIdPrefix;
   serializeJson(json, device); // serialize to device String
 
@@ -464,9 +453,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
 
   // define probe number
-  byte probeNumber = MAINTPROBE;                                        // default case covering AirType and other HydroType
-  if (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
-    probeNumber = 0;                                                    // T1
+  byte probeNumber = staticData.MAINTPROBE;                                                              // default case covering AirType and other HydroType
+  if (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
+    probeNumber = 0;                                                                                     // T1
 
   uniqueId = uniqueIdPrefixStove + F("_Thermostat");
 
@@ -517,8 +506,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   }
 
   // Adjust max_temp for stove with air temperature setPoint, goal is to center the range around 19°C (Does someone really wants its room at 51°C ...)
-  json[F("max_temp")] = (isHydroType && (UICONFIG == 1 || UICONFIG == 3 || UICONFIG == 4)) ? SPLMAX : SPLMIN + 2 * (19 - SPLMIN);
-  json[F("min_temp")] = SPLMIN;
+  json[F("max_temp")] = (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) ? staticData.SPLMAX : staticData.SPLMIN + 2 * (19 - staticData.SPLMIN);
+  json[F("min_temp")] = staticData.SPLMIN;
 
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
@@ -580,12 +569,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
 
   // define probe number
-  probeNumber = MAINTPROBE; // default case covering AirType and other HydroType
+  probeNumber = staticData.MAINTPROBE; // default case covering AirType and other HydroType
   if (isHydroType)
   {
-    if (UICONFIG == 1)
+    if (staticData.UICONFIG == 1)
       probeNumber = 1; // T2
-    else if (UICONFIG == 10)
+    else if (staticData.UICONFIG == 10)
       probeNumber = 4; // T5
   }
 
@@ -594,9 +583,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   byte tempSensorNameIndex = 0; // default case covering AirType
   if (isHydroType)
   {
-    if (UICONFIG == 1)
+    if (staticData.UICONFIG == 1)
       tempSensorNameIndex = 1; // Return Water
-    else if (UICONFIG == 3 || UICONFIG == 4)
+    else if (staticData.UICONFIG == 3 || staticData.UICONFIG == 4)
       tempSensorNameIndex = 2; // Tank Water
   }
 
@@ -879,8 +868,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("~")] = _preparedMqttBaseTopic;
     json[F("availability")] = serialized(availabilityJSON);
     json[F("device")] = serialized(device);
-    json[F("min")] = SPLMIN;
-    json[F("max")] = SPLMAX;
+    json[F("min")] = staticData.SPLMIN;
+    json[F("max")] = staticData.SPLMAX;
     json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
     json[F("unique_id")] = uniqueId;
     if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -1052,8 +1041,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     {
       json[F("default_entity_id")] = F("number.stove_fan3");
       json[F("command_template")] = F("SET+FN3L+{{ value }}");
-      json[F("min")] = FANLMINMAX[2];
-      json[F("max")] = FANLMINMAX[3];
+      json[F("min")] = allStatusData.FANLMINMAX[2];
+      json[F("max")] = allStatusData.FANLMINMAX[3];
       json[F("mode")] = F("slider");
     }
 
@@ -1102,8 +1091,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     {
       json[F("default_entity_id")] = F("number.stove_fan4");
       json[F("command_template")] = F("SET+FN4L+{{ value }}");
-      json[F("min")] = FANLMINMAX[4];
-      json[F("max")] = FANLMINMAX[5];
+      json[F("min")] = allStatusData.FANLMINMAX[4];
+      json[F("max")] = allStatusData.FANLMINMAX[5];
       json[F("mode")] = F("slider");
     }
 
