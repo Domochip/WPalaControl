@@ -2034,12 +2034,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      byte CHRSTATUSReturn;
-      cmdSuccess = _Pala.setChronoStatus(cmdParams[0], &CHRSTATUSReturn);
+      byte CHRSTATUSResult;
+      cmdSuccess = _Pala.setChronoStatus(cmdParams[0], &CHRSTATUSResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        data["CHRSTATUS"] = CHRSTATUSReturn;
+        data["CHRSTATUS"] = CHRSTATUSResult;
       }
     }
   }
@@ -2105,12 +2105,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      uint16_t F3LReturn;
-      cmdSuccess = _Pala.setRoomFan3(cmdParams[0], &F3LReturn);
+      uint16_t F3LResult;
+      cmdSuccess = _Pala.setRoomFan3(cmdParams[0], &F3LResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        data["F3L"] = F3LReturn;
+        data["F3L"] = F3LResult;
       }
     }
   }
@@ -2124,12 +2124,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      uint16_t F4LReturn;
-      cmdSuccess = _Pala.setRoomFan4(cmdParams[0], &F4LReturn);
+      uint16_t F4LResult;
+      cmdSuccess = _Pala.setRoomFan4(cmdParams[0], &F4LResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        data["F4L"] = F4LReturn;
+        data["F4L"] = F4LResult;
       }
     }
   }
@@ -2273,12 +2273,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      float SETPReturn;
-      cmdSuccess = _Pala.setSetpoint((byte)cmdParams[0], &SETPReturn);
+      float SETPResult;
+      cmdSuccess = _Pala.setSetpoint((byte)cmdParams[0], &SETPResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        dtostrf(SETPReturn, 1, 2, floatBuf);
+        dtostrf(SETPResult, 1, 2, floatBuf);
         data["SETP"] = serialized(floatBuf);
       }
     }
@@ -2315,12 +2315,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
-    float SETPReturn;
-    cmdSuccess = _Pala.setSetPointDown(&SETPReturn);
+    float SETPResult;
+    cmdSuccess = _Pala.setSetPointDown(&SETPResult);
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      dtostrf(SETPReturn, 1, 2, floatBuf);
+      dtostrf(SETPResult, 1, 2, floatBuf);
       data["SETP"] = serialized(floatBuf);
     }
   }
@@ -2345,12 +2345,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      float SETPReturn;
-      cmdSuccess = _Pala.setSetpoint(setPointFloat, &SETPReturn);
+      float SETPResult;
+      cmdSuccess = _Pala.setSetpoint(setPointFloat, &SETPResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
-        dtostrf(SETPReturn, 1, 2, floatBuf);
+        dtostrf(SETPResult, 1, 2, floatBuf);
         data["SETP"] = serialized(floatBuf);
       }
     }
@@ -2360,12 +2360,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
-    float SETPReturn;
-    cmdSuccess = _Pala.setSetPointUp(&SETPReturn);
+    float SETPResult;
+    cmdSuccess = _Pala.setSetPointUp(&SETPResult);
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      dtostrf(SETPReturn, 1, 2, floatBuf);
+      dtostrf(SETPResult, 1, 2, floatBuf);
       data["SETP"] = serialized(floatBuf);
     }
   }
