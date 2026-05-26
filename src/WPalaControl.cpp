@@ -1599,16 +1599,11 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      char timeBuf[16];
       data["IGN"] = countersData.IGN;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", countersData.POWERTIMEh, countersData.POWERTIMEm);
-      data["POWERTIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", countersData.HEATTIMEh, countersData.HEATTIMEm);
-      data["HEATTIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", countersData.SERVICETIMEh, countersData.SERVICETIMEm);
-      data["SERVICETIME"] = timeBuf;
-      snprintf(timeBuf, sizeof(timeBuf), "%u:%02u", countersData.ONTIMEh, countersData.ONTIMEm);
-      data["ONTIME"] = timeBuf;
+      data["POWERTIME"] = countersData.POWERTIME;
+      data["HEATTIME"] = countersData.HEATTIME;
+      data["SERVICETIME"] = countersData.SERVICETIME;
+      data["ONTIME"] = countersData.ONTIME;
       data["OVERTMPERRORS"] = countersData.OVERTMPERRORS;
       data["IGNERRORS"] = countersData.IGNERRORS;
       data["PQT"] = countersData.PQT;
