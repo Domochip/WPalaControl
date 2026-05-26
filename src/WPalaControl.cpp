@@ -1530,7 +1530,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       dtostrf(allStatusData.T5, 1, 2, floatBuf);
       data["T5"] = serialized(floatBuf);
 
-      data["EFLAGS"] = 0; // new ErrorFlags not implemented
+      data["EFLAGS"] = allStatusData.EFLAGS;
       if (allStatusData.isSNValid)
         data["SN"] = allStatusData.SN;
     }
