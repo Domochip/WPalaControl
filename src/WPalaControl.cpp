@@ -1825,9 +1825,9 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["ICONN"] = 0;   // internet connected
 
       data["CBTYPE"] = F("miniembplug"); // CBox model
-      data["sendmsg"] = F("2.1.2 2018-03-28 10:19:09");
+      data["sendmsg"] = F("2.1.2 2021-10-12 12:22:53");
       data["plzbridge"] = F("2.2.1 2024-11-06 15:47:08");
-      data["SYSTEM"] = F("2.5.3 2021-10-08 10:30:20 (657c8cf)");
+      data["SYSTEM"] = F("2.5.4 2024-11-06 15:50:16 (37ef0a2)");
 
       data["CLOUD_ENABLED"] = true;
 
