@@ -2135,6 +2135,46 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
       }
     }
   }
+  else if (cmd.startsWith(F("SET FN3S ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      float F3SResult;
+      cmdSuccess = _Pala.setSetPointFan3(cmdParams[0], &F3SResult);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        dtostrf(F3SResult, 1, 2, floatBuf);
+        data["F3S"] = serialized(floatBuf);
+      }
+    }
+  }
+  else if (cmd.startsWith(F("SET FN4S ")))
+  {
+    cmdProcessed = true;
+    palaCategory = F("FAND");
+
+    if (cmdParamNumber != 1)
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+
+    if (info["MSG"].isNull())
+    {
+      float F4SResult;
+      cmdSuccess = _Pala.setSetPointFan4(cmdParams[0], &F4SResult);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        dtostrf(F4SResult, 1, 2, floatBuf);
+        data["F4S"] = serialized(floatBuf);
+      }
+    }
+  }
   else if (cmd.startsWith(F("SET HPAR ")))
   {
     cmdProcessed = true;
