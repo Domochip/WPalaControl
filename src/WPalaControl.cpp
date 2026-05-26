@@ -1518,6 +1518,13 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["DPT"] = allStatusData.DPT;
       data["DP"] = allStatusData.DP;
       data["IN"] = allStatusData.IN;
+      if (allStatusData.isPLEVELValid)
+        data["PLEVEL"] = allStatusData.PLEVEL;
+      if (allStatusData.isPSENSCSTALEMPValid)
+      {
+        data["PSENSCSTA"] = allStatusData.PSENSCSTA;
+        data["PSENSLEMP"] = allStatusData.PSENSLEMP;
+      }
       data["OUT"] = allStatusData.OUT;
       dtostrf(allStatusData.T1, 1, 2, floatBuf);
       data["T1"] = serialized(floatBuf);
