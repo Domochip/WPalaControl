@@ -1751,13 +1751,16 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
-    float SETP;
-    cmdSuccess = _Pala.getSetPoint(&SETP);
+    Palazzetti::SetPointData setPointData;
+    cmdSuccess = _Pala.getSetPoint(setPointData);
 
     if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      dtostrf(SETP, 1, 2, floatBuf);
+      dtostrf(setPointData.SETP, 1, 2, floatBuf);
       data["SETP"] = serialized(floatBuf);
+      dtostrf(setPointData.SECO, 1, 2, floatBuf);
+      data["SECO"] = serialized(floatBuf);
+      data["BECO"] = setPointData.BECO;
     }
   }
   else if (cmd == F("GET STAT"))
