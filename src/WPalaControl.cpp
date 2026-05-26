@@ -1488,6 +1488,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["CHRSTATUS"] = allStatusData.CHRSTATUS;
       data["STATUS"] = allStatusData.STATUS;
       data["LSTATUS"] = allStatusData.LSTATUS;
+      data["FSTATUS"] = allStatusData.FSTATUS;
       if (allStatusData.isMFSTATUSValid)
         data["MFSTATUS"] = allStatusData.MFSTATUS;
       dtostrf(allStatusData.SETP, 1, 2, floatBuf);
