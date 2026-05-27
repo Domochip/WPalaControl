@@ -41,13 +41,18 @@ void EventSourceMan::eventSourceKeepAlive()
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
-        if (_EventSourceClientList[i])
+        if (_EventSourceClientList[i].connected())
         {
             _EventSourceClientList[i].println(F(":keepalive\n\n"));
 
 #if DEVELOPPER_MODE
             LOG_SERIAL_PRINTF_P(PSTR("statusEventSourceKeepAlive - keep-alive sent to client #%d (%s:%d)\n"), i, _EventSourceClientList[i].remoteIP().toString().c_str(), _EventSourceClientList[i].remotePort());
 #endif
+        }
+        else if (_EventSourceClientList[i])
+        {
+            // Client disconnected — release slot so it can be reused
+            _EventSourceClientList[i].stop();
         }
     }
 }
@@ -76,13 +81,18 @@ void EventSourceMan::eventSourceBroadcast(const char *message, const char *event
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
-        if (_EventSourceClientList[i])
+        if (_EventSourceClientList[i].connected())
         {
             _EventSourceClientList[i].printf_P(PSTR("event: %s\ndata: %s\n\n"), eventType, message);
 
 #if DEVELOPPER_MODE
             LOG_SERIAL_PRINTF_P(PSTR("statusEventSourceBroadcast - event sent to client #%d\n"), i);
 #endif
+        }
+        else if (_EventSourceClientList[i])
+        {
+            // Client disconnected — release slot so it can be reused
+            _EventSourceClientList[i].stop();
         }
     }
 }
@@ -91,7 +101,7 @@ void EventSourceMan::eventSourceBroadcast(JsonVariantConst message, const char *
 {
     for (uint8_t i = 0; i < EVTSRC_MAX_CLIENTS; i++)
     {
-        if (_EventSourceClientList[i])
+        if (_EventSourceClientList[i].connected())
         {
             _EventSourceClientList[i].printf_P(PSTR("event: %s\ndata: "), eventType);
             serializeJson(message, _EventSourceClientList[i]);
@@ -100,6 +110,11 @@ void EventSourceMan::eventSourceBroadcast(JsonVariantConst message, const char *
 #if DEVELOPPER_MODE
             LOG_SERIAL_PRINTF_P(PSTR("statusEventSourceBroadcast - event sent to client #%d\n"), i);
 #endif
+        }
+        else if (_EventSourceClientList[i])
+        {
+            // Client disconnected — release slot so it can be reused
+            _EventSourceClientList[i].stop();
         }
     }
 }
