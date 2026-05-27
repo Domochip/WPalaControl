@@ -1359,9 +1359,6 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
   // Process result -----------------------------------------------------------
 
-  // releases the unused memory before serialization
-  jsonDoc.shrinkToFit();
-
   // if command has been processed
   if (cmdProcessed)
   {
