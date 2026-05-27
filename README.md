@@ -190,8 +190,7 @@ Module connection status is published to `%BaseTopic%/connected`:
 
 MQTT infos published every "Upload Period":
 
-- `STATUS`: status of the stove
-- `LSTATUS`: status of the stove
+- `STATUS`, `LSTATUS`, `FSTATUS`: status of the stove
 - `T1`, `T2`, `T3`, `T4`, `T5`: temperature of the stove
 - `F1V`, `F2V`, `F2L`, `F2LF`, `F3L`, `F4L`: fan values (meaning depend of your stove model)
 - `IGN`: ignition counter
@@ -201,10 +200,12 @@ MQTT infos published every "Upload Period":
 - `SERVICETIME`: heating time since last maintenance (hour:minute)
 - `ONTIME`: time from last power ON (hour:minute)
 - `OVERTMPERRORS`: overtemperature error counter
+- `PQT`: wood pellet consumption
 - `STOVE_DATETIME`: date of the stove
 - `STOVE_WDAY`: week day of the stove
 - `SETP`: current Set Point (desired temperature)
-- `PQT`: wood pellet consumption
+- `SECO`: ECO Mode Restart Temperature Threshold (PAR50: 6 -> 0.6°C)
+- `BECO`: ECO Mode Active
 - `PWR`: current power (1-5)
 - `FDR`: feeder
 - `DP_TARGET`: delta pressure target
