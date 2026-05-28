@@ -1,6 +1,16 @@
 import os
 import re
 
+def extract_macro_value(file_path, macro_name):
+    with open(file_path, 'r') as file:
+        content = file.read()
+        pattern = rf'#define\s+{macro_name}\s+"?([^"\s]+)"?'
+        match = re.search(pattern, content)
+        if match:
+            return match.group(1)
+        else:
+            raise ValueError(f"{macro_name} not found in {file_path}")
+
 # Each HTML fragment uses 'qsp' as a CSS selector prefix to scope its DOM queries
 # (e.g. qsp + '#someId' resolves to '#contentN #someId').
 # qsp[8] extracts the app index digit from that string (character at index 8 of '#contentN ')
@@ -32,11 +42,14 @@ def merge_fragments(sources):
 
 # Reads index_template.html and embeds each page as a <template> element,
 # producing a single self-contained index.html with no runtime HTML fetches.
-def build_spa(template_file, pages, output_file):
+def build_spa(template_file, pages, output_file, placeholders={}):
     print(f'Building SPA -> {os.path.basename(output_file)}')
 
     with open(template_file, 'r', encoding='utf-8') as f:
         html = f.read()
+
+    for key, value in placeholders.items():
+        html = html.replace(f'{{{{{key}}}}}', value)
 
     templates_html = ''
     for template_id, content in pages:
@@ -60,7 +73,10 @@ build_spa(
         ('tpl-config', merge_fragments(['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'])),
         ('tpl-fw',     read_file('src/base/data/fw.html')),
     ],
-    'src/base/data/index.html'
+    'src/base/data/index.html',
+    placeholders={
+        'APP_MODEL': extract_macro_value('./src/Main.h', 'CUSTOM_APP_MODEL'),
+    }
 )
 
 print('--- pio_pre_build_spa.py end ---')

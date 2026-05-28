@@ -87,7 +87,7 @@
 
     function firmwareValidation() {
         const fileInput = $(qsp + '#fi');
-        const model = $("#model").innerText; <!-- div available at top of index.html -->
+        const model = document.querySelector("meta[name='description']").content;
         if (!fileInput || !model) {
             return false;
         }

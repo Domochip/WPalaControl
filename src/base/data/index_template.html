@@ -4,8 +4,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <title>Domochip</title>
+    <meta name="description" content="{{APP_MODEL}}">
+    <title>Domochip {{APP_MODEL}}</title>
 
     <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="side-menu.css">
@@ -30,8 +30,6 @@
 </head>
 
 <body>
-    <div id="model" style="display: none;"></div> <!-- Should be filled in by status0.html -->
-
     <div id="layout">
         <!-- Menu toggle -->
         <a href="#menu" id="menuLink" class="menu-link">
@@ -42,7 +40,7 @@
         <div id="menu">
             <div class="pure-menu">
                 <div class="pure-menu-heading" style="padding-left:0.5em;">Domochip</div>
-                <div class="pure-menu-heading" style="padding-left:0.5em; padding-top: 0;" id="menuModel">Loading</div>
+                <div class="pure-menu-heading" style="padding-left:0.5em; padding-top: 0;" id="menuModel">{{APP_MODEL}}</div>
 
                 <ul class="pure-menu-list">
                     <li class="pure-menu-item" id="menuStatus"><a href="" class="pure-menu-link">Status</a></li>
@@ -193,21 +191,6 @@
             }, 1000);
         }
 
-        function autoDispatchModel() {
-            const modelElement = $("#model");
-            const observer = new MutationObserver(() => {
-                const modelText = modelElement.innerText;
-                if (modelText && modelText.length !== 0) {
-                    document.title = `Domochip ${modelText}`;
-                    $("meta[name='description']").content = modelText;
-                    $("#menuModel").innerText = modelText;
-                }
-            });
-
-            observer.observe(modelElement, { childList: true, subtree: true });
-        }
-        autoDispatchModel();
-
         function triggerEvent(el, evtName) {
             var evt = new Event(evtName, {
                 bubbles: true,
@@ -218,7 +201,7 @@
 
         function clearMenuAndContent() {
             unloadScripts();
-            ["#menuStatus", "#menuConfig", "#menuFirmware"].forEach(item => { $(item).classList.remove("pure-menu-selected"); });
+            document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
             $('#content').innerHTML = '';
         }
 
