@@ -111,7 +111,6 @@ private:
   void fillConfigJSON(JsonVariant json, bool forSaveFile = false);
   void fillStatusJSON(JsonVariant json);
   bool appInit(bool reInit = false);
-  HtmlPage getHTMLContent(WebPageForPlaceHolder wp);
   void appInitWebServer(WebServer &server);
   void appRun();
 

@@ -1,8 +1,5 @@
 #include "WPalaControl.h"
 
-#include "data/status2.html.gz.h"
-#include "data/config2.html.gz.h"
-
 #ifdef ESP8266
 #define PALA_SERIAL Serial
 #else
@@ -2813,21 +2810,6 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   _udpServer.begin(54549);
 
   return cmdRes == Palazzetti::CommandResult::OK;
-}
-
-//------------------------------------------
-// Return HTML compressed pages
-Application::HtmlPage WPalaControl::getHTMLContent(WebPageForPlaceHolder wp)
-{
-  switch (wp)
-  {
-  case status:
-    return {status2htmlgz, sizeof(status2htmlgz)};
-  case config:
-    return {config2htmlgz, sizeof(config2htmlgz)};
-  default:
-    return {nullptr, 0};
-  }
 }
 
 //------------------------------------------
