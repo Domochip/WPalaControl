@@ -2816,31 +2816,17 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 }
 
 //------------------------------------------
-// Return HTML Code to insert into Status Web page
-const PROGMEM char *WPalaControl::getHTMLContent(WebPageForPlaceHolder wp)
+// Return HTML compressed pages
+Application::HtmlPage WPalaControl::getHTMLContent(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
   case status:
-    return status2htmlgz;
+    return {status2htmlgz, sizeof(status2htmlgz)};
   case config:
-    return config2htmlgz;
+    return {config2htmlgz, sizeof(config2htmlgz)};
   default:
-    return nullptr;
-  }
-}
-
-// and his Size
-size_t WPalaControl::getHTMLContentSize(WebPageForPlaceHolder wp)
-{
-  switch (wp)
-  {
-  case status:
-    return sizeof(status2htmlgz);
-  case config:
-    return sizeof(config2htmlgz);
-  default:
-    return 0;
+    return {nullptr, 0};
   }
 }
 
