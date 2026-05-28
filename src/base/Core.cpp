@@ -8,10 +8,6 @@
 #include "data/side-menu.css.gz.h"
 #include "data/side-menu.js.gz.h"
 
-#include "data/status.html.gz.h"
-#include "data/config.html.gz.h"
-#include "data/fw.html.gz.h"
-
 void Core::setConfigDefaultValues() {};
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */) { return true; };
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */) {};
@@ -86,30 +82,6 @@ void Core::appInitWebServer(WebServer &server)
               server.sendHeader(F("Content-Encoding"), F("gzip"));
               server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
               server.send_P(200, PSTR("text/javascript"), sidemenujsgz, sizeof(sidemenujsgz));
-            });
-
-  server.on(F("/status.html"), HTTP_GET,
-            [&server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.send_P(200, PSTR("text/html"), statushtmlgz, sizeof(statushtmlgz));
-            });
-
-  server.on(F("/config.html"), HTTP_GET,
-            [&server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.send_P(200, PSTR("text/html"), confightmlgz, sizeof(confightmlgz));
-            });
-
-  server.on(F("/fw.html"), HTTP_GET,
-            [this, &server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.send_P(200, PSTR("text/html"), fwhtmlgz, sizeof(fwhtmlgz));
             });
 
   // Get Latest Update Info ---------------------------------------------------------

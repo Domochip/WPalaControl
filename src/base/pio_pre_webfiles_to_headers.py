@@ -1,6 +1,6 @@
 import sys
 import os
-import re
+import glob
 import gzip
 import shutil
 
@@ -12,7 +12,8 @@ def convert_file_to_cppheader(filename):
             shutil.copyfileobj(webfile,intogzipfile)
     with open(filename+'.gz','rb') as gzfile:
         with open(filename+'.gz.h','w') as hfile:
-            hfile.write('const PROGMEM char '+filename.replace(' ','').replace('.','').replace('-','')+'gz[] = {')
+            varname = os.path.basename(filename).replace(' ','').replace('.','').replace('-','')
+            hfile.write('const PROGMEM char '+varname+'gz[] = {')
             byte=gzfile.read(1)
             first=True
             while len(byte):
@@ -61,20 +62,17 @@ def is_convert_needed(filename):
     return (intogzipfilecontent != webfilecontent)
 
 #Convert all Web Files in a folder
-def convert_all_webfiles(dir):
-    curentDir=os.getcwd()
-    os.chdir(dir)
-    for file in os.listdir('.'):
-        # only convert .html, .js and .css files (i.e. don't have a digit before .html)
-        if file.endswith(('.html','.js','.css')) and not re.search(r'\d+\.html$', file):
-            if is_convert_needed(file):
-                print('Converting %s to header' % file)
-                convert_file_to_cppheader(file)
-    os.chdir(curentDir)
+def convert_webfiles(pattern):
+    for file in glob.glob(pattern):
+        if is_convert_needed(file):
+            print('Converting %s to header' % file)
+            convert_file_to_cppheader(file)
 
 print('--- pio_pre_webfiles_to_headers.py start ---')
 
-convert_all_webfiles(r'./src/base/data')
+convert_webfiles('./src/base/data/*.js')
+convert_webfiles('./src/base/data/*.css')
+convert_webfiles('./src/base/data/index.html')
 
 print('--- pio_pre_webfiles_to_headers.py end ---')
 print()
