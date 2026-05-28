@@ -364,28 +364,6 @@ void Application::initWebServer(WebServer &server)
 {
   char url[16];
 
-  // HTML Status handler
-  sprintf_P(url, PSTR("/status%c.html"), getAppIdChar(_appId));
-  server.on(url, HTTP_GET,
-            [this, &server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              HtmlPage page = getHTMLContent(status);
-              server.send_P(200, PSTR("text/html"), page.progmemData, page.size);
-            });
-
-  // HTML Config handler
-  sprintf_P(url, PSTR("/config%c.html"), getAppIdChar(_appId));
-  server.on(url, HTTP_GET,
-            [this, &server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              HtmlPage page = getHTMLContent(config);
-              server.send_P(200, PSTR("text/html"), page.progmemData, page.size);
-            });
-
   // JSON Status handler
   sprintf_P(url, PSTR("/gs%c"), getAppIdChar(_appId));
   server.on(url, HTTP_GET,

@@ -30,18 +30,6 @@ protected:
 
   static Application *_applicationList[3]; // static list of all applications
 
-  typedef enum
-  {
-    status,
-    config
-  } WebPageForPlaceHolder;
-
-  struct HtmlPage
-  {
-    const char *progmemData;
-    size_t size;
-  };
-
   AppId _appId;
   bool _reInit = false;
 
@@ -71,7 +59,6 @@ protected:
   virtual void appInitWebServer(WebServer &server) = 0;
   virtual void appRun() = 0;
   virtual void fillConfigJSON(JsonVariant json, bool forSaveFile = false) = 0;
-  virtual HtmlPage getHTMLContent(WebPageForPlaceHolder wp) = 0;
   virtual bool parseConfigJSON(JsonVariant json, bool fromWebPage = false) = 0;
   virtual void setConfigDefaultValues() = 0;
 

@@ -57,11 +57,7 @@
                 <h1 id="mainHeader"></h1>
             </div>
 
-            <div class="content">
-                <div id="content0"></div>
-                <div id="content1"></div>
-                <div id="content2"></div>
-            </div>
+            <div class="content" id="content"></div>
         </div>
     </div>
 
@@ -223,38 +219,25 @@
         function clearMenuAndContent() {
             unloadScripts();
             ["#menuStatus", "#menuConfig", "#menuFirmware"].forEach(item => { $(item).classList.remove("pure-menu-selected"); });
-            ["#content0", "#content1", "#content2"].forEach(item => { $(item).innerHTML = ''; });
+            $('#content').innerHTML = '';
         };
 
-        function handleMenuClick(menuId, headerText, contentMappings) {
+        function handleMenuClick(menuId, headerText, loadFn) {
             const menuElement = $(menuId);
             menuElement.addEventListener("click", (evt) => {
                 evt.preventDefault();
                 clearMenuAndContent();
                 menuElement.classList.add("pure-menu-selected");
                 $("#mainHeader").textContent = headerText;
-
-                for (const [contentId, url] of Object.entries(contentMappings)) {
-                    load($(contentId), url);
-                }
+                loadFn();
             });
         }
 
-        handleMenuClick("#menuStatus", "Status", {
-            "#content0": "/status0.html",
-            "#content1": "/status1.html",
-            "#content2": "/status2.html"
-        });
+        handleMenuClick("#menuStatus", "Status", () => load($('#content'), '/status.html'));
 
-        handleMenuClick("#menuConfig", "Config", {
-            "#content0": "/config0.html",
-            "#content1": "/config1.html",
-            "#content2": "/config2.html"
-        });
+        handleMenuClick("#menuConfig", "Config", () => load($('#content'), '/config.html'));
 
-        handleMenuClick("#menuFirmware", "Firmware", {
-            "#content0": "/fw.html"
-        });
+        handleMenuClick("#menuFirmware", "Firmware", () => load($('#content'), '/fw.html'));
 
         triggerEvent($("#menuStatus"), 'click');
     </script>

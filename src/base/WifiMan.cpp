@@ -1,8 +1,5 @@
 #include "WifiMan.h"
 
-#include "data/status1.html.gz.h"
-#include "data/config1.html.gz.h"
-
 const char *WifiMan::ipToCString(IPAddress ip)
 {
   static char buf[16];
@@ -335,18 +332,6 @@ bool WifiMan::appInit(bool reInit /* = false */)
   return (ssid[0] ? WiFi.isConnected() : true);
 }
 
-Application::HtmlPage WifiMan::getHTMLContent(WebPageForPlaceHolder wp)
-{
-  switch (wp)
-  {
-  case status:
-    return {status1htmlgz, sizeof(status1htmlgz)};
-  case config:
-    return {config1htmlgz, sizeof(config1htmlgz)};
-  default:
-    return {nullptr, 0};
-  }
-}
 
 void WifiMan::appInitWebServer(WebServer &server)
 {
