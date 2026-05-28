@@ -21,6 +21,7 @@ private:
     char _username[64] = {0};
     char _password[64] = {0};
     char _connectedAndWillTopic[96] = {0};
+    char _baseTopic[64 + 4 + 12 - 7 + sizeof(CUSTOM_APP_MODEL) + 1] = {0};
     bool _needMqttReconnect = false;
     Ticker _mqttReconnectTicker;
 
@@ -30,7 +31,10 @@ private:
     bool connect(bool firstConnection);
 
 public:
-    static void prepareTopic(const char *topic, char *result, size_t resultSize);
+    static constexpr size_t baseTopicSize = 64 + 4 + 12 - 7 + sizeof(CUSTOM_APP_MODEL) + 1; // usual baseTopic length + one of each placeholder (+4 sn) (+12 mac) (+X model)
+    static void prepareTopic(const char *topicTemplate, char *result, size_t resultSize);
+    MQTTMan &setBaseTopic(const char *baseTopicTemplate);
+    const char *getBaseTopic() const;
 
     using PubSubClient::setClient;
     using PubSubClient::setServer;

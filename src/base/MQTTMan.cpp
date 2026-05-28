@@ -1,15 +1,15 @@
 #include "MQTTMan.h"
 
-void MQTTMan::prepareTopic(const char *topic, char *result, size_t resultSize)
+void MQTTMan::prepareTopic(const char *topicTemplate, char *result, size_t resultSize)
 {
     if (!result || resultSize == 0)
         return;
 
     result[0] = '\0';
-    if (!topic || resultSize == 1)
+    if (!topicTemplate || resultSize == 1)
         return;
 
-    const char *src = topic;
+    const char *src = topicTemplate;
     char *dst = result;
     char *end = result + resultSize - 1; // reserve 1 byte: '\0'
     bool overflow = false;
@@ -76,6 +76,24 @@ void MQTTMan::prepareTopic(const char *topic, char *result, size_t resultSize)
 
     if (overflow)
         LOG_SERIAL_PRINTLN(F("/!\\MQTT prepareTopic overflow/!\\"));
+}
+
+MQTTMan &MQTTMan::setBaseTopic(const char *baseTopicTemplate)
+{
+    // prepare base topic with replacements
+    prepareTopic(baseTopicTemplate, _baseTopic, sizeof(_baseTopic));
+
+    // build connected/will topic
+    char willTopic[sizeof(_baseTopic) + sizeof("/connected")];
+    snprintf_P(willTopic, sizeof(willTopic), PSTR("%s/connected"), _baseTopic);
+    setConnectedAndWillTopic(willTopic);
+
+    return *this;
+}
+
+const char *MQTTMan::getBaseTopic() const
+{
+    return _baseTopic;
 }
 
 bool MQTTMan::connect(bool firstConnection)
