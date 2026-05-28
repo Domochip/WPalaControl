@@ -1,5 +1,8 @@
 #include "WPalaControl.h"
 
+#include "data/status2.html.gz.h"
+#include "data/config2.html.gz.h"
+
 #ifdef ESP8266
 #define PALA_SERIAL Serial
 #else
