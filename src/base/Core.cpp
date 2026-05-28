@@ -8,6 +8,10 @@
 #include "data/side-menu.css.gz.h"
 #include "data/side-menu.js.gz.h"
 
+#include "data/status0.html.gz.h"
+#include "data/config0.html.gz.h"
+#include "data/fw.html.gz.h"
+
 void Core::setConfigDefaultValues() {};
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */) { return true; };
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */) {};

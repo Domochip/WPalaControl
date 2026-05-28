@@ -1,5 +1,8 @@
 #include "WifiMan.h"
 
+#include "data/status1.html.gz.h"
+#include "data/config1.html.gz.h"
+
 const char *WifiMan::ipToCString(IPAddress ip)
 {
   static char buf[16];

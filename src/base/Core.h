@@ -4,10 +4,6 @@
 #include "../Main.h"
 #include "Application.h"
 
-#include "data/status0.html.gz.h"
-#include "data/config0.html.gz.h"
-#include "data/fw.html.gz.h"
-
 #ifdef ESP8266
 #include "CrashSaver.h"
 #endif
