@@ -335,28 +335,16 @@ bool WifiMan::appInit(bool reInit /* = false */)
   return (ssid[0] ? WiFi.isConnected() : true);
 }
 
-const PROGMEM char *WifiMan::getHTMLContent(WebPageForPlaceHolder wp)
+Application::HtmlPage WifiMan::getHTMLContent(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
   case status:
-    return status1htmlgz;
+    return {status1htmlgz, sizeof(status1htmlgz)};
   case config:
-    return config1htmlgz;
+    return {config1htmlgz, sizeof(config1htmlgz)};
   default:
-    return nullptr;
-  }
-}
-size_t WifiMan::getHTMLContentSize(WebPageForPlaceHolder wp)
-{
-  switch (wp)
-  {
-  case status:
-    return sizeof(status1htmlgz);
-  case config:
-    return sizeof(config1htmlgz);
-  default:
-    return 0;
+    return {nullptr, 0};
   }
 }
 

@@ -371,7 +371,8 @@ void Application::initWebServer(WebServer &server)
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.send_P(200, PSTR("text/html"), getHTMLContent(status), getHTMLContentSize(status));
+              HtmlPage page = getHTMLContent(status);
+              server.send_P(200, PSTR("text/html"), page.progmemData, page.size);
             });
 
   // HTML Config handler
@@ -381,7 +382,8 @@ void Application::initWebServer(WebServer &server)
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.send_P(200, PSTR("text/html"), getHTMLContent(config), getHTMLContentSize(config));
+              HtmlPage page = getHTMLContent(config);
+              server.send_P(200, PSTR("text/html"), page.progmemData, page.size);
             });
 
   // JSON Status handler

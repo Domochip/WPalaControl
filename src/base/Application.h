@@ -36,6 +36,12 @@ protected:
     config
   } WebPageForPlaceHolder;
 
+  struct HtmlPage
+  {
+    const char *progmemData;
+    size_t size;
+  };
+
   AppId _appId;
   bool _reInit = false;
 
@@ -65,8 +71,7 @@ protected:
   virtual void appInitWebServer(WebServer &server) = 0;
   virtual void appRun() = 0;
   virtual void fillConfigJSON(JsonVariant json, bool forSaveFile = false) = 0;
-  virtual const PROGMEM char *getHTMLContent(WebPageForPlaceHolder wp) = 0;
-  virtual size_t getHTMLContentSize(WebPageForPlaceHolder wp) = 0;
+  virtual HtmlPage getHTMLContent(WebPageForPlaceHolder wp) = 0;
   virtual bool parseConfigJSON(JsonVariant json, bool fromWebPage = false) = 0;
   virtual void setConfigDefaultValues() = 0;
 

@@ -49,27 +49,17 @@ bool Core::appInit(bool reInit /* = false */)
 {
   return true;
 };
-const PROGMEM char *Core::getHTMLContent(WebPageForPlaceHolder wp)
+Application::HtmlPage Core::getHTMLContent(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
   case status:
-    return status0htmlgz;
+    return {status0htmlgz, sizeof(status0htmlgz)};
   case config:
-    return config0htmlgz;
-  };
-  return nullptr;
-}
-size_t Core::getHTMLContentSize(WebPageForPlaceHolder wp)
-{
-  switch (wp)
-  {
-  case status:
-    return sizeof(status0htmlgz);
-  case config:
-    return sizeof(config0htmlgz);
-  };
-  return 0;
+    return {config0htmlgz, sizeof(config0htmlgz)};
+  default:
+    return {nullptr, 0};
+  }
 }
 void Core::appInitWebServer(WebServer &server)
 {
