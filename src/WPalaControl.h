@@ -7,8 +7,6 @@
 #include "base/EventSourceMan.h"
 #include "base/Application.h"
 
-const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
-
 #include <Palazzetti.h>
 #include <WiFiUdp.h>
 

@@ -2621,12 +2621,7 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
     if ((jv = json[F("hamu")]).is<const char *>())
       strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
 
-    if ((jv = json[F("hamp")]).is<const char *>())
-    {
-      // if not from web page or password is not the predefined one
-      if (!fromWebPage || strcmp_P(jv, appDataPredefPassword))
-        strlcpy(_ha.mqtt.password, jv, sizeof(_ha.mqtt.password));
-    }
+    parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
 
     switch (_ha.mqtt.type)
     {
@@ -2668,10 +2663,7 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
     json[F("hamtype")] = _ha.mqtt.type;
     json[F("hamport")] = _ha.mqtt.port;
     json[F("hamu")] = _ha.mqtt.username;
-    if (forSaveFile)
-      json[F("hamp")] = _ha.mqtt.password;
-    else
-      json[F("hamp")] = (const __FlashStringHelper *)appDataPredefPassword; // predefined special password (mean to keep already saved one)
+    fillSecret(json, F("hamp"), _ha.mqtt.password, forSaveFile);
 
     json[F("hamgbt")] = _ha.mqtt.generic.baseTopic;
 
