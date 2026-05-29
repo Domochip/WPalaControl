@@ -92,13 +92,13 @@
             function () {
                 $(qsp + "#f").style.display = 'none';
 
-                let locationCommand = 'location.';
-                if (!$(qsp + "#s").value) locationCommand += 'assign("http://192.168.4.1");';
-                else if ($(qsp + "#staticip").checked && $(qsp + "#ip").value != "0.0.0.0") locationCommand += 'assign("http://' + $(qsp + "#ip").value + '");';
-                else locationCommand += 'reload();';
+                let targetUrl = '';
+                if (!$(qsp + "#s").value) targetUrl = 'http://192.168.4.1';
+                else if ($(qsp + "#staticip").checked && $(qsp + "#ip").value != "0.0.0.0") targetUrl = 'http://' + $(qsp + "#ip").value;
+                else { sessionStorage.setItem('activeTab', '#menuConfig'); targetUrl = location.origin; }
 
-                $(qsp + '#r').innerHTML = '<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>This page will be reloaded in <span id="cd">20</span>sec.';
-                loadScript('startCountdown("#cd", 19, () => {' + locationCommand + '});');
+                $(qsp + '#r').innerHTML = '<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
+                loadScript('redirectWhenReachable("' + targetUrl + '", 30000);');
             },
             function () {
                 $(qsp + '#r').innerHTML = '<h3><b>Configuration <span style="color: red;">error</span>.</b></h3>';

@@ -29,22 +29,22 @@
         $(qsp + '#subRbtRsc').disabled = false;
     };
 
-    function handleSubmit(event, url, successMessage) {
+    function handleSubmit(event, url, successMessage, targetUrl) {
         event.preventDefault();
         $(qsp + '#subRbt').disabled = true;
         $(qsp + '#subRbtRsc').disabled = true;
 
         post(url, null, function () {
-            $(qsp + '#r').innerHTML = `<h3><span style="color: green;"><b>Done</b></span> ${successMessage} This page will be reloaded in <span id="cd">20</span>sec.</h3>`;
-            loadScript('startCountdown("#cd", 19, () => {location.reload();});');
+            $(qsp + '#r').innerHTML = `<h3><span style="color: green;"><b>Done</b></span> ${successMessage} Waiting for device... <span id="cd">0</span>s</h3>`;
+            loadScript('redirectWhenReachable("' + targetUrl + '", 30000);');
         }, postFailed);
     }
 
     $(qsp + "#f0").addEventListener('submit', function (evt) {
-        handleSubmit(evt, '/rbt', 'System will reboot shortly. Go back to Status page and look for UpTime reset.');
+        handleSubmit(evt, '/rbt', 'System will reboot shortly.', location.origin);
     });
 
     $(qsp + "#f0b").addEventListener('submit', function (evt) {
-        handleSubmit(evt, '/rbt?rescue=true', 'System will reboot shortly in RESCUE MODE.You\'ll need to connect to module WiFi.');
+        handleSubmit(evt, '/rbt?rescue=true', 'System will reboot shortly in RESCUE MODE. You\'ll need to connect to module WiFi.', 'http://192.168.4.1');
     });
 </script>

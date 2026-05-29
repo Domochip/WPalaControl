@@ -189,6 +189,31 @@
             }, 1000);
         }
 
+        // Waits 2s then polls HEAD / every 2s until the device responds, then redirects to url.
+        // The initial 2s delay lets the device start rebooting before polling begins.
+        // Uses no-cors to allow cross-origin probes. Updates id="cd" with elapsed seconds.
+        // Redirects after maxMs regardless.
+        function redirectWhenReachable(url, maxMs) {
+            const start = Date.now();
+            const displayTimer = setInterval(() => {
+                const el = $('#cd');
+                if (el) el.innerText = Math.floor((Date.now() - start) / 1000);
+            }, 1000);
+            setTimeout(() => {
+                const pollTimer = setInterval(() => {
+                    if (Date.now() - start > maxMs) {
+                        clearInterval(displayTimer);
+                        clearInterval(pollTimer);
+                        location.assign(url);
+                        return;
+                    }
+                    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+                        .then(() => { clearInterval(displayTimer); clearInterval(pollTimer); location.assign(url); })
+                        .catch(() => {});
+                }, 2000);
+            }, 2000);
+        }
+
         function triggerEvent(el, evtName) {
             var evt = new Event(evtName, {
                 bubbles: true,
@@ -218,7 +243,9 @@
         handleMenuClick("#menuConfig", "Config", () => load($('#content'), 'tpl-config'));
         handleMenuClick("#menuFirmware", "Firmware", () => load($('#content'), 'tpl-fw'));
 
-        triggerEvent($("#menuStatus"), 'click');
+        const savedTab = sessionStorage.getItem('activeTab');
+        sessionStorage.removeItem('activeTab');
+        triggerEvent($(savedTab) || $('#menuStatus'), 'click');
     </script>
 </body>
 

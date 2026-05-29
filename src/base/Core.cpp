@@ -56,6 +56,23 @@ void Core::appInitWebServer(WebServer &server)
               server.send_P(200, PSTR("text/html"), indexhtmlgz, sizeof(indexhtmlgz));
             });
 
+  // favicon.ico - return 204 so browsers don't retry on every load
+  server.on(F("/favicon.ico"), HTTP_GET,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
+              server.send(204);
+            });
+
+  // HEAD / is used to poll device availability
+  server.on("/", HTTP_HEAD,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              server.send(200);
+            });
+
   // Ressources URLs
   server.on(F("/pure-min.css"), HTTP_GET,
             [&server]()
