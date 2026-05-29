@@ -111,12 +111,7 @@ bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
   if ((jv = json["s"]).is<const char *>())
     strlcpy(ssid, jv, sizeof(ssid));
 
-  if ((jv = json["p"]).is<const char *>())
-  {
-    // if not from web page or password is not the predefined one
-    if (!fromWebPage || strcmp_P(jv, predefPassword))
-      strlcpy(password, jv, sizeof(password));
-  }
+  parseSecret(json["p"], password, sizeof(password), fromWebPage);
 
   if ((jv = json["h"]).is<const char *>())
     strlcpy(hostname, jv, sizeof(hostname));
@@ -169,11 +164,7 @@ void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json["s"] = ssid;
 
-  if (forSaveFile)
-    json["p"] = password;
-  else
-    // there is a predefined special password (used to keep already saved one)
-    json["p"] = (const __FlashStringHelper *)predefPassword;
+  fillSecret(json, F("p"), password, forSaveFile);
 
   json["h"] = hostname;
 

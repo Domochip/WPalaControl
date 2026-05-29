@@ -18,6 +18,9 @@ using WebServer = ESP8266WebServer;
 #include <ArduinoJson.h>
 #include <Ticker.h>
 
+// Predefined placeholder sent to the web page instead of the real password value
+const char predefPassword[] PROGMEM = "ewcXoCt4HHjZUvY0";
+
 class Application
 {
 protected:
@@ -36,6 +39,9 @@ protected:
   // already built methods
   bool saveConfig();
   bool loadConfig();
+
+  static void fillSecret(JsonVariant json, const __FlashStringHelper *key, const char *value, bool forSaveFile);
+  static void parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage);
 
   static bool getLatestUpdateInfo(char *version, char *title, char *releaseDate, char *summary);
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);

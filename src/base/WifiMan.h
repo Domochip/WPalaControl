@@ -12,8 +12,6 @@
 #endif
 #include <DNSServer.h>
 
-const char predefPassword[] PROGMEM = "ewcXoCt4HHjZUvY0";
-
 class WifiMan : public Application
 {
 

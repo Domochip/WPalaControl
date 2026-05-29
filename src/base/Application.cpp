@@ -74,6 +74,22 @@ bool Application::loadConfig()
   return result;
 }
 
+// Writes a secret field: real value when saving to file, predefined placeholder when sending to web page
+void Application::fillSecret(JsonVariant json, const __FlashStringHelper *key, const char *value, bool forSaveFile)
+{
+  if (forSaveFile)
+    json[key] = value;
+  else
+    json[key] = (const __FlashStringHelper *)predefPassword;
+}
+
+// Parses a secret field: skips update if the value is the predefined placeholder sent by web page
+void Application::parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage)
+{
+  if (jv.is<const char *>() && (!fromWebPage || strcmp_P(jv, predefPassword)))
+    strlcpy(dest, jv, size);
+}
+
 bool Application::getLatestUpdateInfo(char *version, char *title, char *releaseDate, char *summary)
 {
   version[0] = title[0] = releaseDate[0] = summary[0] = '\0';
