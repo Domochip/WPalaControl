@@ -67,6 +67,7 @@ bool Application::loadConfig()
     else
     { // otherwise pass it to application
       result = parseConfigJSON(json);
+      validateConfig();
     }
     configFile.close();
   }
@@ -434,6 +435,7 @@ void Application::initWebServer(WebServer &server)
                 server.send(400, F("text/html"), F("Invalid Configuration"));
                 return;
               }
+              validateConfig();
 
               // Save it
               if (!saveConfig())

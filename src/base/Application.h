@@ -66,6 +66,7 @@ protected:
   virtual void appRun() = 0;
   virtual void fillConfigJSON(JsonVariant json, bool forSaveFile = false) = 0;
   virtual bool parseConfigJSON(JsonVariant json, bool fromWebPage = false) = 0;
+  virtual void validateConfig() {}
   virtual void setConfigDefaultValues() = 0;
 
 public:
