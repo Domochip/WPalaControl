@@ -14,8 +14,7 @@ Protocol: <span id="haprotocol"></span><br>
 </span>
 
 <script>
-    //QuerySelector Prefix is added by load function to know into what element querySelector need to look for
-    //var qsp = '#content1 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content2 ';
 
     function parseLiveData(liveData) {
         if ($(qsp + '#liveData') == undefined) return;
