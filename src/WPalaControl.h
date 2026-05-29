@@ -106,6 +106,7 @@ private:
 
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonVariant json, bool fromWebPage = false);
+  void validateConfig() override;
   void fillConfigJSON(JsonVariant json, bool forSaveFile = false);
   void fillStatusJSON(JsonVariant json);
   bool appInit(bool reInit = false);

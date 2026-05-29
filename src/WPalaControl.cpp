@@ -2630,9 +2630,6 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
     case HaMqttType::GenericCategorized:
       if ((jv = json[F("hamgbt")]).is<const char *>())
         strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
-
-      if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
-        _ha.protocol = HaProtocol::Disabled;
       break;
     }
 
@@ -2645,6 +2642,28 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   }
 
   return true;
+}
+
+//------------------------------------------
+// Disable protocols with missing required fields
+void WPalaControl::validateConfig()
+{
+  switch (_ha.protocol)
+  {
+  case HaProtocol::Mqtt:
+    switch (_ha.mqtt.type)
+    {
+    case HaMqttType::Generic:
+    case HaMqttType::GenericJson:
+    case HaMqttType::GenericCategorized:
+      if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
+        _ha.protocol = HaProtocol::Disabled;
+      break;
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 //------------------------------------------
