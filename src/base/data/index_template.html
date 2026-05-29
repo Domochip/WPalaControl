@@ -59,7 +59,7 @@
         </div>
     </div>
 
-    <!-- TEMPLATES -->
+<!-- TEMPLATES -->
 
     <script>
         function $(selector, el = document) {
@@ -107,14 +107,12 @@
         }
 
         // Loads a page from an embedded <template> element into the target element.
-        // Scripts inside the template are executed with qsp resolved to the target element's id.
+        // Scripts inside the template are executed via loadScript (scripts in innerHTML don't auto-execute).
         function load(element, templateId) {
             const tpl = document.getElementById(templateId);
             element.innerHTML = tpl.innerHTML;
             const scriptList = element.getElementsByTagName('script');
             for (const script of scriptList) {
-                //Replace "QuerySelectorPrefix" aka "qsp" : allow script to search into the parent element
-                script.innerHTML = script.innerHTML.replace(/qsp/g, `'#${element.id} '`);
                 loadScript(script.innerHTML);
             }
         }
@@ -217,9 +215,7 @@
         }
 
         handleMenuClick("#menuStatus", "Status", () => load($('#content'), 'tpl-status'));
-
         handleMenuClick("#menuConfig", "Config", () => load($('#content'), 'tpl-config'));
-
         handleMenuClick("#menuFirmware", "Firmware", () => load($('#content'), 'tpl-fw'));
 
         triggerEvent($("#menuStatus"), 'click');

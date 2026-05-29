@@ -9,8 +9,7 @@ Station: <span id="stationmode"></span><br>
 <span id="stationipsourcee" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span id="stationipsource"></span><br></span>
 
 <script>
-    //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
-    //var qsp = '#content1 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content1 ';
 
     getJSON("/gs" + qsp[8],
         function (GS) {

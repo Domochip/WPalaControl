@@ -19,8 +19,7 @@
 <span id='r'></span>
 
 <script>
-    //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
-    //var qsp = '#content0 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content0 ';
 
     function postFailed() {
         $(qsp + '#r').innerHTML = '<span style="color: red;"><b>Failed</b></span>';

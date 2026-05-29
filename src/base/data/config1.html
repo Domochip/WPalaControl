@@ -60,8 +60,7 @@
 <span id='r'></span>
 
 <script>
-    //QuerySelector Prefix is added by load function to know into what element querySelector need to look for
-    //var qsp = '#content1 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content1 ';
 
     $(qsp + "#staticip").addEventListener('change', function () {
         if ($(qsp + "#staticip").checked) {
