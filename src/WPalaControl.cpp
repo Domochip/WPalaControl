@@ -257,6 +257,9 @@ bool WPalaControl::mqttPublishHassDiscovery()
   String uniqueId;
   String topic;
 
+  // default availability JSON
+  const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
+
   // ---------- Device ----------
 
   // prepare unique id prefix
@@ -301,6 +304,33 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   _mqttMan.publish(topic.c_str(), json, true);
 
+  //
+  // Update entity
+  //
+
+  // prepare uniqueId, topic and payload for update sensor
+  uniqueId = uniqueIdPrefix + F("_Update");
+
+  topic = prepareHassDiscoveryTopic(F("update"), uniqueId);
+
+  // prepare payload for update sensor
+  deserializeJson(json, F("{"
+                          "\"command_topic\":\"~/update/install\","
+                          "\"default_entity_id\":\"update." CUSTOM_APP_MODEL "\","
+                          "\"device_class\":\"firmware\","
+                          "\"entity_category\":\"config\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "\","
+                          "\"payload_install\":\"latest\","
+                          "\"state_topic\":\"~/update\""
+                          "}"));
+  json[F("~")] = _mqttMan.getBaseTopic();
+  json[F("availability")] = serialized(availabilityJSON);
+  json[F("device")] = serialized(device);
+  json[F("unique_id")] = uniqueId;
+
+  // publish
+  _mqttMan.publish(topic.c_str(), json, true);
+
   // clean device JSON before switching to Stove entities
   device = "";
 
@@ -340,7 +370,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // ---------- Usefull variables for entities building ----------
 
-  const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
   const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
   const __FlashStringHelper *tempProbeTopicListArray[][3] = {
       {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
@@ -1138,88 +1167,8 @@ bool WPalaControl::mqttPublishUpdate()
   JsonDocument updateInfo;
   fillLatestUpdateInfoJson(updateInfo);
 
-  String topic;
-
-  // This part of code is necessary because "payload_install" is not a template
-  // and we need to get the version to install pushed from Home Assistant
-  // so it is mandatory to update the Update entity each time we publish the update
-  // parse JSON
-  if (_ha.mqtt.hassDiscoveryEnabled)
-  {
-    JsonVariant jv;
-    // if latest_version is available
-    if ((jv = updateInfo[F("latest_version")]).is<const char *>())
-    {
-      // get version
-      char version[10] = {0};
-      strlcpy(version, jv.as<const char *>(), sizeof(version));
-
-      // then publish updated Update autodiscovery
-
-      // variables
-      JsonDocument json;
-      String device;
-
-      String uniqueIdPrefix;
-      String uniqueId;
-
-      // prepare unique id prefix
-      uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-      uniqueIdPrefix += WifiMan::getMacAddress();
-      uniqueIdPrefix.replace(":", "");
-
-      // ---------- Device ----------
-
-      // prepare device JSON
-      deserializeJson(json, F("{"
-                              "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
-                              "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
-                              "\"model\":\"" CUSTOM_APP_MODEL "\","
-                              "\"sw_version\":\"" VERSION "\""
-                              "}"));
-      json[F("identifiers")][0] = uniqueIdPrefix;
-      json[F("name")] = WiFi.getHostname();
-      serializeJson(json, device); // serialize to device String
-
-      const __FlashStringHelper *availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
-
-      // ----- Entities -----
-
-      //
-      // Update entity
-      //
-
-      // prepare uniqueId, topic and payload for update sensor
-      uniqueId = uniqueIdPrefix;
-      uniqueId += F("_Update");
-
-      topic = _ha.mqtt.hassDiscoveryPrefix;
-      topic += F("/update/");
-      topic += uniqueId;
-      topic += F("/config");
-
-      // prepare payload for update sensor
-      deserializeJson(json, F("{"
-                              "\"command_topic\":\"~/update/install\","
-                              "\"default_entity_id\":\"update." CUSTOM_APP_MODEL "\","
-                              "\"device_class\":\"firmware\","
-                              "\"entity_category\":\"config\","
-                              "\"object_id\":\"" CUSTOM_APP_MODEL "\","
-                              "\"state_topic\":\"~/update\""
-                              "}"));
-      json[F("~")] = _mqttMan.getBaseTopic();
-      json[F("availability")] = serialized(availabilityJSON);
-      json[F("device")] = serialized(device);
-      json[F("payload_install")] = version;
-      json[F("unique_id")] = uniqueId;
-
-      // publish
-      _mqttMan.publish(topic.c_str(), json, true);
-    }
-  }
-
-  // calculate topic
-  topic = _mqttMan.getBaseTopic();
+  // calculate update topic
+  String topic = _mqttMan.getBaseTopic();
   topic += F("/update");
 
   // publish install in_progress (new in 2024.11)
