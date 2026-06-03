@@ -2734,9 +2734,12 @@ bool WPalaControl::appInit(bool reInit /* = false */)
     _mqttMan.setBufferSize(2048); // max JSON size (STDT ~1100 but Thermostat HAss discovery ~1800)
     _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
     _mqttMan.setBaseTopic(_ha.mqtt.generic.baseTopic);
-    _mqttMan.setConnectedCallback(std::bind(&WPalaControl::mqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
-    _mqttMan.setDisconnectedCallback(std::bind(&WPalaControl::mqttDisconnectedCallback, this));
-    _mqttMan.setCallback(std::bind(&WPalaControl::mqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    _mqttMan.setConnectedCallback([this](MQTTMan *mqttMan, bool firstConnection)
+                                  { mqttConnectedCallback(mqttMan, firstConnection); });
+    _mqttMan.setDisconnectedCallback([this]()
+                                     { mqttDisconnectedCallback(); });
+    _mqttMan.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
+                         { mqttCallback(topic, payload, length); });
 
     // Connect
     _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
