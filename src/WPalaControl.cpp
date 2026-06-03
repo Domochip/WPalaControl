@@ -2776,14 +2776,22 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 
   Palazzetti::CommandResult cmdRes;
   Palazzetti::SerialAdapter palaSerialAdapter = {
-      .open = std::bind(&WPalaControl::myOpenSerial, this, std::placeholders::_1),
-      .close = std::bind(&WPalaControl::myCloseSerial, this),
-      .select = std::bind(&WPalaControl::mySelectSerial, this, std::placeholders::_1),
-      .read = std::bind(&WPalaControl::myReadSerial, this, std::placeholders::_1, std::placeholders::_2),
-      .write = std::bind(&WPalaControl::myWriteSerial, this, std::placeholders::_1, std::placeholders::_2),
-      .drain = std::bind(&WPalaControl::myDrainSerial, this),
-      .flush = std::bind(&WPalaControl::myFlushSerial, this),
-      .uSleep = std::bind(&WPalaControl::myUSleep, this, std::placeholders::_1)};
+      .open = [this](uint32_t baudrate)
+      { return myOpenSerial(baudrate); },
+      .close = [this]()
+      { myCloseSerial(); },
+      .select = [this](unsigned long timeout)
+      { return mySelectSerial(timeout); },
+      .read = [this](void *buf, size_t count)
+      { return myReadSerial(buf, count); },
+      .write = [this](const void *buf, size_t count)
+      { return myWriteSerial(buf, count); },
+      .drain = [this]()
+      { return myDrainSerial(); },
+      .flush = [this]()
+      { return myFlushSerial(); },
+      .uSleep = [this](unsigned long usecond)
+      { myUSleep(usecond); }};
 
   cmdRes = _Pala.initialize(palaSerialAdapter, _detectedHwVersion == HwVersion::V1);
 
