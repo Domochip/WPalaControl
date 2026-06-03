@@ -284,6 +284,8 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
 
     if (forWebPage)
       json[F("release_date")] = releaseDate;
+    else
+      json[F("in_progress")] = (Update.isRunning() ? F("true") : F("false"));
   }
 }
 
