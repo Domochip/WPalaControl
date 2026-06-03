@@ -1171,12 +1171,6 @@ bool WPalaControl::mqttPublishUpdate()
   String topic = _mqttMan.getBaseTopic();
   topic += F("/update");
 
-  // publish install in_progress (new in 2024.11)
-  // I keep it here because I want to separate the two publish for retrocompatibility
-  // if "in_progress" is in the same payload, Home Assistant 2024.10 and lower will ignore the payload
-  // (to be moved to WBase around 2025-05)
-  _mqttMan.publish(topic.c_str(), (String(F("{\"in_progress\":")) + (Update.isRunning() ? F("true") : F("false")) + '}').c_str(), true);
-
   // publish update info
   _mqttMan.publish(topic.c_str(), updateInfo, true);
 
