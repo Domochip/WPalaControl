@@ -43,7 +43,7 @@ protected:
   static void fillSecret(JsonVariant json, const __FlashStringHelper *key, const char *value, bool forSaveFile);
   static void parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage);
 
-  static bool getLatestUpdateInfo(char *version, char *title, char *releaseDate, char *summary);
+  static bool getLatestUpdateInfo(char *version, char *title = nullptr, char *releaseDate = nullptr, char *summary = nullptr);
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 

@@ -91,9 +91,16 @@ void Application::parseSecret(JsonVariant jv, char *dest, size_t size, bool from
     strlcpy(dest, jv, size);
 }
 
-bool Application::getLatestUpdateInfo(char *version, char *title, char *releaseDate, char *summary)
+bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */, char *releaseDate /* = nullptr */, char *summary /* = nullptr */)
 {
-  version[0] = title[0] = releaseDate[0] = summary[0] = '\0';
+  if (version)
+    version[0] = '\0';
+  if (title)
+    title[0] = '\0';
+  if (releaseDate)
+    releaseDate[0] = '\0';
+  if (summary)
+    summary[0] = '\0';
 
   WiFiClientSecure clientSecure;
   HTTPClient http;
@@ -174,25 +181,25 @@ bool Application::getLatestUpdateInfo(char *version, char *title, char *releaseD
     size_t targetMaxLen = 0;
 
     // if we found the key "tag_name"
-    if (keyLen >= 11 && memcmp(keyBuffer + keyLen - 11, "\"tag_name\":", 11) == 0)
+    if (version && keyLen >= 11 && memcmp(keyBuffer + keyLen - 11, "\"tag_name\":", 11) == 0)
     {
       targetPtr = version;
       targetMaxLen = 9;
     }
     // if we found the key "name"
-    else if (keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"name\":", 7) == 0)
+    else if (title && keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"name\":", 7) == 0)
     {
       targetPtr = title;
       targetMaxLen = 63;
     }
     // if we found the key "published_at"
-    else if (keyLen >= 15 && memcmp(keyBuffer + keyLen - 15, "\"published_at\":", 15) == 0)
+    else if (releaseDate && keyLen >= 15 && memcmp(keyBuffer + keyLen - 15, "\"published_at\":", 15) == 0)
     {
       targetPtr = releaseDate;
       targetMaxLen = 10;
     }
     // if we found the key "body"
-    else if (keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"body\":", 7) == 0)
+    else if (summary && keyLen >= 7 && memcmp(keyBuffer + keyLen - 7, "\"body\":", 7) == 0)
     {
       targetPtr = summary;
       targetMaxLen = 255;
@@ -256,7 +263,7 @@ bool Application::getLatestUpdateInfo(char *version, char *title, char *releaseD
 
   http.end();
 
-  return version[0] != '\0';
+  return version && version[0] != '\0';
 }
 
 void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* = false */)
@@ -286,6 +293,18 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   {
     retMsg = F("No version provided");
     return false;
+  }
+
+  char latestVersion[10];
+  if (strcmp(version, "latest") == 0)
+  {
+    if (!getLatestUpdateInfo(latestVersion, nullptr, nullptr, nullptr))
+    {
+      retMsg = F("Failed to get latest version");
+      return false;
+    }
+
+    version = latestVersion;
   }
 
   WiFiClientSecure clientSecure;
