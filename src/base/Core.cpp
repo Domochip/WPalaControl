@@ -1,4 +1,5 @@
 #include "Core.h"
+#include "WifiMan.h"
 #include <EEPROM.h>
 #include "../Main.h" //for VERSION define
 #include "Version.h" //for BASE_VERSION define
@@ -8,22 +9,33 @@
 #include "data/side-menu.css.gz.h"
 #include "data/side-menu.js.gz.h"
 
+const char *Core::getSerialNumber()
+{
+  static char sn[9] = {0};
+
+  // Calculate serial number only on first call
+  if (sn[0] == '\0')
+  {
+#ifdef ESP8266
+    sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
+#else
+    sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+#endif
+  }
+
+  return sn;
+}
+
 void Core::setConfigDefaultValues() {};
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */) { return true; };
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */) {};
 void Core::fillStatusJSON(JsonVariant json)
 {
-  char sn[9];
-#ifdef ESP8266
-  sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-#else
-  sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
-#endif
   unsigned long minutes = millis() / 60000;
 
   json[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
   json[F("model")] = CUSTOM_APP_MODEL;
-  json[F("sn")] = sn;
+  json[F("sn")] = getSerialNumber();
   json[F("baseversion")] = BASE_VERSION;
   json[F("version")] = VERSION;
   char uptime[12];
@@ -283,7 +295,7 @@ void Core::appInitWebServer(WebServer &server)
         SERVER_KEEPALIVE_FALSE()
         char redirectUrl[32];
         IPAddress ip = server.client().localIP();
-        snprintf_P(redirectUrl, sizeof(redirectUrl), PSTR("http://%d.%d.%d.%d"), ip[0], ip[1], ip[2], ip[3]);
+        snprintf_P(redirectUrl, sizeof(redirectUrl), PSTR("http://%s"), WifiMan::ipToCString(ip));
         server.sendHeader(F("Location"), redirectUrl, true);
         server.send(302, F("text/plain"), ""); // Empty content inhibits Content-length header so we have to close the socket ourselves.
         server.client().stop();

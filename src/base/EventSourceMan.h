@@ -21,6 +21,7 @@ private:
     WiFiClient _EventSourceClientList[EVTSRC_MAX_CLIENTS];
 
     void eventSourceHandler(WebServer &server);
+    void forEachConnectedClient(std::function<void(WiFiClient&, uint8_t)> action);
     
 #if EVTSRC_KEEPALIVE_ENABLED
     bool _needEventSourceKeepAlive = false;

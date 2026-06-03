@@ -21,6 +21,7 @@ private:
 
 public:
   Core() : Application(CoreApp) {};
+  static const char *getSerialNumber();
 };
 
 #endif

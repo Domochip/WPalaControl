@@ -1,4 +1,6 @@
 #include "MQTTMan.h"
+#include "WifiMan.h"
+#include "Core.h"
 
 void MQTTMan::prepareTopic(const char *topicTemplate, char *result, size_t resultSize)
 {
@@ -14,17 +16,9 @@ void MQTTMan::prepareTopic(const char *topicTemplate, char *result, size_t resul
     char *end = result + resultSize - 1; // reserve 1 byte: '\0'
     bool overflow = false;
 
-    char sn[9];
-#ifdef ESP8266
-    sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-#else
-    sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
-#endif
+    const char *sn = Core::getSerialNumber();
 
-    uint8_t macBuf[6];
-    char mac[18];
-    WiFi.macAddress(macBuf);
-    snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
+    const char *mac = WifiMan::getMacAddress();
 
     const char *model = CUSTOM_APP_MODEL;
 
@@ -98,16 +92,9 @@ const char *MQTTMan::getBaseTopic() const
 
 bool MQTTMan::connect(bool firstConnection)
 {
-    char sn[9];
-#ifdef ESP8266
-    sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-#else
-    sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
-#endif
-
     // generate clientID
     char clientID[sizeof(CUSTOM_APP_MODEL) + 9];
-    snprintf_P(clientID, sizeof(clientID), PSTR(CUSTOM_APP_MODEL "%s"), sn);
+    snprintf_P(clientID, sizeof(clientID), PSTR(CUSTOM_APP_MODEL "%s"), Core::getSerialNumber());
 
     // Connect
     char *username = (_username[0] ? _username : nullptr);
@@ -139,13 +126,13 @@ MQTTMan &MQTTMan::setConnectedAndWillTopic(const char *topic)
     return *this;
 }
 
-MQTTMan &MQTTMan::setConnectedCallback(CONNECTED_CALLBACK_SIGNATURE connectedCallback)
+MQTTMan &MQTTMan::setConnectedCallback(ConnectedCallback connectedCallback)
 {
     _connectedCallBack = connectedCallback;
     return *this;
 }
 
-MQTTMan &MQTTMan::setDisconnectedCallback(DISCONNECTED_CALLBACK_SIGNATURE disconnectedCallback)
+MQTTMan &MQTTMan::setDisconnectedCallback(DisconnectedCallback disconnectedCallback)
 {
     _disconnectedCallBack = disconnectedCallback;
     return *this;

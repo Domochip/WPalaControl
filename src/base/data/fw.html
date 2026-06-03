@@ -156,7 +156,7 @@
         $(qsp + '#fi').readOnly = false;
     }
 
-    function getLastestUpdateInfo() {
+    function getLatestUpdateInfo() {
 
         disableAllButtons();
 
@@ -205,8 +205,8 @@
             }
         );
     }
-    getLastestUpdateInfo();
-    $(qsp + "#refreshButton").addEventListener('click', () => { getLastestUpdateInfo(); });
+    getLatestUpdateInfo();
+    $(qsp + "#refreshButton").addEventListener('click', () => { getLatestUpdateInfo(); });
 
     $(qsp + "#updateButton").addEventListener('click', (evt) => {
         evt.preventDefault();

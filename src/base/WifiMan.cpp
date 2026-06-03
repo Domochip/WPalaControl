@@ -7,6 +7,21 @@ const char *WifiMan::ipToCString(IPAddress ip)
   return buf;
 }
 
+const char *WifiMan::getMacAddress()
+{
+  static char mac[18] = {0};
+
+  // Calculate MAC address only on first call
+  if (mac[0] == '\0')
+  {
+    uint8_t macBuf[6];
+    WiFi.macAddress(macBuf);
+    snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
+  }
+
+  return mac;
+}
+
 void WifiMan::enableAP(bool force /* = false */)
 {
   if (!(WiFi.getMode() & WIFI_AP) || force)
@@ -209,11 +224,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   else
     json[F("stationmode")] = F("off");
 
-  uint8_t macBuf[6];
-  char mac[18];
-  WiFi.macAddress(macBuf);
-  snprintf_P(mac, sizeof(mac), PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), macBuf[0], macBuf[1], macBuf[2], macBuf[3], macBuf[4], macBuf[5]);
-  json[F("mac")] = mac;
+  json[F("mac")] = getMacAddress();
 }
 
 bool WifiMan::appInit(bool reInit /* = false */)
@@ -322,7 +333,6 @@ bool WifiMan::appInit(bool reInit /* = false */)
 
   return (ssid[0] ? WiFi.isConnected() : true);
 }
-
 
 void WifiMan::appInitWebServer(WebServer &server)
 {

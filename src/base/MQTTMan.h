@@ -12,11 +12,12 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-#define CONNECTED_CALLBACK_SIGNATURE std::function<void(MQTTMan * mqttMan, bool firstConnection)>
-#define DISCONNECTED_CALLBACK_SIGNATURE std::function<void()>
-
 class MQTTMan : private PubSubClient
 {
+public:
+    using ConnectedCallback = std::function<void(MQTTMan * mqttMan, bool firstConnection)>;
+    using DisconnectedCallback = std::function<void()>;
+
 private:
     char _username[64] = {0};
     char _password[64] = {0};
@@ -25,8 +26,8 @@ private:
     bool _needMqttReconnect = false;
     Ticker _mqttReconnectTicker;
 
-    CONNECTED_CALLBACK_SIGNATURE _connectedCallBack = nullptr;
-    DISCONNECTED_CALLBACK_SIGNATURE _disconnectedCallBack = nullptr;
+    ConnectedCallback _connectedCallBack = nullptr;
+    DisconnectedCallback _disconnectedCallBack = nullptr;
 
     bool connect(bool firstConnection);
 
@@ -39,8 +40,8 @@ public:
     using PubSubClient::setClient;
     using PubSubClient::setServer;
     MQTTMan &setConnectedAndWillTopic(const char *topic);
-    MQTTMan &setConnectedCallback(CONNECTED_CALLBACK_SIGNATURE connectedCallback);
-    MQTTMan &setDisconnectedCallback(DISCONNECTED_CALLBACK_SIGNATURE disconnectedCallback);
+    MQTTMan &setConnectedCallback(ConnectedCallback connectedCallback);
+    MQTTMan &setDisconnectedCallback(DisconnectedCallback disconnectedCallback);
     using PubSubClient::setCallback;
     bool connect(const char *username = nullptr, const char *password = nullptr);
     using PubSubClient::connected;
