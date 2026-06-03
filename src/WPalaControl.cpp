@@ -261,7 +261,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare unique id prefix
   uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-  uniqueIdPrefix += WiFi.macAddress();
+  uniqueIdPrefix += WifiMan::getMacAddress();
   uniqueIdPrefix.replace(":", "");
 
   // prepare device JSON
@@ -1165,7 +1165,7 @@ bool WPalaControl::mqttPublishUpdate()
 
       // prepare unique id prefix
       uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-      uniqueIdPrefix += WiFi.macAddress();
+      uniqueIdPrefix += WifiMan::getMacAddress();
       uniqueIdPrefix.replace(":", "");
 
       // ---------- Device ----------
@@ -1475,7 +1475,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
         _lastAllStatusRefreshMillis = currentMillis;
 
       data["MBTYPE"] = allStatusData.MBTYPE;
-      data["MAC"] = WiFi.macAddress();
+      data["MAC"] = WifiMan::getMacAddress();
       data["MOD"] = allStatusData.MOD;
       data["VER"] = allStatusData.VER;
       data["CORE"] = allStatusData.CORE;
@@ -1792,12 +1792,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
       // Network infos
       data["GWDEVICE"] = F("wlan0"); // always wifi
-      data["MAC"] = WiFi.macAddress();
+      data["MAC"] = WifiMan::getMacAddress();
       data["GATEWAY"] = WifiMan::ipToCString(WiFi.gatewayIP());
       data["DNS"][0] = WifiMan::ipToCString(WiFi.dnsIP());
 
       // Wifi infos
-      data["WMAC"] = WiFi.macAddress();
+      data["WMAC"] = WifiMan::getMacAddress();
       data["WMODE"] = (WiFi.getMode() & WIFI_STA) ? F("sta") : F("ap");
       data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
       data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
@@ -1814,7 +1814,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["EGW"] = F("0.0.0.0");
       data["EMSK"] = F("0.0.0.0");
       data["EADR"] = F("0.0.0.0");
-      data["EMAC"] = WiFi.macAddress();
+      data["EMAC"] = WifiMan::getMacAddress();
       data["ECBL"] = F("down");
       data["EBCST"] = "";
 
