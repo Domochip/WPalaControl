@@ -13,24 +13,24 @@
 class WPalaControl : public Application
 {
 private:
-  enum HaMqttType : byte
+  enum HaMqttType : uint8_t
   {
     Generic = 0,
     GenericJson = 1,
     GenericCategorized = 2
   };
-  enum HaProtocol : byte
+  enum HaProtocol : uint8_t
   {
     Disabled = 0,
     Mqtt = 1
   };
-  enum HwDetection : byte
+  enum HwDetection : uint8_t
   {
     AutoDetect = 0,
     ForcedV1 = 1,
     ForcedV2 = 2
   };
-  enum HwVersion : byte
+  enum HwVersion : uint8_t
   {
     Unknown = 0,
     V1 = 1,
@@ -97,9 +97,9 @@ private:
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
   Palazzetti::CommandResult executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
-  Palazzetti::CommandResult executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
-  Palazzetti::CommandResult executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
-  Palazzetti::CommandResult executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams);
+  Palazzetti::CommandResult executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams);
+  Palazzetti::CommandResult executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams);
+  Palazzetti::CommandResult executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams);
 
   void publishTick();
   void udpRequestHandler(WiFiUDP &udpServer);

@@ -482,7 +482,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
 
   // define probe number
-  byte probeNumber = staticData.MAINTPROBE;                                                              // default case covering AirType and other HydroType
+  uint8_t probeNumber = staticData.MAINTPROBE;                                                              // default case covering AirType and other HydroType
   if (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
     probeNumber = 0;                                                                                     // T1
 
@@ -609,7 +609,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // define sensor name
   const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
-  byte tempSensorNameIndex = 0; // default case covering AirType
+  uint8_t tempSensorNameIndex = 0; // default case covering AirType
   if (isHydroType)
   {
     if (staticData.UICONFIG == 1)
@@ -1189,7 +1189,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   const __FlashStringHelper *palaCategory = F(""); // used to return data to the correct MQTT category (if needed)
 
   // Parse parameters ----------------------------------------------------------
-  byte cmdParamNumber = 0;
+  uint8_t cmdParamNumber = 0;
   uint16_t cmdParams[6] = {};
   char paramBuf[40] = {};
 
@@ -1394,7 +1394,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -1497,7 +1497,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       // Add Programs (P1->P6)
       char programName[3] = {'P', 'X', 0};
       char time[6] = {'0', '0', ':', '0', '0', 0};
-      for (byte i = 0; i < 6; i++)
+      for (uint8_t i = 0; i < 6; i++)
       {
         programName[1] = i + '1';
         JsonObject px = data[programName].to<JsonObject>();
@@ -1518,11 +1518,11 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       // Add Days (D1->D7)
       char dayName[3] = {'D', 'X', 0};
       char memoryName[3] = {'M', 'X', 0};
-      for (byte dayNumber = 0; dayNumber < 7; dayNumber++)
+      for (uint8_t dayNumber = 0; dayNumber < 7; dayNumber++)
       {
         dayName[1] = dayNumber + '1';
         JsonObject dx = data[dayName].to<JsonObject>();
-        for (byte memoryNumber = 0; memoryNumber < 3; memoryNumber++)
+        for (uint8_t memoryNumber = 0; memoryNumber < 3; memoryNumber++)
         {
           memoryName[1] = memoryNumber + '1';
           if (chronoData.DM[dayNumber][memoryNumber])
@@ -1677,7 +1677,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      byte paramValue;
+      uint8_t paramValue;
       cmdSuccess = _Pala.getParameter(cmdParams[0], &paramValue);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
@@ -1871,7 +1871,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
@@ -1976,7 +1976,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
     if (info["MSG"].isNull())
     {
-      byte CHRSTATUSResult;
+      uint8_t CHRSTATUSResult;
       cmdSuccess = _Pala.setChronoStatus(cmdParams[0], &CHRSTATUSResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
@@ -2256,7 +2256,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     if (info["MSG"].isNull())
     {
       float SETPResult;
-      cmdSuccess = _Pala.setSetpoint((byte)cmdParams[0], &SETPResult);
+      cmdSuccess = _Pala.setSetpoint((uint8_t)cmdParams[0], &SETPResult);
 
       if (cmdSuccess == Palazzetti::CommandResult::OK)
       {
@@ -2393,7 +2393,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
   return cmdSuccess;
 }
 
-Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, byte cmdParamNumber, const uint16_t *cmdParams)
+Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
@@ -2534,11 +2534,11 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
 
   // parse hardware detection mode
   if ((jv = json[F("hwdetection")]).is<JsonVariant>())
-    _hwDetection = static_cast<HwDetection>(jv.as<byte>());
+    _hwDetection = static_cast<HwDetection>(jv.as<uint8_t>());
 
   // Parse HA protocol
   if ((jv = json[F("haproto")]).is<JsonVariant>())
-    _ha.protocol = static_cast<HaProtocol>(jv.as<byte>());
+    _ha.protocol = static_cast<HaProtocol>(jv.as<uint8_t>());
 
   // if an home Automation protocol has been selected then get common param
   if (_ha.protocol != HaProtocol::Disabled)
@@ -2558,7 +2558,7 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   case HaProtocol::Mqtt:
 
     if ((jv = json[F("hamtype")]).is<JsonVariant>())
-      _ha.mqtt.type = static_cast<HaMqttType>(jv.as<byte>());
+      _ha.mqtt.type = static_cast<HaMqttType>(jv.as<uint8_t>());
     if ((jv = json[F("hamport")]).is<JsonVariant>())
       _ha.mqtt.port = jv;
     if ((jv = json[F("hamu")]).is<const char *>())
@@ -2804,7 +2804,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         return;
       }
 
-      byte params[0x6A];
+      uint8_t params[0x6A];
       Palazzetti::CommandResult cmdRes = _Pala.getAllParameters(&params);
 
       if (cmdRes != Palazzetti::CommandResult::OK)
@@ -2821,7 +2821,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         toReturn.reserve(965); // Header + 106 lines with worst-case index/value width (3+1+3+2)
         toReturn += F("PARM;VALUE\r\n");
 
-        for (byte i = 0; i < 0x6A; i++)
+        for (uint8_t i = 0; i < 0x6A; i++)
         {
           snprintf(line, sizeof(line), "%d;%d\r\n", i, params[i]);
           toReturn += line;
@@ -2835,7 +2835,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       {
         JsonDocument json;
         JsonArray PARM = json[F("PARM")].to<JsonArray>();
-        for (byte i = 0; i < 0x6A; i++)
+        for (uint8_t i = 0; i < 0x6A; i++)
           PARM.add(params[i]);
 
         SERVER_KEEPALIVE_FALSE()
@@ -2880,7 +2880,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         toReturn.reserve(1232); // Header + 111 lines with worst-case index/value width (3+1+5+2)
         toReturn += F("HPAR;VALUE\r\n");
 
-        for (byte i = 0; i < 0x6F; i++)
+        for (uint8_t i = 0; i < 0x6F; i++)
         {
           snprintf(line, sizeof(line), "%d;%d\r\n", i, hiddenParams[i]);
           toReturn += line;
@@ -2894,7 +2894,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       {
         JsonDocument json;
         JsonArray HPAR = json[F("HPAR")].to<JsonArray>();
-        for (byte i = 0; i < 0x6F; i++)
+        for (uint8_t i = 0; i < 0x6F; i++)
           HPAR.add(hiddenParams[i]);
 
         SERVER_KEEPALIVE_FALSE()
