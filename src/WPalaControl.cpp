@@ -275,6 +275,24 @@ bool WPalaControl::mqttPublishHassDiscovery()
       json[F("value_template")] = String(F("{{ value_json.")) + field + F(" }}");
   };
 
+  // Helper lambda to get state topic based on MQTT type
+  //   Generic:            ~/FIELD
+  //   GenericJson:        ~/CATEGORY
+  //   GenericCategorized: ~/CATEGORY/FIELD
+  auto getStateTopic = [&](const String &category, const String &field)
+  {
+    switch (_ha.mqtt.type)
+    {
+    case HaMqttType::Generic:
+      return String(F("~/")) + field;
+    case HaMqttType::GenericJson:
+      return String(F("~/")) + category;
+    case HaMqttType::GenericCategorized:
+      return String(F("~/")) + category + F("/") + field;
+    }
+    return String();
+  };
+
   // ---------- Device ----------
 
   // prepare unique id prefix
@@ -370,18 +388,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   bool isHydroType = (staticData.STOVETYPE == 2 || staticData.STOVETYPE == 4 || staticData.STOVETYPE == 6);
   bool hasFanAuto = (staticData.FAN2MODE == 2 || staticData.FAN2MODE == 3);
 
-  // ---------- Usefull variables for entities building ----------
-
-  const __FlashStringHelper *statusTopicList[] = {F("~/STATUS"), F("~/STAT"), F("~/STAT/STATUS")};
-  const __FlashStringHelper *tempProbeTopicListArray[][3] = {
-      {F("~/T1"), F("~/TMPS"), F("~/TMPS/T1")},
-      {F("~/T2"), F("~/TMPS"), F("~/TMPS/T2")},
-      {F("~/T3"), F("~/TMPS"), F("~/TMPS/T3")},
-      {F("~/T4"), F("~/TMPS"), F("~/TMPS/T4")},
-      {F("~/T5"), F("~/TMPS"), F("~/TMPS/T5")}};
-  const __FlashStringHelper *setpTopicList[] = {F("~/SETP"), F("~/SETP"), F("~/SETP/SETP")};
-  const __FlashStringHelper *f2lTopicList[] = {F("~/F2L"), F("~/FAND"), F("~/FAND/F2L")};
-
   // ---------- Stove Device ----------
 
   // prepare unique id prefix for Stove
@@ -432,7 +438,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"name\":\"Status\","
                           "\"object_id\":\"stove_status\""
                           "}"));
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   setValueTemplate(F("STATUS"));
 
   // publish
@@ -451,7 +457,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"name\":\"Status\","
                           "\"object_id\":\"stove_status_text\""
                           "}"));
-  json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unkown STATUS code {{ value }}{% endif %}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -468,6 +474,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   uint8_t probeNumber = staticData.MAINTPROBE;                                                           // default case covering AirType and other HydroType
   if (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) // for Hydro which are in a Config controlling Water temperature
     probeNumber = 0;                                                                                     // T1
+
+  String probeField = String(F("T")) + (char)('1' + probeNumber);
 
   uniqueId = uniqueIdPrefixStove + F("_Thermostat");
 
@@ -492,10 +500,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
 
-  json[F("action_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("action_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("current_temperature_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
-  json[F("current_temperature_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
+    json[F("current_temperature_template")] = String(F("{{ value_json.")) + probeField + F(" }}");
+  json[F("current_temperature_topic")] = getStateTopic(F("TMPS"), probeField);
 
   if (hasRoomFan)
   {
@@ -506,7 +514,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
       json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
       json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
-    json[F("fan_mode_state_topic")] = f2lTopicList[_ha.mqtt.type];
+    json[F("fan_mode_state_topic")] = getStateTopic(F("FAND"), F("F2L"));
 
     json[F("fan_modes")] = serialized((isAirType && hasFanAuto) ? F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\",\"auto\"]") : F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\"]"));
   }
@@ -520,12 +528,12 @@ bool WPalaControl::mqttPublishHassDiscovery()
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
 
-  json[F("mode_state_topic")] = statusTopicList[_ha.mqtt.type];
+  json[F("mode_state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   // modes already in deserialized JSON
 
   if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("temperature_state_template")] = F("{{ value_json.SETP }}");
-  json[F("temperature_state_topic")] = setpTopicList[_ha.mqtt.type];
+  json[F("temperature_state_topic")] = getStateTopic(F("SETP"), F("SETP"));
 
   // publish
   publishEntity(F("climate"), uniqueId);
@@ -549,12 +557,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"state_class\":\"measurement\","
                             "\"unit_of_measurement\":\"°C\""
                             "}"));
-    if (_ha.mqtt.type == HaMqttType::Generic)
-      json[F("state_topic")] = F("~/T1");
-    else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("state_topic")] = F("~/TMPS");
-    else if (_ha.mqtt.type == HaMqttType::GenericCategorized)
-      json[F("state_topic")] = F("~/TMPS/T1");
+    json[F("state_topic")] = getStateTopic(F("TMPS"), F("T1"));
     setValueTemplate(F("T1"));
 
     // publish
@@ -574,6 +577,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
     else if (staticData.UICONFIG == 10)
       probeNumber = 4; // T5
   }
+
+  probeField = String(F("T")) + (char)('1' + probeNumber);
 
   // define sensor name
   const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
@@ -602,8 +607,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("default_entity_id")] = String(F("sensor.stove_")) + defaultEntityIdSuffix + F("temp");
   json[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
   json[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
-  json[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  setValueTemplate(String(F("T")) + (char)('1' + probeNumber));
+  json[F("state_topic")] = getStateTopic(F("TMPS"), probeField);
+  setValueTemplate(probeField);
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -625,7 +630,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"state_class\":\"measurement\","
                           "\"unit_of_measurement\":\"°C\""
                           "}"));
-  json[F("state_topic")] = tempProbeTopicListArray[2][_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("TMPS"), F("T3"));
   setValueTemplate(F("T3"));
 
   // publish
@@ -634,8 +639,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Pellet consumption entity
   //
-
-  const __FlashStringHelper *pqtTopicList[] = {F("~/PQT"), F("~/CNTR"), F("~/CNTR/PQT")};
 
   uniqueId = uniqueIdPrefixStove + F("_PQT");
 
@@ -649,7 +652,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"state_class\":\"total_increasing\","
                           "\"unit_of_measurement\":\"kg\""
                           "}"));
-  json[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("CNTR"), F("PQT"));
   setValueTemplate(F("PQT"));
 
   // publish
@@ -658,8 +661,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Service time counter entity
   //
-
-  const __FlashStringHelper *serviceTimeTopicList[] = {F("~/SERVICETIME"), F("~/CNTR"), F("~/CNTR/SERVICETIME")};
 
   uniqueId = uniqueIdPrefixStove + F("_ServiceTimeCounter");
 
@@ -672,7 +673,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"state_class\":\"total_increasing\","
                           "\"unit_of_measurement\":\"h\""
                           "}"));
-  json[F("state_topic")] = serviceTimeTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("CNTR"), F("SERVICETIME"));
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ value.split(':')[0] }}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -685,8 +686,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Feeder entity
   //
 
-  const __FlashStringHelper *feederTopicList[] = {F("~/FDR"), F("~/POWR"), F("~/POWR/FDR")};
-
   uniqueId = uniqueIdPrefixStove + F("_Feeder");
 
   // prepare payload for Stove feeder sensor
@@ -697,7 +696,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"name\":\"Feeder\","
                           "\"object_id\":\"stove_feeder\""
                           "}"));
-  json[F("state_topic")] = feederTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("POWR"), F("FDR"));
   setValueTemplate(F("FDR"));
 
   // publish
@@ -706,8 +705,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Target Differential Pressure entity
   //
-
-  const __FlashStringHelper *dpTargetTopicList[] = {F("~/DP_TARGET"), F("~/DPRS"), F("~/DPRS/DP_TARGET")};
 
   uniqueId = uniqueIdPrefixStove + F("_TargetDifferentialPressure");
 
@@ -722,7 +719,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"state_class\":\"measurement\","
                           "\"unit_of_measurement\":\"mPa\""
                           "}"));
-  json[F("state_topic")] = dpTargetTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("DPRS"), F("DP_TARGET"));
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -779,7 +776,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"state_off\":\"OFF\","
                             "\"state_on\":\"ON\""
                             "}"));
-    json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
     if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("value_template")] = F("{{ iif(int(value) > 1 and int(value) != 10, 'ON', 'OFF') }}");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -810,7 +807,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "}"));
     json[F("min")] = staticData.SPLMIN;
     json[F("max")] = staticData.SPLMAX;
-    json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("SETP"), F("SETP"));
     setValueTemplate(F("SETP"));
 
     // publish
@@ -820,8 +817,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   //
   // Power entity
   //
-
-  const __FlashStringHelper *pwrTopicList[] = {F("~/PWR"), F("~/POWR"), F("~/POWR/PWR")};
 
   if (hasPower)
   {
@@ -839,7 +834,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"name\":\"Power\","
                             "\"object_id\":\"stove_pwr\""
                             "}"));
-    json[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("POWR"), F("PWR"));
     setValueTemplate(F("PWR"));
 
     // publish
@@ -875,13 +870,13 @@ bool WPalaControl::mqttPublishHassDiscovery()
     availability_0["value_template"] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
 
     JsonObject availability_1 = availability.add<JsonObject>();
-    availability_1["topic"] = f2lTopicList[_ha.mqtt.type];
+    availability_1["topic"] = getStateTopic(F("FAND"), F("F2L"));
     if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
       availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
 
-    json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("FAND"), F("F2L"));
     setValueTemplate(F("F2L"));
 
     // publish
@@ -908,7 +903,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"state_off\":\"OFF\","
                             "\"state_on\":\"ON\""
                             "}"));
-    json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("FAND"), F("F2L"));
     if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("value_template")] = F("{{ iif(int(value) == 7, 'ON', 'OFF') }}");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -924,8 +919,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   if (hasFan3)
   {
-    const __FlashStringHelper *f3lTopicList[] = {F("~/F3L"), F("~/FAND"), F("~/FAND/F3L")};
-
     uniqueId = uniqueIdPrefixStove + F("_FAN3");
 
     // entity type depends on Min and Max value of FAN3
@@ -936,7 +929,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"name\":\"Left Fan\","
                             "\"object_id\":\"stove_fan3\""
                             "}"));
-    json[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("FAND"), F("F3L"));
     setValueTemplate(F("F3L"));
 
     // add entity type specific configuration
@@ -967,8 +960,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   if (hasFan4)
   {
-    const __FlashStringHelper *f4lTopicList[] = {F("~/F4L"), F("~/FAND"), F("~/FAND/F4L")};
-
     uniqueId = uniqueIdPrefixStove + F("_FAN4");
 
     // entity type depends on Min and Max value of FAN4
@@ -979,7 +970,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"name\":\"Right Fan\","
                             "\"object_id\":\"stove_fan4\""
                             "}"));
-    json[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
+    json[F("state_topic")] = getStateTopic(F("FAND"), F("F4L"));
     setValueTemplate(F("F4L"));
 
     // add entity type specific configuration
