@@ -268,6 +268,13 @@ bool WPalaControl::mqttPublishHassDiscovery()
     _mqttMan.publish(prepareTopic(type, uniqueId).c_str(), json, true);
   };
 
+  // Helper: sets value_template only when relevant (GenericJson type).
+  auto setValueTemplate = [&](const String &field)
+  {
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      json[F("value_template")] = String(F("{{ value_json.")) + field + F(" }}");
+  };
+
   // ---------- Device ----------
 
   // prepare unique id prefix
@@ -426,8 +433,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"object_id\":\"stove_status\""
                           "}"));
   json[F("state_topic")] = statusTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.STATUS }}");
+  setValueTemplate(F("STATUS"));
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -546,12 +552,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
     if (_ha.mqtt.type == HaMqttType::Generic)
       json[F("state_topic")] = F("~/T1");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    {
       json[F("state_topic")] = F("~/TMPS");
-      json[F("value_template")] = F("{{ value_json.T1 }}");
-    }
     else if (_ha.mqtt.type == HaMqttType::GenericCategorized)
       json[F("state_topic")] = F("~/TMPS/T1");
+    setValueTemplate(F("T1"));
 
     // publish
     publishEntity(F("sensor"), uniqueId);
@@ -599,8 +603,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("name")] = String(tempSensorNameList[tempSensorNameIndex]) + F(" Temperature");
   json[F("object_id")] = String(F("stove_")) + defaultEntityIdSuffix + F("temp");
   json[F("state_topic")] = tempProbeTopicListArray[probeNumber][_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = String(F("{{ value_json.T")) + (char)('1' + probeNumber) + F(" }}");
+  setValueTemplate(String(F("T")) + (char)('1' + probeNumber));
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -623,8 +626,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"unit_of_measurement\":\"°C\""
                           "}"));
   json[F("state_topic")] = tempProbeTopicListArray[2][_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.T3 }}");
+  setValueTemplate(F("T3"));
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -648,8 +650,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"unit_of_measurement\":\"kg\""
                           "}"));
   json[F("state_topic")] = pqtTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.PQT }}");
+  setValueTemplate(F("PQT"));
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -697,8 +698,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"object_id\":\"stove_feeder\""
                           "}"));
   json[F("state_topic")] = feederTopicList[_ha.mqtt.type];
-  if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.FDR }}");
+  setValueTemplate(F("FDR"));
 
   // publish
   publishEntity(F("sensor"), uniqueId);
@@ -811,8 +811,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
     json[F("min")] = staticData.SPLMIN;
     json[F("max")] = staticData.SPLMAX;
     json[F("state_topic")] = setpTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ value_json.SETP }}");
+    setValueTemplate(F("SETP"));
 
     // publish
     publishEntity(F("number"), uniqueId);
@@ -841,8 +840,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"object_id\":\"stove_pwr\""
                             "}"));
     json[F("state_topic")] = pwrTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ value_json.PWR }}");
+    setValueTemplate(F("PWR"));
 
     // publish
     publishEntity(F("number"), uniqueId);
@@ -884,8 +882,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
       availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
 
     json[F("state_topic")] = f2lTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ value_json.F2L }}");
+    setValueTemplate(F("F2L"));
 
     // publish
     publishEntity(F("number"), uniqueId, false);
@@ -940,8 +937,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"object_id\":\"stove_fan3\""
                             "}"));
     json[F("state_topic")] = f3lTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ value_json.F3L }}");
+    setValueTemplate(F("F3L"));
 
     // add entity type specific configuration
     if (ifFan3SwitchEntity)
@@ -984,8 +980,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                             "\"object_id\":\"stove_fan4\""
                             "}"));
     json[F("state_topic")] = f4lTopicList[_ha.mqtt.type];
-    if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ value_json.F4L }}");
+    setValueTemplate(F("F4L"));
 
     // add entity type specific configuration
     if (ifFan4SwitchEntity)
