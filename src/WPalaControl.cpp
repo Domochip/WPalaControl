@@ -1733,15 +1733,23 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
   char floatBuf[8];
 
+  // Helper to check if the number of parameters is correct for the command, if not set error message in info and return false
+  auto requireParams = [&](byte expected) -> bool
+  {
+    if (cmdParamNumber != expected)
+    {
+      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+      return false;
+    }
+    return true;
+  };
+
   if (cmd.startsWith(F("SET CDAY ")))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    if (cmdParamNumber != 3)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(3))
     {
       cmdSuccess = _Pala.setChronoDay(cmdParams[0], cmdParams[1], cmdParams[2]);
 
@@ -1768,59 +1776,47 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    if (info["MSG"].isNull())
+    cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
+
+    if (cmdSuccess == Palazzetti::CommandResult::OK)
     {
-      cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
+      char programName[3] = {'P', 'X', 0};
+      char time[6] = {'0', '0', ':', '0', '0', 0};
 
-      if (cmdSuccess == Palazzetti::CommandResult::OK)
-      {
-        char programName[3] = {'P', 'X', 0};
-        char time[6] = {'0', '0', ':', '0', '0', 0};
-
-        programName[1] = cmdParams[0] + '0';
-        JsonObject px = data[programName].to<JsonObject>();
-        px["CHRSETP"] = (float)cmdParams[1];
-        time[0] = cmdParams[2] / 10 + '0';
-        time[1] = cmdParams[2] % 10 + '0';
-        time[3] = cmdParams[3] / 10 + '0';
-        time[4] = cmdParams[3] % 10 + '0';
-        px["START"] = time;
-        time[0] = cmdParams[4] / 10 + '0';
-        time[1] = cmdParams[4] % 10 + '0';
-        time[3] = cmdParams[5] / 10 + '0';
-        time[4] = cmdParams[5] % 10 + '0';
-        px["STOP"] = time;
-      }
+      programName[1] = cmdParams[0] + '0';
+      JsonObject px = data[programName].to<JsonObject>();
+      px["CHRSETP"] = (float)cmdParams[1];
+      time[0] = cmdParams[2] / 10 + '0';
+      time[1] = cmdParams[2] % 10 + '0';
+      time[3] = cmdParams[3] / 10 + '0';
+      time[4] = cmdParams[3] % 10 + '0';
+      px["START"] = time;
+      time[0] = cmdParams[4] / 10 + '0';
+      time[1] = cmdParams[4] % 10 + '0';
+      time[3] = cmdParams[5] / 10 + '0';
+      time[4] = cmdParams[5] % 10 + '0';
+      px["STOP"] = time;
     }
   }
   else if (cmd.startsWith(F("SET CSET ")))
   {
     cmdProcessed = true;
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
       cmdSuccess = _Pala.setChronoSetpoint(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSPH ")))
   {
     cmdProcessed = true;
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
       cmdSuccess = _Pala.setChronoStopHH(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSPM ")))
   {
     cmdProcessed = true;
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
       cmdSuccess = _Pala.setChronoStopMM(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSST ")))
@@ -1828,10 +1824,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       uint8_t CHRSTATUSResult;
       cmdSuccess = _Pala.setChronoStatus(cmdParams[0], &CHRSTATUSResult);
@@ -1846,20 +1839,14 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
   {
     cmdProcessed = true;
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
       cmdSuccess = _Pala.setChronoStartHH(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSTM ")))
   {
     cmdProcessed = true;
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
       cmdSuccess = _Pala.setChronoStartMM(cmdParams[0], cmdParams[1]);
   }
   else if (cmd == F("SET FN2D"))
@@ -1899,10 +1886,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       uint16_t F3LResult;
       cmdSuccess = _Pala.setRoomFan3(cmdParams[0], &F3LResult);
@@ -1918,10 +1902,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       uint16_t F4LResult;
       cmdSuccess = _Pala.setRoomFan4(cmdParams[0], &F4LResult);
@@ -1937,10 +1918,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       float F3SResult;
       cmdSuccess = _Pala.setSetPointFan3(cmdParams[0], &F3SResult);
@@ -1957,10 +1935,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       float F4SResult;
       cmdSuccess = _Pala.setSetPointFan4(cmdParams[0], &F4SResult);
@@ -1977,10 +1952,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
     {
       cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
 
@@ -1995,10 +1967,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
-    if (cmdParamNumber != 2)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(2))
     {
       cmdSuccess = _Pala.setParameter(cmdParams[0], cmdParams[1]);
 
@@ -2013,10 +1982,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("POWR");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       Palazzetti::SetPowerResult setPowerResult;
       cmdSuccess = _Pala.setPower(cmdParams[0], &setPowerResult);
@@ -2085,10 +2051,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       Palazzetti::SetRoomFanResult setRoomFanResult;
       cmdSuccess = _Pala.setRoomFan(cmdParams[0], &setRoomFanResult);
@@ -2107,10 +2070,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       float SETPResult;
       cmdSuccess = _Pala.setSetpoint((uint8_t)cmdParams[0], &SETPResult);
@@ -2127,10 +2087,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (cmdParamNumber != 1)
-      info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    if (info["MSG"].isNull())
+    if (requireParams(1))
     {
       Palazzetti::SetSilentModeResult setSilentModeResult;
       cmdSuccess = _Pala.setSilentMode(cmdParams[0], &setSilentModeResult);
