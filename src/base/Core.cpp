@@ -39,7 +39,7 @@ void Core::fillStatusJSON(JsonVariant json)
   json[F("baseversion")] = BASE_VERSION;
   json[F("version")] = VERSION;
   char uptime[12];
-  snprintf_P(uptime, sizeof(uptime), PSTR("%dd%dh%dm"), (byte)(minutes / 1440), (byte)(minutes / 60 % 24), (byte)(minutes % 60));
+  snprintf_P(uptime, sizeof(uptime), PSTR("%dd%dh%dm"), (uint8_t)(minutes / 1440), (uint8_t)(minutes / 60 % 24), (uint8_t)(minutes % 60));
   json[F("uptime")] = uptime;
   json[F("freeheap")] = ESP.getFreeHeap();
 #ifdef ESP8266

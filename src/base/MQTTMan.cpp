@@ -264,8 +264,8 @@ bool MQTTMan::loop()
                                       { _needMqttReconnect = true; });
 
 #else
-            _mqttReconnectTicker.once<typeof this>((WiFi.isConnected() ? 20 : 60), [](typeof this mqttMan)
-                                                   { mqttMan->_needMqttReconnect = true; }, this);
+            _mqttReconnectTicker.once<MQTTMan *>((WiFi.isConnected() ? 20 : 60), [](MQTTMan *mqttMan)
+                                                 { mqttMan->_needMqttReconnect = true; }, this);
 #endif
         }
 

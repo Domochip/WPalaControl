@@ -356,7 +356,7 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
 
   // sometime the stream is not yet ready (no data available yet)
   // and writeStream start by a peek which then fail
-  for (byte i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
+  for (uint8_t i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
     ;
   Update.writeStream(*stream);
 
