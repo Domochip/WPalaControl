@@ -732,8 +732,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // Differential Pressure entity
   //
 
-  const __FlashStringHelper *dpTopicList[] = {F("~/DP_PRESS"), F("~/DPRS"), F("~/DPRS/DP_PRESS")};
-
   uniqueId = uniqueIdPrefixStove + F("_DifferentialPressure");
 
   // prepare payload for Stove differential pressure sensor
@@ -747,7 +745,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"state_class\":\"measurement\","
                           "\"unit_of_measurement\":\"mPa\""
                           "}"));
-  json[F("state_topic")] = dpTopicList[_ha.mqtt.type];
+  json[F("state_topic")] = getStateTopic(F("DPRS"), F("DP_PRESS"));
   if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
     json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
   else if (_ha.mqtt.type == HaMqttType::GenericJson)
