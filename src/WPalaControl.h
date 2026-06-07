@@ -4,7 +4,7 @@
 #include "Main.h"
 #include "base/WifiMan.h"
 #include "base/MQTTMan.h"
-#include "base/EventSourceMan.h"
+#include "base/SSEServer.h"
 #include "base/Application.h"
 
 #include <Palazzetti.h>
@@ -66,7 +66,7 @@ private:
   int _haSendResult = 0;
   WiFiClient _wifiClient;
   MQTTMan _mqttMan;
-  EventSourceMan _eventSourceMan;
+  SSEServer _sse;
   WiFiUDP _udpServer;
 
   Palazzetti _Pala;

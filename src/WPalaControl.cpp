@@ -1320,7 +1320,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
       if (publish && String(palaCategory).length() > 0)
       {
-        _eventSourceMan.eventSourceBroadcast(data);
+        _sse.broadcast(data);
 
         if (_ha.protocol == HaProtocol::Mqtt && _haSendResult)
           _haSendResult &= mqttPublishData(_mqttMan.getBaseTopic(), palaCategory, jsonDoc);
@@ -2940,7 +2940,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         { auto client = server.client(); serializeJson(json, client); } });
 
   // register EventSource
-  _eventSourceMan.initEventSourceServer(getAppIdChar(_appId), server);
+  _sse.init(getAppIdChar(_appId), server);
 }
 
 //------------------------------------------
