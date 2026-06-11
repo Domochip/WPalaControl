@@ -25,21 +25,16 @@
         <div id='staticipgroup' style='display:none'>
             <div class="pure-control-group">
                 <label for="ip">IP</label>
-                <input type='text' id='ip' name='ip' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'
-                    required>
-                <span class="pure-form-message-inline">*</span>
-            </div>
-            <div class="pure-control-group">
-                <label for="gw">Gateway</label>
-                <input type='text' id='gw' name='gw' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'
-                    required>
+                <input type='text' id='ip' name='ip' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
                 <span class="pure-form-message-inline">*</span>
             </div>
             <div class="pure-control-group">
                 <label for="mask">NetMask</label>
-                <input type='text' id='mask' name='mask' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'
-                    required>
-                <span class="pure-form-message-inline">*</span>
+                <input type='text' id='mask' name='mask' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
+            </div>
+            <div class="pure-control-group">
+                <label for="gw">Gateway</label>
+                <input type='text' id='gw' name='gw' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
             </div>
             <div class="pure-control-group">
                 <label for="dns1">DNS 1</label>
@@ -65,14 +60,10 @@
     $(qsp + "#staticip").addEventListener('change', function () {
         if ($(qsp + "#staticip").checked) {
             $(qsp + "#ip").required = true;
-            $(qsp + "#gw").required = true;
-            $(qsp + "#mask").required = true;
             $(qsp + "#staticipgroup").style.display = '';
         }
         else {
             $(qsp + "#ip").required = false;
-            $(qsp + "#gw").required = false;
-            $(qsp + "#mask").required = false;
             $(qsp + "#staticipgroup").style.display = 'none';
         }
     });
@@ -141,6 +132,11 @@
 
                     triggerEvent($(qsp + '#' + k), 'change');
                 }
+            }
+
+            if ($(qsp + "#ip").value) {
+                $(qsp + "#staticip").checked = true;
+                triggerEvent($(qsp + "#staticip"), 'change');
             }
 
             $(qsp + "#f input[type=submit]").disabled = false;

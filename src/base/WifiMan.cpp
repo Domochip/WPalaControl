@@ -3,7 +3,10 @@
 const char *WifiMan::ipToCString(IPAddress ip)
 {
   static char buf[16];
-  snprintf_P(buf, sizeof(buf), PSTR("%u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
+  if (!ip)
+    buf[0] = '\0';
+  else
+    snprintf_P(buf, sizeof(buf), PSTR("%u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
   return buf;
 }
 
@@ -33,6 +36,7 @@ void WifiMan::enableAP(bool force /* = false */)
     {
       _dnsServer->stop();
       delete _dnsServer;
+      _dnsServer = nullptr;
     }
     _dnsServer = new DNSServer();
     _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
@@ -54,8 +58,8 @@ void WifiMan::refreshWiFi()
 
       LOG_SERIAL_PRINT(F("Connect"));
 
-      WiFi.begin(ssid, password);
       WiFi.config(ip, gw, mask, dns1, dns2);
+      WiFi.begin(ssid, password);
 
       // Wait _reconnectDuration for connection
       for (int i = 0; i < (((uint16_t)_reconnectDuration) * 10) && !WiFi.isConnected(); i++)
@@ -69,14 +73,18 @@ void WifiMan::refreshWiFi()
       if (WiFi.isConnected())
       {
         // stop DNS server
-        _dnsServer->stop();
-        delete _dnsServer;
-        _dnsServer = nullptr;
+        if (_dnsServer)
+        {
+          _dnsServer->stop();
+          delete _dnsServer;
+          _dnsServer = nullptr;
+        }
         // disable AP
         WiFi.enableAP(false);
 #ifdef STATUS_LED_GOOD
         STATUS_LED_GOOD
 #endif
+        _connectionCount++;
 
         LOG_SERIAL_PRINTF_P(PSTR("Connected (%s) "), ipToCString(WiFi.localIP()));
       }
@@ -183,22 +191,11 @@ void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 
   json["h"] = hostname;
 
-  json[F("staticip")] = (ip ? 1 : 0);
-
-  if (ip)
-    json["ip"] = ipToCString(ip);
-  if (gw)
-    json["gw"] = ipToCString(gw);
-  else
-    json["gw"] = F("0.0.0.0");
-  if (mask)
-    json[F("mask")] = ipToCString(mask);
-  else
-    json[F("mask")] = F("0.0.0.0");
-  if (dns1)
-    json[F("dns1")] = ipToCString(dns1);
-  if (dns2)
-    json[F("dns2")] = ipToCString(dns2);
+  json["ip"] = ipToCString(ip);
+  json["gw"] = ipToCString(gw);
+  json[F("mask")] = ipToCString(mask);
+  json[F("dns1")] = ipToCString(dns1);
+  json[F("dns2")] = ipToCString(dns2);
 }
 
 void WifiMan::fillStatusJSON(JsonVariant json)
@@ -225,6 +222,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
     json[F("stationmode")] = F("off");
 
   json[F("mac")] = getMacAddress();
+  json[F("connectcount")] = _connectionCount;
 }
 
 bool WifiMan::appInit(bool reInit /* = false */)

@@ -108,6 +108,8 @@ bool MQTTMan::connect(bool firstConnection)
         if (_connectedAndWillTopic[0])
             publish(_connectedAndWillTopic, "1", true);
 
+        _connectionCount++;
+
         // Subscribe to needed topic
         if (_connectedCallBack)
             _connectedCallBack(this, firstConnection);
@@ -232,6 +234,11 @@ const __FlashStringHelper *MQTTMan::getStateString()
     default:
         return F("Unknown");
     }
+}
+
+uint16_t MQTTMan::getConnectionCount() const
+{
+    return _connectionCount;
 }
 
 bool MQTTMan::loop()

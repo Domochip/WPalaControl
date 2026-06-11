@@ -25,6 +25,7 @@ private:
     char _baseTopic[64 + 4 + 12 - 7 + sizeof(CUSTOM_APP_MODEL) + 1] = {0};
     bool _needMqttReconnect = false;
     Ticker _mqttReconnectTicker;
+    uint16_t _connectionCount = 0;
 
     ConnectedCallback _connectedCallBack = nullptr;
     DisconnectedCallback _disconnectedCallBack = nullptr;
@@ -54,6 +55,7 @@ public:
     using PubSubClient::publish_P;
     using PubSubClient::state;
     const __FlashStringHelper *getStateString();
+    uint16_t getConnectionCount() const;
     using PubSubClient::getBufferSize;
     using PubSubClient::setBufferSize;
     using PubSubClient::subscribe;
