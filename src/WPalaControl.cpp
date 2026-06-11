@@ -386,7 +386,6 @@ bool WPalaControl::mqttPublishHassDiscovery()
                           "\"payload_install\":\"latest\","
                           "\"state_topic\":\"~/update\""
                           "}"));
-  // publish
   publishEntity(F("update"), uniqueId);
 
   // clean device JSON before switching to Stove entities
