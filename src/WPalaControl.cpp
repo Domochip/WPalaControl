@@ -311,82 +311,13 @@ bool WPalaControl::mqttPublishHassDiscovery()
   json[F("name")] = WiFi.getHostname();
   serializeJson(json, device); // serialize to device String
 
-  // ----- Entities -----
+  // ----- Call each application's discovery method -----
 
-  //
-  // Connectivity entity
-  //
+  HassDiscoveryCtx ctx{_mqttMan, device, uniqueIdPrefix, _ha.mqtt.hassDiscoveryPrefix};
 
-  // prepare uniqueId, topic and payload for connectivity sensor
-  uniqueId = uniqueIdPrefix + F("_Connectivity");
-
-  // prepare payload for connectivity sensor
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"binary_sensor." CUSTOM_APP_MODEL "_connectivity\","
-                          "\"device_class\":\"connectivity\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"object_id\":\"" CUSTOM_APP_MODEL "_connectivity\","
-                          "\"state_topic\":\"~/connected\","
-                          "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
-                          "}"));
-  publishEntity(F("binary_sensor"), uniqueId, false);
-
-  //
-  // Wifi connection counter entity
-  //
-
-  // prepare uniqueId, topic and payload for wifi connection counter sensor
-  uniqueId = uniqueIdPrefix + F("_WifiConnectCount");
-
-  // prepare payload for wifi connection counter sensor
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_wifi_connect_count\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"icon\":\"mdi:counter\","
-                          "\"name\":\"WiFi Connect Count\","
-                          "\"object_id\":\"" CUSTOM_APP_MODEL "_wifi_connect_count\","
-                          "\"state_topic\":\"~/WiFi\","
-                          "\"value_template\":\"{{ value_json.connectcount }}\""
-                          "}"));
-  publishEntity(F("sensor"), uniqueId);
-
-  //
-  // MQTT connection counter entity
-  //
-
-  // prepare uniqueId, topic and payload for mqtt connection counter sensor
-  uniqueId = uniqueIdPrefix + F("_MqttConnectCount");
-
-  // prepare payload for mqtt connection counter sensor
-  deserializeJson(json, F("{"
-                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_mqtt_connect_count\","
-                          "\"entity_category\":\"diagnostic\","
-                          "\"icon\":\"mdi:counter\","
-                          "\"name\":\"MQTT Connect Count\","
-                          "\"object_id\":\"" CUSTOM_APP_MODEL "_mqtt_connect_count\","
-                          "\"state_topic\":\"~/App\","
-                          "\"value_template\":\"{{ value_json.mqttconnectcount }}\""
-                          "}"));
-  publishEntity(F("sensor"), uniqueId);
-
-  //
-  // Update entity
-  //
-
-  // prepare uniqueId, topic and payload for update sensor
-  uniqueId = uniqueIdPrefix + F("_Update");
-
-  // prepare payload for update sensor
-  deserializeJson(json, F("{"
-                          "\"command_topic\":\"~/update/install\","
-                          "\"default_entity_id\":\"update." CUSTOM_APP_MODEL "\","
-                          "\"device_class\":\"firmware\","
-                          "\"entity_category\":\"config\","
-                          "\"object_id\":\"" CUSTOM_APP_MODEL "\","
-                          "\"payload_install\":\"latest\","
-                          "\"state_topic\":\"~/update\""
-                          "}"));
-  publishEntity(F("update"), uniqueId);
+  _applicationList[CoreApp]->mqttPublishHassDiscovery(ctx);
+  _applicationList[WifiManApp]->mqttPublishHassDiscovery(ctx);
+  mqttPublishHassDiscovery(ctx);
 
   // clean device JSON before switching to Stove entities
   device = "";
@@ -1050,6 +981,30 @@ bool WPalaControl::mqttPublishHassDiscovery()
   publishEntity(F("button"), uniqueId);
 
   return true;
+}
+
+void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
+{
+  JsonDocument json;
+  String uniqueId;
+
+  //
+  // MQTT connection counter entity
+  //
+
+  uniqueId = ctx.uniqueIdPrefix + F("_MqttConnectCount");
+
+  // prepare payload for mqtt connection counter sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_mqtt_connect_count\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"icon\":\"mdi:counter\","
+                          "\"name\":\"MQTT Connect Count\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_mqtt_connect_count\","
+                          "\"state_topic\":\"~/App\","
+                          "\"value_template\":\"{{ value_json.mqttconnectcount }}\""
+                          "}"));
+  ctx.publishEntity(json, F("sensor"), uniqueId);
 }
 
 bool WPalaControl::mqttPublishUpdate()

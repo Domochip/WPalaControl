@@ -94,6 +94,7 @@ private:
   void mqttPublishStoveConnected(bool stoveConnected);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   bool mqttPublishHassDiscovery();
+  void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx);
   bool mqttPublishUpdate();
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
   Palazzetti::CommandResult executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
