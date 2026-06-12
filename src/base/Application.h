@@ -80,8 +80,9 @@ public:
     const String &device;
     const String &uniqueIdPrefix;
     const char *hassDiscoveryPrefix;
+    const __FlashStringHelper *availabilityJSON = nullptr; // nullptr uses the hardcoded standard
 
-    void publishEntity(JsonDocument &json, const String &type, const String &uniqueId, bool withStandardAvail = true);
+    void publishEntity(JsonDocument &json, const String &type, const __FlashStringHelper *uniqueIdSuffix, bool withStandardAvail = true);
   };
 
   virtual void fillStatusJSON(JsonVariant json) = 0;

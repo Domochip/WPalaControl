@@ -391,13 +391,10 @@ void WifiMan::appRun()
 void WifiMan::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
 {
   JsonDocument json;
-  String uniqueId;
 
   //
   // Wifi connection counter entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_WifiConnectCount");
 
   // prepare payload for wifi connection counter sensor
   deserializeJson(json, F("{"
@@ -409,5 +406,5 @@ void WifiMan::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/WiFi\","
                           "\"value_template\":\"{{ value_json.connectcount }}\""
                           "}"));
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_WifiConnectCount"));
 }

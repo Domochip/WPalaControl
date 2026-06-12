@@ -304,13 +304,10 @@ void Core::appInitWebServer(WebServer &server)
 void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
 {
   JsonDocument json;
-  String uniqueId;
 
   //
   // Connectivity entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_Connectivity");
 
   // prepare payload for connectivity sensor
   deserializeJson(json, F("{"
@@ -321,13 +318,11 @@ void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/connected\","
                           "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
                           "}"));
-  ctx.publishEntity(json, F("binary_sensor"), uniqueId, false);
+  ctx.publishEntity(json, F("binary_sensor"), F("_Connectivity"), false);
 
   //
   // Update entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_Update");
 
   // prepare payload for update sensor
   deserializeJson(json, F("{"
@@ -339,5 +334,5 @@ void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"payload_install\":\"latest\","
                           "\"state_topic\":\"~/update\""
                           "}"));
-  ctx.publishEntity(json, F("update"), uniqueId);
+  ctx.publishEntity(json, F("update"), F("_Update"));
 }
