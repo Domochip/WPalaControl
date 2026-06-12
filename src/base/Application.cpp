@@ -7,26 +7,37 @@ Application::Application(AppId appId) : _appId(appId)
   _applicationList[_appId] = this;
 }
 
-char Application::getAppIdChar(AppId appId)
+char Application::getAppIdChar()
 {
-  return '0' + appId;
+  return '0' + _appId;
 }
 
-const __FlashStringHelper *Application::getAppIdName(AppId appId)
+const __FlashStringHelper *Application::getAppIdName()
 {
-  if (appId == CoreApp)
+  if (_appId == CoreApp)
     return F("Core");
 
-  if (appId == WifiManApp)
+  if (_appId == WifiManApp)
     return F("WiFi");
 
   return F(CUSTOM_APP_MODEL);
 }
 
+const __FlashStringHelper *Application::getMqttTopicSuffix()
+{
+  if (_appId == CoreApp)
+    return F("/Core");
+
+  if (_appId == WifiManApp)
+    return F("/WiFi");
+
+  return F("/App");
+}
+
 bool Application::saveConfig()
 {
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName(_appId));
+  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
   File configFile = LittleFS.open(configPath, "w");
   if (!configFile)
   {
@@ -49,7 +60,7 @@ bool Application::loadConfig()
 
   bool result = true; // missing file is not an error: default values are already set
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName(_appId));
+  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
   File configFile = LittleFS.open(configPath, "r");
   if (configFile)
   {
@@ -381,11 +392,23 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   return success;
 }
 
+void Application::mqttPublishStatus(MQTTMan &mqttMan)
+{
+  JsonDocument json;
+  String topic;
+  topic.reserve(MQTTMan::baseTopicSize + 5); // base topic + suffix
+
+  topic = mqttMan.getBaseTopic();
+  topic += getMqttTopicSuffix();
+  fillStatusJSON(json);
+  mqttMan.publish(topic.c_str(), json, true);
+}
+
 void Application::init(bool skipExistingConfig)
 {
   bool result = true;
 
-  LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), (const char *)getAppIdName(_appId));
+  LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), (const char *)getAppIdName());
 
   setConfigDefaultValues();
 
@@ -403,7 +426,7 @@ void Application::initWebServer(WebServer &server)
   char url[16];
 
   // JSON Status handler
-  sprintf_P(url, PSTR("/gs%c"), getAppIdChar(_appId));
+  sprintf_P(url, PSTR("/gs%c"), getAppIdChar());
   server.on(url, HTTP_GET,
             [this, &server]()
             {
@@ -418,7 +441,7 @@ void Application::initWebServer(WebServer &server)
             });
 
   // JSON Config handler
-  sprintf_P(url, PSTR("/gc%c"), getAppIdChar(_appId));
+  sprintf_P(url, PSTR("/gc%c"), getAppIdChar());
   server.on(url, HTTP_GET,
             [this, &server]()
             {
@@ -432,7 +455,7 @@ void Application::initWebServer(WebServer &server)
               serializeJson(json, client);
             });
 
-  sprintf_P(url, PSTR("/sc%c"), getAppIdChar(_appId));
+  sprintf_P(url, PSTR("/sc%c"), getAppIdChar());
   server.on(url, HTTP_POST,
             [this, &server]()
             {
@@ -478,7 +501,7 @@ void Application::run()
 {
   if (_reInit)
   {
-    LOG_SERIAL_PRINTF_P(PSTR("ReStart %s : "), (const char *)getAppIdName(_appId));
+    LOG_SERIAL_PRINTF_P(PSTR("ReStart %s : "), (const char *)getAppIdName());
 
     if (appInit(true))
       LOG_SERIAL_PRINTLN(F("OK"));

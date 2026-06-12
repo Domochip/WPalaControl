@@ -17,6 +17,7 @@ using WebServer = ESP8266WebServer;
 #endif
 #include <ArduinoJson.h>
 #include <Ticker.h>
+#include "MQTTMan.h"
 
 // Predefined placeholder sent to the web page instead of the real password value
 const char predefPassword[] PROGMEM = "ewcXoCt4HHjZUvY0";
@@ -40,6 +41,10 @@ protected:
   bool saveConfig();
   bool loadConfig();
 
+  char getAppIdChar();
+  const __FlashStringHelper *getAppIdName();
+  const __FlashStringHelper *getMqttTopicSuffix();
+
   static void fillSecret(JsonVariant json, const __FlashStringHelper *key, const char *value, bool forSaveFile);
   static void parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage);
 
@@ -50,8 +55,7 @@ protected:
 public:
   Application(AppId appId);
 
-  static char getAppIdChar(AppId appId);
-  static const __FlashStringHelper *getAppIdName(AppId appId);
+  void mqttPublishStatus(MQTTMan &mqttMan);
   void init(bool skipExistingConfig);
   void initWebServer(WebServer &server);
   void run();
