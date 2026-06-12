@@ -387,3 +387,27 @@ void WifiMan::appRun()
   MDNS.update();
 #endif
 }
+
+void WifiMan::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
+{
+  JsonDocument json;
+  String uniqueId;
+
+  //
+  // Wifi connection counter entity
+  //
+
+  uniqueId = ctx.uniqueIdPrefix + F("_WifiConnectCount");
+
+  // prepare payload for wifi connection counter sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_wifi_connect_count\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"icon\":\"mdi:counter\","
+                          "\"name\":\"WiFi Connect Count\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_wifi_connect_count\","
+                          "\"state_topic\":\"~/WiFi\","
+                          "\"value_template\":\"{{ value_json.connectcount }}\""
+                          "}"));
+  ctx.publishEntity(json, F("sensor"), uniqueId);
+}

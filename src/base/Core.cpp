@@ -301,3 +301,43 @@ void Core::appInitWebServer(WebServer &server)
         server.client().stop();
       });
 }
+void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
+{
+  JsonDocument json;
+  String uniqueId;
+
+  //
+  // Connectivity entity
+  //
+
+  uniqueId = ctx.uniqueIdPrefix + F("_Connectivity");
+
+  // prepare payload for connectivity sensor
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"binary_sensor." CUSTOM_APP_MODEL "_connectivity\","
+                          "\"device_class\":\"connectivity\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_connectivity\","
+                          "\"state_topic\":\"~/connected\","
+                          "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
+                          "}"));
+  ctx.publishEntity(json, F("binary_sensor"), uniqueId, false);
+
+  //
+  // Update entity
+  //
+
+  uniqueId = ctx.uniqueIdPrefix + F("_Update");
+
+  // prepare payload for update sensor
+  deserializeJson(json, F("{"
+                          "\"command_topic\":\"~/update/install\","
+                          "\"default_entity_id\":\"update." CUSTOM_APP_MODEL "\","
+                          "\"device_class\":\"firmware\","
+                          "\"entity_category\":\"config\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "\","
+                          "\"payload_install\":\"latest\","
+                          "\"state_topic\":\"~/update\""
+                          "}"));
+  ctx.publishEntity(json, F("update"), uniqueId);
+}

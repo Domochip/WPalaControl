@@ -22,6 +22,7 @@ private:
 public:
   Core() : Application(CoreApp) {};
   static const char *getSerialNumber();
+  void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx);
 };
 
 #endif
