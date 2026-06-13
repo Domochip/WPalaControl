@@ -564,11 +564,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       tempSensorNameIndex = 2; // Tank Water
   }
 
-  String uniqueIdSuffix = "_";
-  uniqueIdSuffix += tempSensorNameList[tempSensorNameIndex];
-  uniqueIdSuffix += F("Temp");
-  uniqueIdSuffix.replace(" ", "");
-
   // prepare payload for Stove main temperature sensor
   deserializeJson(json, F("{"
                           "\"device_class\":\"temperature\","
