@@ -96,7 +96,7 @@ private:
   bool mqttPublishHassDiscovery();
   void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx);
   void mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzetti::StaticData &staticData, Palazzetti::AllStatusData &allStatusData);
-  bool mqttPublishUpdate();
+
   bool executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish = false);
   Palazzetti::CommandResult executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed);
   Palazzetti::CommandResult executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams);

@@ -964,25 +964,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   ctx.publishEntity(json, F("button"), F("_SET_TIME"));
 }
 
-bool WPalaControl::mqttPublishUpdate()
-{
-  if (!_mqttMan.connected())
-    return false;
-
-  // get update info
-  JsonDocument updateInfo;
-  fillLatestUpdateInfoJson(updateInfo);
-
-  // calculate update topic
-  String topic = _mqttMan.getBaseTopic();
-  topic += F("/update");
-
-  // publish update info
-  _mqttMan.publish(topic.c_str(), updateInfo, true);
-
-  return true;
-}
-
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
 {
   bool cmdProcessed = false;                                                             // cmd has been processed
@@ -2722,7 +2703,7 @@ void WPalaControl::appRun()
       _needPublish = true; // force publishTick after discovery
     }
 
-    if (_needPublishUpdate && mqttPublishUpdate())
+    if (_needPublishUpdate && mqttPublishUpdate(_mqttMan))
       _needPublishUpdate = false;
   }
 
