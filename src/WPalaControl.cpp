@@ -319,6 +319,8 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // device has already been updated
   // but uniqueIdPrefix still contains the main device prefix
   uniqueIdPrefix = uniqueIdPrefixStove;
+  // when stove is connected the value is 2, so the availabilityJSON is set to "online" when value > 1
+  ctx.availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 1, 'online', 'offline') }}\"}");
 
   mqttPublishStoveHassDiscovery(ctx, staticData, allStatusData);
 
@@ -819,7 +821,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
     JsonObject availability_0 = availability.add<JsonObject>();
     availability_0["topic"] = F("~/connected");
-    availability_0["value_template"] = F("{{ iif(int(value) > 0, 'online', 'offline') }}");
+    availability_0["value_template"] = F("{{ iif(int(value) > 1, 'online', 'offline') }}");
 
     JsonObject availability_1 = availability.add<JsonObject>();
     availability_1["topic"] = getStateTopic(F("FAND"), F("F2L"));
