@@ -56,6 +56,7 @@ public:
   Application(AppId appId);
 
   void mqttPublishStatus(MQTTMan &mqttMan);
+  bool mqttPublishUpdate(MQTTMan &mqttMan);
   void init(bool skipExistingConfig);
   void initWebServer(WebServer &server);
   void run();

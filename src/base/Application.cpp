@@ -431,6 +431,20 @@ void Application::mqttPublishStatus(MQTTMan &mqttMan)
   mqttMan.publish(topic.c_str(), json, true);
 }
 
+bool Application::mqttPublishUpdate(MQTTMan &mqttMan)
+{
+  if (!mqttMan.connected())
+    return false;
+
+  JsonDocument updateInfo;
+  fillLatestUpdateInfoJson(updateInfo);
+
+  String topic = mqttMan.getBaseTopic();
+  topic += F("/update");
+
+  return mqttMan.publish(topic.c_str(), updateInfo, true);
+}
+
 void Application::init(bool skipExistingConfig)
 {
   bool result = true;
