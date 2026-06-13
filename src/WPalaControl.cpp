@@ -328,13 +328,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
 void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
 {
   JsonDocument json;
-  String uniqueId;
 
   //
   // MQTT connection counter entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_MqttConnectCount");
 
   // prepare payload for mqtt connection counter sensor
   deserializeJson(json, F("{"
@@ -346,13 +343,12 @@ void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/App\","
                           "\"value_template\":\"{{ value_json.mqttconnectcount }}\""
                           "}"));
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_MqttConnectCount"));
 }
 
 void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzetti::StaticData &staticData, Palazzetti::AllStatusData &allStatusData)
 {
   JsonDocument json;
-  String uniqueId;
 
   // Helper: sets value_template only when relevant (GenericJson type).
   auto setValueTemplate = [&](const String &field)
@@ -396,8 +392,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   // Connectivity entity
   //
 
-  uniqueId = ctx.uniqueIdPrefix + F("_Connectivity");
-
   // prepare payload for Stove connectivity sensor
   deserializeJson(json, F("{"
                           "\"default_entity_id\":\"binary_sensor.stove_connectivity\","
@@ -408,13 +402,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
                           "}"));
   // publish
-  ctx.publishEntity(json, F("binary_sensor"), uniqueId, false);
+  ctx.publishEntity(json, F("binary_sensor"), F("_Connectivity"), false);
 
   //
   // Status entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_STATUS");
 
   // prepare payload for Stove status sensor
   deserializeJson(json, F("{"
@@ -427,13 +419,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("STATUS"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_STATUS"));
 
   //
   // Status Text entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_STATUS_Text");
 
   // prepare payload for Stove status text sensor
   deserializeJson(json, F("{"
@@ -449,7 +439,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ value_json.STATUS }}{% endif %}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_STATUS_Text"));
 
   //
   // Thermostat entity
@@ -461,8 +451,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     probeNumber = 0;                                                                                     // T1
 
   String probeField = String(F("T")) + (char)('1' + probeNumber);
-
-  uniqueId = ctx.uniqueIdPrefix + F("_Thermostat");
 
   // prepare payload for Stove thermostat
   deserializeJson(json, F("{"
@@ -521,7 +509,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   json[F("temperature_state_topic")] = getStateTopic(F("SETP"), F("SETP"));
 
   // publish
-  ctx.publishEntity(json, F("climate"), uniqueId);
+  ctx.publishEntity(json, F("climate"), F("_Thermostat"));
 
   //
   // Supply Water temperature entity
@@ -530,8 +518,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   if (isHydroType)
   {
     // T1 probe config is fixed for hydro type stove
-
-    uniqueId = ctx.uniqueIdPrefix + F("_SupplyWaterTemp");
 
     // prepare payload for Stove supply water temperature sensor
     deserializeJson(json, F("{"
@@ -547,7 +533,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("T1"));
 
     // publish
-    ctx.publishEntity(json, F("sensor"), uniqueId);
+    ctx.publishEntity(json, F("sensor"), F("_SupplyWaterTemp"));
   }
 
   //
@@ -568,6 +554,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   // define sensor name
   const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
+  const __FlashStringHelper *tempSensorUniqueIdSuffixList[] = {F("_RoomTemp"), F("_ReturnWaterTemp"), F("_TankWaterTemp")};
   uint8_t tempSensorNameIndex = 0; // default case covering AirType
   if (isHydroType)
   {
@@ -577,8 +564,10 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       tempSensorNameIndex = 2; // Tank Water
   }
 
-  uniqueId = ctx.uniqueIdPrefix + '_' + tempSensorNameList[tempSensorNameIndex] + F("Temp");
-  uniqueId.replace(" ", "");
+  String uniqueIdSuffix = "_";
+  uniqueIdSuffix += tempSensorNameList[tempSensorNameIndex];
+  uniqueIdSuffix += F("Temp");
+  uniqueIdSuffix.replace(" ", "");
 
   // prepare payload for Stove main temperature sensor
   deserializeJson(json, F("{"
@@ -597,13 +586,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(probeField);
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), tempSensorUniqueIdSuffixList[tempSensorNameIndex]);
 
   //
   // Flue Gas temperature entity (T3)
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_FlueGasTemp");
 
   // prepare payload for Stove flue gas temperature sensor
   deserializeJson(json, F("{"
@@ -620,13 +607,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("T3"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_FlueGasTemp"));
 
   //
   // Pellet consumption entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_PQT");
 
   // prepare payload for Stove pellet consumption sensor
   deserializeJson(json, F("{"
@@ -642,13 +627,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("PQT"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_PQT"));
 
   //
   // Service time counter entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_ServiceTimeCounter");
 
   // prepare payload for Stove service time counter sensor
   deserializeJson(json, F("{"
@@ -666,13 +649,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_ServiceTimeCounter"));
 
   //
   // Feeder entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_Feeder");
 
   // prepare payload for Stove feeder sensor
   deserializeJson(json, F("{"
@@ -686,13 +667,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("FDR"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_Feeder"));
 
   //
   // Target Differential Pressure entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_TargetDifferentialPressure");
 
   // prepare payload for Stove target differential pressure sensor
   deserializeJson(json, F("{"
@@ -712,13 +691,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ (int(value_json.DP_TARGET) * 1000 /60) | round }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_TargetDifferentialPressure"));
 
   //
   // Differential Pressure entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_DifferentialPressure");
 
   // prepare payload for Stove differential pressure sensor
   deserializeJson(json, F("{"
@@ -738,7 +715,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ (int(value_json.DP_PRESS) * 1000 / 60) | round }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), uniqueId);
+  ctx.publishEntity(json, F("sensor"), F("_DifferentialPressure"));
 
   //
   // OnOff entity
@@ -746,7 +723,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasOnOff)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_ON_OFF");
 
     // prepare payload for Stove onoff switch
     deserializeJson(json, F("{"
@@ -767,7 +743,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
 
     // publish
-    ctx.publishEntity(json, F("switch"), uniqueId);
+    ctx.publishEntity(json, F("switch"), F("_ON_OFF"));
   }
 
   //
@@ -776,7 +752,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasSetPoint)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_SETP");
 
     // prepare payload for Stove setpoint number
     deserializeJson(json, F("{"
@@ -795,7 +770,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("SETP"));
 
     // publish
-    ctx.publishEntity(json, F("number"), uniqueId);
+    ctx.publishEntity(json, F("number"), F("_SETP"));
   }
 
   //
@@ -804,7 +779,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasPower)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_PWR");
 
     // prepare payload for Stove power number
     deserializeJson(json, F("{"
@@ -822,7 +796,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("PWR"));
 
     // publish
-    ctx.publishEntity(json, F("number"), uniqueId);
+    ctx.publishEntity(json, F("number"), F("_PWR"));
   }
 
   //
@@ -831,7 +805,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasRoomFan)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_RFAN");
 
     // prepare payload for Stove room fan
     deserializeJson(json, F("{"
@@ -864,7 +837,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("F2L"));
 
     // publish
-    ctx.publishEntity(json, F("number"), uniqueId, false);
+    ctx.publishEntity(json, F("number"), F("_RFAN"), false);
   }
 
   //
@@ -873,7 +846,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (isAirType && hasFanAuto)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_RFAN_Auto");
 
     // prepare payload for Stove room fan auto mode
     deserializeJson(json, F("{"
@@ -894,7 +866,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
 
     // publish
-    ctx.publishEntity(json, F("switch"), uniqueId);
+    ctx.publishEntity(json, F("switch"), F("_RFAN_Auto"));
   }
 
   //
@@ -903,7 +875,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasFan3)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_FAN3");
 
     // entity type depends on Min and Max value of FAN3
     // prepare payload for Stove fan3 number
@@ -935,7 +906,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     }
 
     // publish
-    ctx.publishEntity(json, ifFan3SwitchEntity ? String(F("switch")) : String(F("number")), uniqueId);
+    ctx.publishEntity(json, ifFan3SwitchEntity ? String(F("switch")) : String(F("number")), F("_FAN3"));
   }
 
   //
@@ -944,7 +915,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   if (hasFan4)
   {
-    uniqueId = ctx.uniqueIdPrefix + F("_FAN4");
 
     // entity type depends on Min and Max value of FAN4
     // prepare payload for Stove fan4 number
@@ -976,14 +946,12 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     }
 
     // publish
-    ctx.publishEntity(json, ifFan4SwitchEntity ? String(F("switch")) : String(F("number")), uniqueId);
+    ctx.publishEntity(json, ifFan4SwitchEntity ? String(F("switch")) : String(F("number")), F("_FAN4"));
   }
 
   //
   // Set Time entity
   //
-
-  uniqueId = ctx.uniqueIdPrefix + F("_SET_TIME");
 
   // prepare payload for Stove set time button
   deserializeJson(json, F("{"
@@ -996,7 +964,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"object_id\":\"stove_set_time\""
                           "}"));
   // publish
-  ctx.publishEntity(json, F("button"), uniqueId);
+  ctx.publishEntity(json, F("button"), F("_SET_TIME"));
 }
 
 bool WPalaControl::mqttPublishUpdate()
