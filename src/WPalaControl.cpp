@@ -2399,6 +2399,7 @@ void WPalaControl::fillStatusJSON(JsonVariant json)
 
     // add MQTT connection count for debug and statistic
     json[F("mqttconnectcount")] = _mqttMan.getConnectionCount();
+    json[F("mqttdiscoreason")] = _mqttMan.getLastDiscoState();
   }
 }
 
