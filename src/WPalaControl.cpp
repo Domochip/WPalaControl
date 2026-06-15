@@ -345,7 +345,7 @@ void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/App\","
                           "\"value_template\":\"{{ value_json.mqttconnectcount }}\""
                           "}"));
-  ctx.publishEntity(json, F("sensor"), F("_MqttConnectCount"));
+  ctx.publishEntity(json, F("sensor"), F("MqttConnectCount"));
 }
 
 void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzetti::StaticData &staticData, Palazzetti::AllStatusData &allStatusData)
@@ -404,7 +404,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
                           "}"));
   // publish
-  ctx.publishEntity(json, F("binary_sensor"), F("_Connectivity"), false);
+  ctx.publishEntity(json, F("binary_sensor"), F("Connectivity"), false);
 
   //
   // Status entity
@@ -421,7 +421,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("STATUS"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_STATUS"));
+  ctx.publishEntity(json, F("sensor"), F("STATUS"));
 
   //
   // Status Text entity
@@ -441,7 +441,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ value_json.STATUS }}{% endif %}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_STATUS_Text"));
+  ctx.publishEntity(json, F("sensor"), F("STATUS_Text"));
 
   //
   // Thermostat entity
@@ -511,7 +511,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   json[F("temperature_state_topic")] = getStateTopic(F("SETP"), F("SETP"));
 
   // publish
-  ctx.publishEntity(json, F("climate"), F("_Thermostat"));
+  ctx.publishEntity(json, F("climate"), F("Thermostat"));
 
   //
   // Supply Water temperature entity
@@ -535,7 +535,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("T1"));
 
     // publish
-    ctx.publishEntity(json, F("sensor"), F("_SupplyWaterTemp"));
+    ctx.publishEntity(json, F("sensor"), F("SupplyWaterTemp"));
   }
 
   //
@@ -556,7 +556,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   // define sensor name
   const __FlashStringHelper *tempSensorNameList[] = {F("Room"), F("Return Water"), F("Tank Water")};
-  const __FlashStringHelper *tempSensorUniqueIdSuffixList[] = {F("_RoomTemp"), F("_ReturnWaterTemp"), F("_TankWaterTemp")};
+  const __FlashStringHelper *tempSensorUniqueIdSuffixList[] = {F("RoomTemp"), F("ReturnWaterTemp"), F("TankWaterTemp")};
   uint8_t tempSensorNameIndex = 0; // default case covering AirType
   if (isHydroType)
   {
@@ -604,7 +604,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("T3"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_FlueGasTemp"));
+  ctx.publishEntity(json, F("sensor"), F("FlueGasTemp"));
 
   //
   // Pellet consumption entity
@@ -624,7 +624,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("PQT"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_PQT"));
+  ctx.publishEntity(json, F("sensor"), F("PQT"));
 
   //
   // Service time counter entity
@@ -646,7 +646,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_ServiceTimeCounter"));
+  ctx.publishEntity(json, F("sensor"), F("ServiceTimeCounter"));
 
   //
   // Feeder entity
@@ -664,7 +664,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setValueTemplate(F("FDR"));
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_Feeder"));
+  ctx.publishEntity(json, F("sensor"), F("Feeder"));
 
   //
   // Target Differential Pressure entity
@@ -688,7 +688,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ (int(value_json.DP_TARGET) * 1000 /60) | round }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_TargetDifferentialPressure"));
+  ctx.publishEntity(json, F("sensor"), F("TargetDifferentialPressure"));
 
   //
   // Differential Pressure entity
@@ -712,7 +712,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     json[F("value_template")] = F("{{ (int(value_json.DP_PRESS) * 1000 / 60) | round }}");
 
   // publish
-  ctx.publishEntity(json, F("sensor"), F("_DifferentialPressure"));
+  ctx.publishEntity(json, F("sensor"), F("DifferentialPressure"));
 
   //
   // OnOff entity
@@ -740,7 +740,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
 
     // publish
-    ctx.publishEntity(json, F("switch"), F("_ON_OFF"));
+    ctx.publishEntity(json, F("switch"), F("ON_OFF"));
   }
 
   //
@@ -767,7 +767,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("SETP"));
 
     // publish
-    ctx.publishEntity(json, F("number"), F("_SETP"));
+    ctx.publishEntity(json, F("number"), F("SETP"));
   }
 
   //
@@ -793,7 +793,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("PWR"));
 
     // publish
-    ctx.publishEntity(json, F("number"), F("_PWR"));
+    ctx.publishEntity(json, F("number"), F("PWR"));
   }
 
   //
@@ -834,7 +834,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     setValueTemplate(F("F2L"));
 
     // publish
-    ctx.publishEntity(json, F("number"), F("_RFAN"), false);
+    ctx.publishEntity(json, F("number"), F("RFAN"), false);
   }
 
   //
@@ -863,7 +863,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
 
     // publish
-    ctx.publishEntity(json, F("switch"), F("_RFAN_Auto"));
+    ctx.publishEntity(json, F("switch"), F("RFAN_Auto"));
   }
 
   //
@@ -903,7 +903,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     }
 
     // publish
-    ctx.publishEntity(json, ifFan3SwitchEntity ? String(F("switch")) : String(F("number")), F("_FAN3"));
+    ctx.publishEntity(json, ifFan3SwitchEntity ? String(F("switch")) : String(F("number")), F("FAN3"));
   }
 
   //
@@ -943,7 +943,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
     }
 
     // publish
-    ctx.publishEntity(json, ifFan4SwitchEntity ? String(F("switch")) : String(F("number")), F("_FAN4"));
+    ctx.publishEntity(json, ifFan4SwitchEntity ? String(F("switch")) : String(F("number")), F("FAN4"));
   }
 
   //
@@ -961,7 +961,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"object_id\":\"stove_set_time\""
                           "}"));
   // publish
-  ctx.publishEntity(json, F("button"), F("_SET_TIME"));
+  ctx.publishEntity(json, F("button"), F("SET_TIME"));
 }
 
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
