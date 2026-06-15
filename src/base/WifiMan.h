@@ -40,6 +40,7 @@ private:
   uint8_t _refreshPeriod = 60;     // try to reconnect as station mode every 60 seconds
   uint8_t _reconnectDuration = 20; // duration to try to connect to Wifi in seconds
   uint16_t _connectionCount = 0;   // count of successful WiFi connections
+  uint8_t _lastDiscoReason = 0;    // last WiFi disconnection reason code
 
   void enableAP(bool force = false);
   void refreshWiFi();
