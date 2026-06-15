@@ -346,6 +346,23 @@ void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"value_template\":\"{{ value_json.mqttconnectcount }}\""
                           "}"));
   ctx.publishEntity(json, F("sensor"), F("MqttConnectCount"));
+
+  //
+  // MQTT last disconnection reason entity
+  //
+
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_mqtt_disco_reason\","
+                          "\"entity_category\":\"diagnostic\","
+                          "\"icon\":\"mdi:wifi-off\","
+                          "\"name\":\"MQTT Last Disconnection Reason\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_mqtt_disco_reason\","
+                          "\"state_topic\":\"~/App\","
+                          "\"value_template\":\""
+                          "{% set r={0:'No disconnection',-4:'Connection timeout',-3:'Connection lost',-2:'Connect failed',-1:'Disconnected',1:'Bad protocol',2:'Bad client ID',3:'Server unavailable',4:'Bad credentials',5:'Unauthorized'} %}"
+                          "{{ r.get(value_json.mqttdiscoreason|int,'Unknown') }}\""
+                          "}"));
+  ctx.publishEntity(json, F("sensor"), F("MqttDiscoReason"));
 }
 
 void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzetti::StaticData &staticData, Palazzetti::AllStatusData &allStatusData)
