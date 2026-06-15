@@ -6,7 +6,7 @@ void Application::HassDiscoveryCtx::publishEntity(JsonDocument &json, const Stri
 {
   static const __FlashStringHelper *standardAvailabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
 
-  String uniqueId = uniqueIdPrefix + uniqueIdSuffix;
+  String uniqueId = uniqueIdPrefix + '_' + uniqueIdSuffix;
 
   // prepare topic: <hassDiscoveryPrefix>/<type>/<uniqueId>/config
   String topic;

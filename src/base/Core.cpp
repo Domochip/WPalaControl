@@ -318,7 +318,7 @@ void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/connected\","
                           "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
                           "}"));
-  ctx.publishEntity(json, F("binary_sensor"), F("_Connectivity"), false);
+  ctx.publishEntity(json, F("binary_sensor"), F("Connectivity"), false);
 
   //
   // Update entity
@@ -334,5 +334,5 @@ void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"payload_install\":\"latest\","
                           "\"state_topic\":\"~/update\""
                           "}"));
-  ctx.publishEntity(json, F("update"), F("_Update"));
+  ctx.publishEntity(json, F("update"), F("Update"));
 }

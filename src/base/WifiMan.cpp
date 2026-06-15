@@ -406,5 +406,5 @@ void WifiMan::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"state_topic\":\"~/WiFi\","
                           "\"value_template\":\"{{ value_json.connectcount }}\""
                           "}"));
-  ctx.publishEntity(json, F("sensor"), F("_WifiConnectCount"));
+  ctx.publishEntity(json, F("sensor"), F("WifiConnectCount"));
 }
