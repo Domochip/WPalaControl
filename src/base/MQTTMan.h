@@ -26,6 +26,7 @@ private:
     bool _needMqttReconnect = false;
     Ticker _mqttReconnectTicker;
     uint16_t _connectionCount = 0;
+    int8_t _lastDiscoState = 0;   // last MQTT disconnection state code (0 = no disconnection yet)
 
     ConnectedCallback _connectedCallBack = nullptr;
     DisconnectedCallback _disconnectedCallBack = nullptr;
@@ -56,6 +57,7 @@ public:
     using PubSubClient::state;
     const __FlashStringHelper *getStateString();
     uint16_t getConnectionCount() const;
+    int8_t getLastDiscoState() const;
     using PubSubClient::getBufferSize;
     using PubSubClient::setBufferSize;
     using PubSubClient::subscribe;

@@ -241,6 +241,11 @@ uint16_t MQTTMan::getConnectionCount() const
     return _connectionCount;
 }
 
+int8_t MQTTMan::getLastDiscoState() const
+{
+    return _lastDiscoState;
+}
+
 bool MQTTMan::loop()
 {
     if (state() != MQTT_DISCONNECTED)
@@ -264,7 +269,10 @@ bool MQTTMan::loop()
         // if not connected and reconnect ticker not started
         if (!connected() && !_mqttReconnectTicker.active())
         {
-            LOG_SERIAL_PRINTLN(F("MQTT Disconnected"));
+            _lastDiscoState = state();
+            LOG_SERIAL_PRINT(F("MQTT Disconnected (reason: "));
+            LOG_SERIAL_PRINT(getStateString());
+            LOG_SERIAL_PRINTLN(')');
             // set Ticker to reconnect after 20 or 60 sec (Wifi connected or not)
 #ifdef ESP8266
             _mqttReconnectTicker.once((WiFi.isConnected() ? 20 : 60), [this]()
