@@ -354,7 +354,7 @@ void WPalaControl::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
   deserializeJson(json, F("{"
                           "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_mqtt_disco_reason\","
                           "\"entity_category\":\"diagnostic\","
-                          "\"icon\":\"mdi:wifi-off\","
+                          "\"icon\":\"mdi:access-point-remove\","
                           "\"name\":\"MQTT Last Disconnection Reason\","
                           "\"object_id\":\"" CUSTOM_APP_MODEL "_mqtt_disco_reason\","
                           "\"state_topic\":\"~/App\","
