@@ -147,6 +147,14 @@
             return JSON.stringify(object);
         }
 
+        function rssiToQuality(rssi) {
+            return Math.min(Math.max(2 * (rssi + 100), 0), 100);
+        }
+
+        function rssiToColor(rssi) {
+            return `hsl(${rssiToQuality(rssi) * 1.2}, 100%, 45%)`;
+        }
+
         function fadeOut(el) {
             if (!el || el.style.display === 'none') return; // Check if el is null or undefined
 

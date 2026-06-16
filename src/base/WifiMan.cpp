@@ -216,6 +216,8 @@ void WifiMan::fillStatusJSON(JsonVariant json)
     {
       json[F("stationip")] = ipToCString(WiFi.localIP());
       json[F("stationipsource")] = ip ? F("Static IP") : F("DHCP");
+      json[F("bssid")] = WiFi.BSSIDstr();
+      json[F("rssi")] = WiFi.RSSI();
     }
   }
   else
@@ -433,4 +435,38 @@ void WifiMan::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "{{ r.get(value_json.discoreason|int,'Unknown') }}\""
                           "}"));
   ctx.publishEntity(json, F("sensor"), F("WifiDiscoReason"));
+
+  //
+  // WiFi RSSI entity
+  //
+
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_wifi_rssi\","
+                          "\"device_class\":\"signal_strength\","
+                          "\"enabled_by_default\":false,"
+                          "\"entity_category\":\"diagnostic\","
+                          "\"name\":\"WiFi RSSI\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_wifi_rssi\","
+                          "\"state_class\":\"measurement\","
+                          "\"state_topic\":\"~/WiFi\","
+                          "\"unit_of_measurement\":\"dBm\","
+                          "\"value_template\":\"{{ value_json.rssi }}\""
+                          "}"));
+  ctx.publishEntity(json, F("sensor"), F("WifiRssi"));
+
+  //
+  // WiFi BSSID entity
+  //
+
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"sensor." CUSTOM_APP_MODEL "_wifi_bssid\","
+                          "\"enabled_by_default\":false,"
+                          "\"entity_category\":\"diagnostic\","
+                          "\"icon\":\"mdi:wifi-marker\","
+                          "\"name\":\"WiFi BSSID\","
+                          "\"object_id\":\"" CUSTOM_APP_MODEL "_wifi_bssid\","
+                          "\"state_topic\":\"~/WiFi\","
+                          "\"value_template\":\"{{ value_json.bssid | default('') }}\""
+                          "}"));
+  ctx.publishEntity(json, F("sensor"), F("WifiBssid"));
 }

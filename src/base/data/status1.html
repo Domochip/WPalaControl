@@ -7,6 +7,8 @@ Access Point: <span id="apmode"></span><br>
 Station: <span id="stationmode"></span><br>
 <span id="stationipe" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP: <span id="stationip"></span><br></span>
 <span id="stationipsourcee" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span id="stationipsource"></span><br></span>
+<span id="bssidе" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;BSSID: <span id="bssid"></span><br></span>
+<span id="rssie" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;RSSI: <span id="rssi"></span><br></span>
 
 <script>
     // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content1 ';
@@ -20,6 +22,12 @@ Station: <span id="stationmode"></span><br>
             $(qsp + "#apipe").style.display = (GS["apip"] ? '' : 'none');
             $(qsp + "#stationipe").style.display = (GS["stationip"] ? '' : 'none');
             $(qsp + "#stationipsourcee").style.display = (GS["stationipsource"] ? '' : 'none');
+            $(qsp + "#bssidе").style.display = (GS["stationmode"] == "on" && GS["bssid"] ? '' : 'none');
+            $(qsp + "#rssie").style.display = (GS["stationmode"] == "on" && GS["rssi"] !== undefined ? '' : 'none');
+            if (GS["stationmode"] == "on" && GS["rssi"] !== undefined) {
+                $(qsp + "#rssi").innerHTML = GS["rssi"] + ' dBm (' + rssiToQuality(GS["rssi"]) + '%)';
+                $(qsp + "#rssi").style.color = rssiToColor(GS["rssi"]);
+            }
 
             if (GS["stationmode"] == "on" && GS["apmode"] == "on") {
                 var containerDiv = document.createElement('div');
