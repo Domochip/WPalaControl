@@ -89,7 +89,7 @@
                 else { sessionStorage.setItem('activeTab', '#menuConfig'); targetUrl = location.origin; }
 
                 $(qsp + '#r').innerHTML = '<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
-                loadScript('redirectWhenReachable("' + targetUrl + '", 30000);');
+                redirectWhenReachable(targetUrl, 30000);
             },
             function () {
                 $(qsp + '#r').innerHTML = '<h3><b>Configuration <span style="color: red;">error</span>.</b></h3>';

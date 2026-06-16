@@ -231,7 +231,7 @@
                         if (success) {
                             $(qsp + '#progress').innerHTML = 'Rebooting...';
                             $(qsp + '#rUpdate').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
-                            loadScript('redirectWhenReachable("' + location.origin + '", 60000);');
+                            redirectWhenReachable(location.origin, 60000);
                         } else {
                             $(qsp + '#rUpdate').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${message})`;
                             calculateAllButtonStates();
@@ -269,7 +269,7 @@
             () => {
                 $(qsp + '#progress').innerHTML = 'Rebooting...';
                 $(qsp + '#rUpload').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
-                loadScript('redirectWhenReachable("' + location.origin + '", 60000);');
+                redirectWhenReachable(location.origin, 60000);
             },
             (responseText) => {
                 $(qsp + '#rUpload').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${responseText})`;

@@ -178,25 +178,6 @@
             requestAnimationFrame(tick);
         }
 
-        function startCountdown(elementSelector, initialCount, onComplete) {
-            let count = initialCount;
-            const cdi = setInterval(() => {
-                const cdElement = $(elementSelector);
-                if (cdElement) {
-                    cdElement.innerText = count;
-                    if (count === 0) {
-                        clearInterval(cdi);
-                        if (typeof onComplete === 'function') {
-                            onComplete();
-                        }
-                    }
-                    count--;
-                } else {
-                    clearInterval(cdi);
-                }
-            }, 1000);
-        }
-
         // Waits 2s then polls HEAD / every 2s until the device responds, then redirects to url.
         // The initial 2s delay lets the device start rebooting before polling begins.
         // Uses no-cors to allow cross-origin probes. Updates id="cd" with elapsed seconds.

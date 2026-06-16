@@ -36,7 +36,7 @@
 
         post(url, null, function () {
             $(qsp + '#r').innerHTML = `<h3><span style="color: green;"><b>Done</b></span> ${successMessage} Waiting for device... <span id="cd">0</span>s</h3>`;
-            loadScript('redirectWhenReachable("' + targetUrl + '", 30000);');
+            redirectWhenReachable(targetUrl, 30000);
         }, postFailed);
     }
 
