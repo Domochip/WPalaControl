@@ -376,6 +376,19 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
       json[F("value_template")] = String(F("{{ value_json.")) + field + F(" }}");
   };
 
+  // Helper: sets a template key, substituting {v} with "value" (Generic) or "value_json.FIELD" (GenericJson).
+  auto setTemplateField = [&](const __FlashStringHelper *key,
+                              const __FlashStringHelper *field,
+                              const __FlashStringHelper *tpl)
+  {
+    String s(tpl);
+    if (_ha.mqtt.type == HaMqttType::GenericJson)
+      s.replace(F("{v}"), String(F("value_json.")) + field);
+    else if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
+      s.replace(F("{v}"), F("value"));
+    json[key] = s;
+  };
+
   // Helper lambda to get state topic based on MQTT type
   //   Generic:            ~/FIELD
   //   GenericJson:        ~/CATEGORY
@@ -452,10 +465,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"object_id\":\"stove_status_text\""
                           "}"));
   json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ value }}{% endif %}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int(value_json.STATUS) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ value_json.STATUS }}{% endif %}");
+  setTemplateField(F("value_template"), F("STATUS"), F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int({v}) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ {v} }}{% endif %}"));
 
   // publish
   ctx.publishEntity(json, F("sensor"), F("STATUS_Text"));
@@ -487,10 +497,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"temperature_command_topic\":\"~/cmd\","
                           "\"temperature_unit\":\"C\""
                           "}"));
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("action_template")] = F("{% set intSTATUS = int(value) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("action_template")] = F("{% set intSTATUS = int(value_json.STATUS) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}");
+  setTemplateField(F("action_template"), F("STATUS"), F("{% set intSTATUS = int({v}) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}"));
 
   json[F("action_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -502,10 +509,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
     json[F("fan_mode_command_template")] = F("SET+RFAN+{{ {'off':0,'1':1,'2':2,'3':3,'4':4,'5':5,'high':6,'auto':7}[value] }}");
     json[F("fan_mode_command_topic")] = F("~/cmd");
-    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value)] }}");
-    else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("fan_mode_state_template")] = F("{{ ['off',1,2,3,4,5,'high','auto'][int(value_json.F2L)] }}");
+    setTemplateField(F("fan_mode_state_template"), F("F2L"), F("{{ ['off',1,2,3,4,5,'high','auto'][int({v})] }}"));
     json[F("fan_mode_state_topic")] = getStateTopic(F("FAND"), F("F2L"));
 
     json[F("fan_modes")] = serialized((isAirType && hasFanAuto) ? F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\",\"auto\"]") : F("[\"off\",\"1\",\"2\",\"3\",\"4\",\"5\",\"high\"]"));
@@ -515,10 +519,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   json[F("max_temp")] = (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) ? staticData.SPLMAX : staticData.SPLMIN + 2 * (19 - staticData.SPLMIN);
   json[F("min_temp")] = staticData.SPLMIN;
 
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("mode_state_template")] = F("{{ iif(int(value) > 0, 'heat', 'off') }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("mode_state_template")] = F("{{ iif(int(value_json.STATUS) > 0, 'heat', 'off') }}");
+  setTemplateField(F("mode_state_template"), F("STATUS"), F("{{ iif(int({v}) > 0, 'heat', 'off') }}"));
 
   json[F("mode_state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   // modes already in deserialized JSON
@@ -657,10 +658,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"unit_of_measurement\":\"h\""
                           "}"));
   json[F("state_topic")] = getStateTopic(F("CNTR"), F("SERVICETIME"));
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ value.split(':')[0] }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ value_json.SERVICETIME.split(':')[0] }}");
+  setTemplateField(F("value_template"), F("SERVICETIME"), F("{{ {v}.split(':')[0] }}"));
 
   // publish
   ctx.publishEntity(json, F("sensor"), F("ServiceTimeCounter"));
@@ -699,10 +697,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"unit_of_measurement\":\"mPa\""
                           "}"));
   json[F("state_topic")] = getStateTopic(F("DPRS"), F("DP_TARGET"));
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (int(value_json.DP_TARGET) * 1000 /60) | round }}");
+  setTemplateField(F("value_template"), F("DP_TARGET"), F("{{ (int({v}) * 1000 / 60) | round }}"));
 
   // publish
   ctx.publishEntity(json, F("sensor"), F("TargetDifferentialPressure"));
@@ -723,10 +718,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"unit_of_measurement\":\"mPa\""
                           "}"));
   json[F("state_topic")] = getStateTopic(F("DPRS"), F("DP_PRESS"));
-  if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-    json[F("value_template")] = F("{{ (int(value) * 1000 / 60) | round }}");
-  else if (_ha.mqtt.type == HaMqttType::GenericJson)
-    json[F("value_template")] = F("{{ (int(value_json.DP_PRESS) * 1000 / 60) | round }}");
+  setTemplateField(F("value_template"), F("DP_PRESS"), F("{{ (int({v}) * 1000 / 60) | round }}"));
 
   // publish
   ctx.publishEntity(json, F("sensor"), F("DifferentialPressure"));
@@ -751,10 +743,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                             "\"state_on\":\"ON\""
                             "}"));
     json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
-    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-      json[F("value_template")] = F("{{ iif(int(value) > 1 and int(value) != 10, 'ON', 'OFF') }}");
-    else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ iif(int(value_json.STATUS) > 1 and int(value_json.STATUS) != 10, 'ON', 'OFF') }}");
+    setTemplateField(F("value_template"), F("STATUS"), F("{{ iif(int({v}) > 1 and int({v}) != 10, 'ON', 'OFF') }}"));
 
     // publish
     ctx.publishEntity(json, F("switch"), F("ON_OFF"));
@@ -874,10 +863,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                             "\"state_on\":\"ON\""
                             "}"));
     json[F("state_topic")] = getStateTopic(F("FAND"), F("F2L"));
-    if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-      json[F("value_template")] = F("{{ iif(int(value) == 7, 'ON', 'OFF') }}");
-    else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      json[F("value_template")] = F("{{ iif(int(value_json.F2L) == 7, 'ON', 'OFF') }}");
+    setTemplateField(F("value_template"), F("F2L"), F("{{ iif(int({v}) == 7, 'ON', 'OFF') }}"));
 
     // publish
     ctx.publishEntity(json, F("switch"), F("RFAN_Auto"));
