@@ -393,7 +393,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   //   Generic:            ~/FIELD
   //   GenericJson:        ~/CATEGORY
   //   GenericCategorized: ~/CATEGORY/FIELD
-  auto getStateTopic = [&](const String &category, const String &field)
+  auto getStateTopic = [&](const String &category, const String &field) -> String
   {
     switch (_ha.mqtt.type)
     {
