@@ -2399,7 +2399,10 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   if (_ha.protocol == HaProtocol::Mqtt)
   {
     // setup MQTT
-    _mqttMan.setBufferSize(2048); // max JSON size (STDT ~1100 but Thermostat HAss discovery ~1800)
+    // the largest packet that must fully fit in the buffer is the MQTT CONNECT packet
+    // (≈267 bytes worst-case: max baseTopic + max username/password + will topic).
+    // 512 gives a ×2 safety margin
+    _mqttMan.setBufferSize(512);
     _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
     _mqttMan.setBaseTopic(_ha.mqtt.generic.baseTopic);
     _mqttMan.setConnectedCallback([this](MQTTMan *mqttMan, bool firstConnection)
