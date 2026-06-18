@@ -129,9 +129,9 @@ void WifiMan::setConfigDefaultValues()
 
 bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  parseStringField(json["s"], ssid, sizeof(ssid));
+  parseField(json["s"], ssid);
   parseSecret(json["p"], password, sizeof(password), fromWebPage);
-  parseStringField(json["h"], hostname, sizeof(hostname));
+  parseField(json["h"], hostname);
   parseIPField(json["ip"], ip);
   parseIPField(json["gw"], gw);
   parseIPField(json[F("mask")], mask);

@@ -79,7 +79,7 @@
         }
         $(qsp + "#r").innerHTML = "Saving Configuration...";
         post("/sc" + qsp[8],
-            convertFormDataToJson(new FormData($(qsp + "#f"))),
+            convertFormToJson($(qsp + "#f")),
             function () {
                 $(qsp + "#f").style.display = 'none';
 

@@ -129,12 +129,6 @@ void Application::parseSecret(JsonVariant jv, char *dest, size_t size, bool from
     strlcpy(dest, jv, size);
 }
 
-void Application::parseStringField(JsonVariant jv, char *dest, size_t size)
-{
-  if (jv.is<const char *>())
-    strlcpy(dest, jv.as<const char *>(), size);
-}
-
 void Application::parseIPField(JsonVariant jv, uint32_t &dest)
 {
   if (jv.is<const char *>())
@@ -145,11 +139,6 @@ void Application::parseIPField(JsonVariant jv, uint32_t &dest)
     else
       dest = 0;
   }
-}
-
-void Application::parseBoolField(JsonVariant jv, bool &dest)
-{
-  dest = jv;
 }
 
 bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */, char *releaseDate /* = nullptr */, char *summary /* = nullptr */)
