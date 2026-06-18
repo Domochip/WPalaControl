@@ -129,57 +129,14 @@ void WifiMan::setConfigDefaultValues()
 
 bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  JsonVariant jv;
-
-  if ((jv = json["s"]).is<const char *>())
-    strlcpy(ssid, jv, sizeof(ssid));
-
+  parseStringField(json["s"], ssid, sizeof(ssid));
   parseSecret(json["p"], password, sizeof(password), fromWebPage);
-
-  if ((jv = json["h"]).is<const char *>())
-    strlcpy(hostname, jv, sizeof(hostname));
-
-  IPAddress ipParser;
-  if ((jv = json["ip"]).is<const char *>())
-  {
-    if (ipParser.fromString(jv.as<const char *>()))
-      ip = ipParser;
-    else
-      ip = 0;
-  }
-
-  if ((jv = json["gw"]).is<const char *>())
-  {
-    if (ipParser.fromString(jv.as<const char *>()))
-      gw = ipParser;
-    else
-      gw = 0;
-  }
-
-  if ((jv = json[F("mask")]).is<const char *>())
-  {
-    if (ipParser.fromString(jv.as<const char *>()))
-      mask = ipParser;
-    else
-      mask = 0;
-  }
-
-  if ((jv = json[F("dns1")]).is<const char *>())
-  {
-    if (ipParser.fromString(jv.as<const char *>()))
-      dns1 = ipParser;
-    else
-      dns1 = 0;
-  }
-
-  if ((jv = json[F("dns2")]).is<const char *>())
-  {
-    if (ipParser.fromString(jv.as<const char *>()))
-      dns2 = ipParser;
-    else
-      dns2 = 0;
-  }
-
+  parseStringField(json["h"], hostname, sizeof(hostname));
+  parseIPField(json["ip"], ip);
+  parseIPField(json["gw"], gw);
+  parseIPField(json[F("mask")], mask);
+  parseIPField(json[F("dns1")], dns1);
+  parseIPField(json[F("dns2")], dns2);
   return true;
 }
 
