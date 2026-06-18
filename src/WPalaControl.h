@@ -39,27 +39,27 @@ private:
 
   struct MQTT
   {
-    HaMqttType type = HaMqttType::GenericJson;
-    uint32_t port = 1883;
-    char username[32 + 1] = {0};
-    char password[64 + 1] = {0};
+    HaMqttType type;
+    uint32_t port;
+    char username[32 + 1];
+    char password[64 + 1];
     struct
     {
-      char baseTopic[64 + 1] = {0};
+      char baseTopic[64 + 1];
     } generic;
-    bool hassDiscoveryEnabled = true;
-    char hassDiscoveryPrefix[32 + 1] = {0};
+    bool hassDiscoveryEnabled;
+    char hassDiscoveryPrefix[32 + 1];
   };
 
   struct HomeAutomation
   {
-    HaProtocol protocol = HaProtocol::Disabled;
-    char hostname[64 + 1] = {0};
-    uint16_t uploadPeriod = 60;
+    HaProtocol protocol;
+    char hostname[64 + 1];
+    uint16_t uploadPeriod;
     MQTT mqtt;
   };
 
-  HwDetection _hwDetection = HwDetection::AutoDetect;
+  HwDetection _hwDetection;
   HwVersion _detectedHwVersion = HwVersion::Unknown;
 
   HomeAutomation _ha;
