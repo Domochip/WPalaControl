@@ -2251,37 +2251,21 @@ void WPalaControl::setConfigDefaultValues()
 // Parse JSON object into configuration properties
 bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  JsonVariant jv;
-
-  // parse hardware detection mode
-  if ((jv = json[F("hwdetection")]).is<JsonVariant>())
-    _hwDetection = static_cast<HwDetection>(jv.as<uint8_t>());
+  parseEnumField(json[F("hwdetection")], _hwDetection);
 
   // Home Automation common
-  if ((jv = json[F("haproto")]).is<JsonVariant>())
-    _ha.protocol = static_cast<HaProtocol>(jv.as<uint8_t>());
-  if ((jv = json[F("hahost")]).is<const char *>())
-    strlcpy(_ha.hostname, jv, sizeof(_ha.hostname));
-  if ((jv = json[F("haupperiod")]).is<JsonVariant>())
-    _ha.uploadPeriod = jv;
+  parseEnumField(json[F("haproto")], _ha.protocol);
+  parseStringField(json[F("hahost")], _ha.hostname, sizeof(_ha.hostname));
+  parseField(json[F("haupperiod")], _ha.uploadPeriod);
 
   // HA MQTT
-  if ((jv = json[F("hamtype")]).is<JsonVariant>())
-    _ha.mqtt.type = static_cast<HaMqttType>(jv.as<uint8_t>());
-  if ((jv = json[F("hamport")]).is<JsonVariant>())
-    _ha.mqtt.port = jv;
-  if ((jv = json[F("hamu")]).is<const char *>())
-    strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
-
+  parseEnumField(json[F("hamtype")], _ha.mqtt.type);
+  parseField(json[F("hamport")], _ha.mqtt.port);
+  parseStringField(json[F("hamu")], _ha.mqtt.username, sizeof(_ha.mqtt.username));
   parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
-
-  if ((jv = json[F("hamgbt")]).is<const char *>())
-    strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
-
-  _ha.mqtt.hassDiscoveryEnabled = json[F("hamhassde")];
-
-  if ((jv = json[F("hamhassdp")]).is<const char *>())
-    strlcpy(_ha.mqtt.hassDiscoveryPrefix, jv, sizeof(_ha.mqtt.hassDiscoveryPrefix));
+  parseStringField(json[F("hamgbt")], _ha.mqtt.generic.baseTopic, sizeof(_ha.mqtt.generic.baseTopic));
+  parseBoolField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
+  parseStringField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix, sizeof(_ha.mqtt.hassDiscoveryPrefix));
 
   return true;
 }
