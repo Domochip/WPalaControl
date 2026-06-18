@@ -2251,21 +2251,21 @@ void WPalaControl::setConfigDefaultValues()
 // Parse JSON object into configuration properties
 bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  parseEnumField(json[F("hwdetection")], _hwDetection);
+  parseField(json[F("hwdetection")], _hwDetection);
 
   // Home Automation common
-  parseEnumField(json[F("haproto")], _ha.protocol);
-  parseStringField(json[F("hahost")], _ha.hostname, sizeof(_ha.hostname));
+  parseField(json[F("haproto")], _ha.protocol);
+  parseField(json[F("hahost")], _ha.hostname);
   parseField(json[F("haupperiod")], _ha.uploadPeriod);
 
   // HA MQTT
-  parseEnumField(json[F("hamtype")], _ha.mqtt.type);
+  parseField(json[F("hamtype")], _ha.mqtt.type);
   parseField(json[F("hamport")], _ha.mqtt.port);
-  parseStringField(json[F("hamu")], _ha.mqtt.username, sizeof(_ha.mqtt.username));
+  parseField(json[F("hamu")], _ha.mqtt.username);
   parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
-  parseStringField(json[F("hamgbt")], _ha.mqtt.generic.baseTopic, sizeof(_ha.mqtt.generic.baseTopic));
-  parseBoolField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
-  parseStringField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix, sizeof(_ha.mqtt.hassDiscoveryPrefix));
+  parseField(json[F("hamgbt")], _ha.mqtt.generic.baseTopic);
+  parseField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
+  parseField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix);
 
   return true;
 }
