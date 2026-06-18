@@ -2257,53 +2257,31 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   if ((jv = json[F("hwdetection")]).is<JsonVariant>())
     _hwDetection = static_cast<HwDetection>(jv.as<uint8_t>());
 
-  // Parse HA protocol
+  // Home Automation common
   if ((jv = json[F("haproto")]).is<JsonVariant>())
     _ha.protocol = static_cast<HaProtocol>(jv.as<uint8_t>());
+  if ((jv = json[F("hahost")]).is<const char *>())
+    strlcpy(_ha.hostname, jv, sizeof(_ha.hostname));
+  if ((jv = json[F("haupperiod")]).is<JsonVariant>())
+    _ha.uploadPeriod = jv;
 
-  // if an home Automation protocol has been selected then get common param
-  if (_ha.protocol != HaProtocol::Disabled)
-  {
-    if ((jv = json[F("hahost")]).is<const char *>())
-      strlcpy(_ha.hostname, jv, sizeof(_ha.hostname));
-    if ((jv = json[F("haupperiod")]).is<JsonVariant>())
-      _ha.uploadPeriod = jv;
-  }
+  // HA MQTT
+  if ((jv = json[F("hamtype")]).is<JsonVariant>())
+    _ha.mqtt.type = static_cast<HaMqttType>(jv.as<uint8_t>());
+  if ((jv = json[F("hamport")]).is<JsonVariant>())
+    _ha.mqtt.port = jv;
+  if ((jv = json[F("hamu")]).is<const char *>())
+    strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
 
-  // Now get specific param
-  switch (_ha.protocol)
-  {
-  case HaProtocol::Disabled:
-    break;
+  parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
 
-  case HaProtocol::Mqtt:
+  if ((jv = json[F("hamgbt")]).is<const char *>())
+    strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
 
-    if ((jv = json[F("hamtype")]).is<JsonVariant>())
-      _ha.mqtt.type = static_cast<HaMqttType>(jv.as<uint8_t>());
-    if ((jv = json[F("hamport")]).is<JsonVariant>())
-      _ha.mqtt.port = jv;
-    if ((jv = json[F("hamu")]).is<const char *>())
-      strlcpy(_ha.mqtt.username, jv, sizeof(_ha.mqtt.username));
+  _ha.mqtt.hassDiscoveryEnabled = json[F("hamhassde")];
 
-    parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
-
-    switch (_ha.mqtt.type)
-    {
-    case HaMqttType::Generic:
-    case HaMqttType::GenericJson:
-    case HaMqttType::GenericCategorized:
-      if ((jv = json[F("hamgbt")]).is<const char *>())
-        strlcpy(_ha.mqtt.generic.baseTopic, jv, sizeof(_ha.mqtt.generic.baseTopic));
-      break;
-    }
-
-    _ha.mqtt.hassDiscoveryEnabled = json[F("hamhassde")];
-
-    if ((jv = json[F("hamhassdp")]).is<const char *>())
-      strlcpy(_ha.mqtt.hassDiscoveryPrefix, jv, sizeof(_ha.mqtt.hassDiscoveryPrefix));
-
-    break;
-  }
+  if ((jv = json[F("hamhassdp")]).is<const char *>())
+    strlcpy(_ha.mqtt.hassDiscoveryPrefix, jv, sizeof(_ha.mqtt.hassDiscoveryPrefix));
 
   return true;
 }
@@ -2312,22 +2290,9 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
 // Disable protocols with missing required fields
 void WPalaControl::validateConfig()
 {
-  switch (_ha.protocol)
-  {
-  case HaProtocol::Mqtt:
-    switch (_ha.mqtt.type)
-    {
-    case HaMqttType::Generic:
-    case HaMqttType::GenericJson:
-    case HaMqttType::GenericCategorized:
-      if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
-        _ha.protocol = HaProtocol::Disabled;
-      break;
-    }
-    break;
-  default:
-    break;
-  }
+  if (_ha.protocol == HaProtocol::Mqtt)
+    if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
+      _ha.protocol = HaProtocol::Disabled;
 }
 
 //------------------------------------------
@@ -2336,23 +2301,21 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 {
   json[F("hwdetection")] = _hwDetection;
 
+  // Home Automation common
   json[F("haproto")] = _ha.protocol;
   json[F("hahost")] = _ha.hostname;
   json[F("haupperiod")] = _ha.uploadPeriod;
 
-  // if for WebPage or protocol selected is MQTT
-  if (!forSaveFile || _ha.protocol == HaProtocol::Mqtt)
-  {
-    json[F("hamtype")] = _ha.mqtt.type;
-    json[F("hamport")] = _ha.mqtt.port;
-    json[F("hamu")] = _ha.mqtt.username;
-    fillSecret(json, F("hamp"), _ha.mqtt.password, forSaveFile);
+  // HA MQTT
+  json[F("hamtype")] = _ha.mqtt.type;
+  json[F("hamport")] = _ha.mqtt.port;
+  json[F("hamu")] = _ha.mqtt.username;
+  fillSecret(json, F("hamp"), _ha.mqtt.password, forSaveFile);
 
-    json[F("hamgbt")] = _ha.mqtt.generic.baseTopic;
+  json[F("hamgbt")] = _ha.mqtt.generic.baseTopic;
 
-    json[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
-    json[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
-  }
+  json[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
+  json[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
 }
 
 //------------------------------------------
