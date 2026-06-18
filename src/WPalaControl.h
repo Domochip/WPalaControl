@@ -37,7 +37,7 @@ private:
     V2 = 2
   };
 
-  typedef struct
+  struct MQTT
   {
     HaMqttType type = HaMqttType::GenericJson;
     uint32_t port = 1883;
@@ -49,15 +49,15 @@ private:
     } generic;
     bool hassDiscoveryEnabled = true;
     char hassDiscoveryPrefix[32 + 1] = {0};
-  } MQTT;
+  };
 
-  typedef struct
+  struct HomeAutomation
   {
     HaProtocol protocol = HaProtocol::Disabled;
     char hostname[64 + 1] = {0};
     uint16_t uploadPeriod = 60;
     MQTT mqtt;
-  } HomeAutomation;
+  };
 
   HwDetection _hwDetection = HwDetection::AutoDetect;
   HwVersion _detectedHwVersion = HwVersion::Unknown;
