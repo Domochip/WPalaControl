@@ -122,13 +122,6 @@ void Application::fillSecret(JsonVariant json, const __FlashStringHelper *key, c
     json[key] = (const __FlashStringHelper *)predefPassword;
 }
 
-// Parses a secret field: skips update if the value is the predefined placeholder sent by web page
-void Application::parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage)
-{
-  if (jv.is<const char *>() && (!fromWebPage || strcmp_P(jv, predefPassword)))
-    strlcpy(dest, jv, size);
-}
-
 void Application::parseIPField(JsonVariant jv, uint32_t &dest)
 {
   if (jv.is<const char *>())
@@ -157,7 +150,15 @@ bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */
 
   clientSecure.setInsecure();
   http.begin(clientSecure, String(F("https://api.github.com/repos/" CUSTOM_APP_MANUFACTURER "/" CUSTOM_APP_MODEL "/releases/latest")));
+
+#ifdef ESP8266
+  ESP.wdtFeed(); // fresh 6 s window before TLS handshake
+#endif
   int httpCode = http.GET();
+
+#ifdef ESP8266
+  ESP.wdtFeed(); // reset before parse phase
+#endif
 
   // check for http error
   if (httpCode != 200)

@@ -46,7 +46,12 @@ protected:
   const __FlashStringHelper *getMqttTopicSuffix();
 
   static void fillSecret(JsonVariant json, const __FlashStringHelper *key, const char *value, bool forSaveFile);
-  static void parseSecret(JsonVariant jv, char *dest, size_t size, bool fromWebPage);
+  template <size_t N>
+  static void parseSecret(JsonVariant jv, char (&dest)[N], bool fromWebPage)
+  {
+    if (jv.is<const char *>() && (!fromWebPage || strcmp_P(jv, predefPassword)))
+      strlcpy(dest, jv, N);
+  }
   static void parseIPField(JsonVariant jv, uint32_t &dest);
 
   template <typename T>
