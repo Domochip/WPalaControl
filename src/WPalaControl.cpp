@@ -2262,7 +2262,7 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   parseField(json[F("hamtype")], _ha.mqtt.type);
   parseField(json[F("hamport")], _ha.mqtt.port);
   parseField(json[F("hamu")], _ha.mqtt.username);
-  parseSecret(json[F("hamp")], _ha.mqtt.password, sizeof(_ha.mqtt.password), fromWebPage);
+  parseSecret(json[F("hamp")], _ha.mqtt.password, fromWebPage);
   parseField(json[F("hamgbt")], _ha.mqtt.generic.baseTopic);
   parseField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
   parseField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix);
