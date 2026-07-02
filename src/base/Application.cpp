@@ -179,23 +179,32 @@ bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */
   bool inOuterString = false;      // true while the outer loop is inside a JSON string value
   bool prevWasBackslash = false;   // used to detect escaped quotes inside strings
 
-  // readNextChar waits briefly for the next byte, allowing the WiFi stack to
+  // readNextChar waits (up to 500ms) briefly for the next byte, allowing the WiFi stack to
   // process incoming TCP segments that haven't arrived yet (fixes premature exit
   // when the receive buffer empties between two TCP segments)
   auto readNextChar = [&](char &c) -> bool
   {
-    for (uint8_t i = 0; i < 200 && !stream->available(); i++) // available includes an optimistic_yield of 100us
-      ;
-    if (!stream->available())
-      return false;
+    uint32_t start = millis();
+    while (!stream->available())
+    {
+      if (millis() - start >= 500)
+        return false;
+      delay(1); // lets the WiFi/lwIP stack process incoming segments
+    }
     c = stream->read();
     return true;
   };
 
   // while there is data to read
   char c;
+  uint16_t byteCount = 0;
   while (readNextChar(c))
   {
+#ifdef ESP8266
+    // a run of slow reads can now stall up to 500 ms each
+    if (++byteCount % 32 == 0)
+      ESP.wdtFeed();
+#endif
 
     // toggle string mode on unescaped quotes; only count braces/brackets outside strings
     if (c == '"' && !prevWasBackslash)
@@ -375,7 +384,15 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   HTTPClient https;
   https.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   https.begin(clientSecure, fwUrl);
+
+#ifdef ESP8266
+  ESP.wdtFeed(); // fresh 6 s window before TLS handshake
+#endif
   int httpCode = https.GET();
+
+#ifdef ESP8266
+  ESP.wdtFeed(); // fresh 6 s window before stream readiness wait
+#endif
 
   if (httpCode != 200)
   {
@@ -407,8 +424,10 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
 
   // sometime the stream is not yet ready (no data available yet)
   // and writeStream start by a peek which then fail
-  for (uint8_t i = 0; i < 200 && stream->available() == 0; i++) // available include an optimistic_yield of 100us
-    ;
+  // so wait up to 500ms for the first byte to be available
+  uint32_t streamWaitStart = millis();
+  while (stream->available() == 0 && millis() - streamWaitStart < 500)
+    delay(1); // cooperative yield, lets the WiFi/lwIP stack process incoming segments
   Update.writeStream(*stream);
 
   Update.end();
