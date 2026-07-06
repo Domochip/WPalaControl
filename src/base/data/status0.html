@@ -1,38 +1,40 @@
-<h2 class="content-subhead">System<span id="l">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-
-SN : <span id="sn"></span><br>
-Version : <span id="version"></span><br>
-UpTime : <span id="uptime"></span><br>
-FreeHeap : <span id="freeheap"></span><br>
-
-<div id="cdiv" style="display:none">
-Crash logged : <span id="crashcount"></span><br>
-Crash files :<span id="cbtns">
-&nbsp;<a href="/crashdl" class="pure-button pure-button-primary" style="font-size:0.75em">Download</a>
-&nbsp;<button class="pure-button pure-button-primary" style="font-size:0.75em;background:rgb(202,60,60)" onclick="clrCrashes()">Clear</button>
-</span>
+<div class="subhead">Module</div>
+<div class="kvGrid">
+    <div class="kvRow"><span>Serial</span><span class="mono" id="sysSerial">—</span></div>
+    <div class="kvRow"><span>Firmware</span><span class="mono" id="sysVersion">—</span></div>
+    <div class="kvRow"><span>Uptime</span><span class="mono" id="sysUptime">—</span></div>
+    <div class="kvRow"><span>Free heap</span><span class="mono" id="sysFreeheap">—</span></div>
+</div>
+<div id="crashRow" style="display:none; align-items:center; justify-content:space-between; margin-top:10px; font-size:13px;">
+    <span style="color:var(--text-dim);">Crash logs (<span id="crashCount">0</span>)</span>
+    <span style="display:flex; gap:8px;">
+        <a href="/crashdl" class="btnGhost" style="text-decoration:none; display:inline-block;">Download</a>
+        <button class="btnDanger" id="crashClrBtn">Clear</button>
+    </span>
 </div>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content0 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py
 
-    getJSON("/gs" + qsp[8], function (GS) {
-        for (k in GS) {
-            if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
-        }
-        if (GS.crashcount > 0) {
-            $(qsp + '#cdiv').style.display = '';
-        }
-        fadeOut($(qsp + "#l"));
-    }, function () {
-        $(qsp + "#l").innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+    onSectionOpen('Status', function () {
+        getJSON("/gs" + qsp[8], function (GS) {
+            $(qsp + '#sysSerial').textContent = GS.sn;
+            $(qsp + '#sysVersion').textContent = GS.version;
+            $(qsp + '#sysUptime').textContent = GS.uptime;
+            $(qsp + '#sysFreeheap').textContent = GS.freeheap;
+
+            WPC.setSystem({ sn: GS.sn, version: GS.version, uptime: GS.uptime, freeheap: GS.freeheap });
+
+            if (GS.crashcount > 0) {
+                $(qsp + '#crashCount').textContent = GS.crashcount;
+                $(qsp + '#crashRow').style.display = 'flex';
+            }
+        });
     });
 
-    function clrCrashes() {
+    $(qsp + '#crashClrBtn').addEventListener('click', function () {
         post('/crashclr', null, function () {
-            $(qsp + '#cdiv').style.display = 'none';
+            $(qsp + '#crashRow').style.display = 'none';
         }, function () { alert('Failed to clear crashes'); });
-    }
+    });
 </script>

@@ -1,289 +1,210 @@
-<style>
-    .pure-control-group label {
-        font-weight: bold;
-    }
-
-    .spinner {
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-left-color: #fff;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        display: inline-block;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>
-
-<h2>Current Firmware<span id="l1">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-<div class="pure-form pure-form-aligned">
-    <div class="pure-control-group">
-        <label for="installed_version">Version</label>
-        <span id='installed_version'></span>
-    </div>
+<div style="padding-top:12px;">
+    <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:5px;">Current firmware</div>
+    <div class="mono" id="fwCurrent" style="font-size:20px; font-weight:600;">v—</div>
 </div>
 
-<h2>Online Update<span id="l2">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-<div class="pure-form pure-form-aligned">
-    <div class="pure-control-group">
-        <label for="latest_version">Latest Version</label>
-        <span id='latest_version'></span>
-    </div>
-    <div class="pure-control-group">
-        <label for="title">Title</label>
-        <span id='title' style="display: inline-block;"></span>
-    </div>
-    <div class="pure-control-group">
-        <label for="release_date">Release Date</label>
-        <span id='release_date'></span>
-    </div>
-    <div class="pure-control-group">
-        <label for="release_summary" style="vertical-align: top;">Summary</label>
-        <span id='release_summary' style="display: inline-block;"></span>
+<div class="hairlineTop">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div class="subhead" style="margin-bottom:0;">Online update</div>
+        <button class="btnGhost" id="fwCheckBtn">Check for updates</button>
     </div>
 
-    <div class="pure-control-group">
-        <label for="release_url">URL</label>
-        <span id='release_url'></span>
+    <div id="fwBanner" class="banner" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div id="fwBannerLabel" style="font-weight:600; font-size:13.5px;"></div>
+            <button class="btnPrimary" id="fwInstallBtn" style="display:none; background:var(--success);">Install update</button>
+        </div>
+        <div style="font-size:13px; font-weight:500; margin-top:10px;" id="fwLatestTitle"></div>
+        <div style="font-size:11.5px; color:var(--text-dim); margin-top:2px;" id="fwReleaseDate"></div>
+        <ul id="fwSummary" style="margin:10px 0 0; padding-left:18px; font-size:12.5px; color:var(--text-dim); line-height:1.6;"></ul>
+        <a id="fwReleaseUrl" href="#" target="_blank" rel="noopener" style="display:inline-block; margin-top:10px; font-size:12.5px; font-weight:500; text-decoration:none;">View release notes ↗</a>
     </div>
-    <div class="pure-controls">
-        <button class="pure-button pure-button-primary" id="refreshButton" style="background: #1cb841;">Refresh</button>
-        <button class="pure-button pure-button-primary" id="updateButton" style="background: #df7514;"
-            disabled>Update</button>
-        &nbsp;&nbsp;<span id='rUpdate'></span>
+
+    <div id="fwProgressWrap" style="margin-top:16px; display:none;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); margin-bottom:6px;">
+            <span>Installing…</span><span id="fwProgressPct">0%</span>
+        </div>
+        <div class="progressTrack">
+            <div class="progressFill" id="fwProgressFill" style="width:0%;"></div>
+        </div>
     </div>
+    <div id="fwUpdateResult" style="margin-top:10px; font-size:13px;"></div>
 </div>
 
-<h2>Manual Update</h2>
-<form class="pure-form pure-form-aligned" id="f" method='POST' action='/fw' enctype='multipart/form-data'>
-    <fieldset>
-        <div class="pure-control-group">
-            <label for="name">Firmware File</label>
-            <input type='file' name='fi' id='fi' accept='.bin' required>
+<div style="padding-top:22px; margin-top:20px; border-top:1px solid var(--border);">
+    <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;">Manual upload</div>
+    <div class="dropzone" id="fwDropzone">Drop a .bin firmware file here, or click to browse</div>
+    <input type="file" id="fwFileInput" accept=".bin" style="display:none;">
+    <div id="fwUploadProgressWrap" style="margin-top:12px; display:none;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); margin-bottom:6px;">
+            <span>Uploading…</span><span id="fwUploadPct">0%</span>
         </div>
-        <div class="pure-controls">
-            <button type='submit' id='uploadButton' class="pure-button pure-button-primary">Upload Firmware</button>
-            &nbsp;&nbsp;<span id='rUpload'></span>
+        <div class="progressTrack">
+            <div class="progressFill" id="fwUploadFill" style="width:0%;"></div>
         </div>
-    </fieldset>
-</form>
+    </div>
+    <div id="fwUploadResult" style="margin-top:10px; font-size:13px;"></div>
+</div>
 
 <script>
-    // QuerySelector Prefix is added by load function to know into what element querySelector needs to look for
-    // var qsp = '#content0 ';
+    // QuerySelector prefix is empty for fw (standalone template, no per-app numbering)
 
-    function firmwareValidation() {
-        const fileInput = $(qsp + '#fi');
-        const model = document.querySelector("meta[name='description']").content;
-        if (!fileInput || !model) {
-            return false;
-        }
+    let fwState = { current: '', latestVersion: '', checked: false };
 
-        let fn = fileInput.value.split(/(\\|\/)/g).pop();
-
-        // Define the patterns for the filename
-        const esp32Pattern = '(\\.esp32)?';
-        const versionPattern = '(\\.\\d+\\.\\d+\\.\\d+)?';
-        const filenamePattern1 = new RegExp(`^${model}${esp32Pattern}${versionPattern}.*\\.bin$`, 'i');
-        let filenamePattern2 = null;
-
-        // If model starts with 'W', define an additional pattern
-        if (model.startsWith('W')) {
-            const modelWithoutFirstChar = model.substring(1);
-            filenamePattern2 = new RegExp(`^Wireless${modelWithoutFirstChar}${esp32Pattern}${versionPattern}.*\\.bin$`, 'i');
-        }
-
-        // Check if the filename matches either pattern
-        if (!filenamePattern1.test(fn) && (!filenamePattern2 || !filenamePattern2.test(fn))) {
-            alert(`You didn't select a valid Firmware file for ${model} (${model}.1.2.3.bin expected)`);
-            return false;
-        }
-        return confirm("Please do not power off the device during the update process.");
-    }
-
-    function compareVersions(installed, latest) {
-        const installedParts = installed.split('.').map(Number);
-        const latestParts = latest.split('.').map(Number);
-
-        for (let i = 0; i < Math.max(installedParts.length, latestParts.length); i++) {
-            const installedPart = installedParts[i] || 0;
-            const latestPart = latestParts[i] || 0;
-            if (installedPart < latestPart) { return -1; }
-            if (installedPart > latestPart) { return 1; }
+    function compareVersions(a, b) {
+        const ap = a.split('.').map(Number), bp = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+            const x = ap[i] || 0, y = bp[i] || 0;
+            if (x < y) return -1;
+            if (x > y) return 1;
         }
         return 0;
     }
 
-    function disableAllButtons() {
-        $(qsp + '#refreshButton').disabled = true;
-        $(qsp + '#updateButton').disabled = true;
-        $(qsp + '#fi').readOnly = true;
-        $(qsp + '#uploadButton').disabled = true;
+    function renderFwBanner() {
+        const updateAvailable = fwState.checked && fwState.latestVersion && compareVersions(fwState.latestVersion, fwState.current) > 0;
+        const banner = $('#fwBanner');
+        if (!fwState.checked) { banner.style.display = 'none'; return; }
+        banner.style.display = '';
+        banner.style.background = updateAvailable ? 'var(--accent-soft)' : 'var(--success-soft)';
+        $('#fwBannerLabel').style.color = updateAvailable ? 'var(--accent-text)' : 'var(--success)';
+        $('#fwBannerLabel').textContent = (updateAvailable ? 'Update available' : 'Up to date') + (fwState.latestVersion ? (' · v' + fwState.latestVersion) : '');
+        $('#fwInstallBtn').style.display = updateAvailable ? '' : 'none';
+        $('#fwLatestTitle').textContent = fwState.latestTitle || '';
+        $('#fwReleaseDate').textContent = fwState.releaseDate ? ('Released ' + fwState.releaseDate) : '';
+        const summaryLines = (fwState.summary || '').split(/\r\n|\n/).map(l => l.trim()).filter(Boolean);
+        $('#fwSummary').innerHTML = summaryLines.map(l => '<li>' + l + '</li>').join('');
+        const link = $('#fwReleaseUrl');
+        if (fwState.releaseUrl) { link.href = fwState.releaseUrl; link.style.display = 'inline-block'; }
+        else link.style.display = 'none';
     }
 
-    function calculateAllButtonStates() {
-        const refreshButton = $(qsp + '#refreshButton');
-        refreshButton.innerHTML = 'Refresh';
-        refreshButton.disabled = false;
-
-        const installedVersion = $(qsp + '#installed_version').textContent;
-        const latestVersion = $(qsp + '#latest_version').textContent;
-        const updateButton = $(qsp + '#updateButton');
-        if (compareVersions(latestVersion, installedVersion) > 0) {
-            updateButton.disabled = false;
-            updateButton.innerHTML = 'Update';
-        } else {
-            updateButton.disabled = true;
-            updateButton.innerHTML = latestVersion ? 'Up to date' : 'Update';
-        }
-
-        const uploadButton = $(qsp + '#uploadButton');
-        uploadButton.innerHTML = 'Upload Firmware';
-        uploadButton.disabled = false;
-        $(qsp + '#fi').readOnly = false;
-    }
-
-    function getLatestUpdateInfo() {
-
-        disableAllButtons();
-
-        const refreshButton = $(qsp + "#refreshButton");
-
-        // Show loading animation
-        refreshButton.innerHTML = '<span class="spinner"></span> Refreshing...';
-
-        // clear previous values
-        ['#latest_version', '#title', '#release_date', '#release_summary', '#release_url'].forEach(id => {
-            $(qsp + id).innerHTML = '';
-        });
-
+    function checkForUpdates() {
+        $('#fwCheckBtn').disabled = true;
+        $('#fwCheckBtn').innerHTML = '<span class="spinner"></span> Checking…';
         getJSON('/glui',
-            (GUI) => {
-                for (k in GUI) {
-                    if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GUI[k];
-                }
-                // transform the release url into a clickable link
-                const releaseUrlSpan = $(qsp + '#release_url');
-                const url = releaseUrlSpan.innerHTML;
-                if (url) {
-                    releaseUrlSpan.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
-                }
-
-                // transform line breaks into <br> tags in the release summary
-                const releaseSummarySpan = $(qsp + '#release_summary');
-                const summary = releaseSummarySpan.innerHTML;
-                if (summary) {
-                    releaseSummarySpan.innerHTML = summary.replace(/\r\n/g, '<br>').replace(/\n/g, '<br>');
-                }
-
-                // Update buttons
-                calculateAllButtonStates();
-
-                fadeOut($(qsp + "#l1"));
-                fadeOut($(qsp + "#l2"));
-
+            function (GUI) {
+                fwState.current = GUI.installed_version;
+                fwState.latestVersion = GUI.latest_version || '';
+                fwState.latestTitle = GUI.title || '';
+                fwState.releaseDate = GUI.release_date || '';
+                fwState.summary = GUI.release_summary || '';
+                fwState.releaseUrl = GUI.release_url || '';
+                fwState.checked = true;
+                $('#fwCurrent').textContent = 'v' + fwState.current;
+                $('#fwCheckBtn').disabled = false;
+                $('#fwCheckBtn').textContent = 'Check again';
+                renderFwBanner();
             },
-            () => {
-
-                calculateAllButtonStates();
-                ['#l1', '#l2'].forEach(id => {
-                    $(qsp + id).innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
-                });
+            function () {
+                $('#fwCheckBtn').disabled = false;
+                $('#fwCheckBtn').textContent = 'Check again';
+                $('#fwUpdateResult').innerHTML = '<span style="color:var(--danger);">Failed to check for updates</span>';
             }
         );
     }
-    getLatestUpdateInfo();
-    $(qsp + "#refreshButton").addEventListener('click', () => { getLatestUpdateInfo(); });
+    $('#fwCheckBtn').addEventListener('click', checkForUpdates);
 
-    $(qsp + "#updateButton").addEventListener('click', (evt) => {
-        evt.preventDefault();
-        disableAllButtons();
-
-        $(qsp + '#updateButton').innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
-
-        fetch('/update', {
-            method: 'POST',
-            body: $(qsp + '#latest_version').textContent
-        })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => { throw new Error(text); });
-                }
+    $('#fwInstallBtn').addEventListener('click', function () {
+        $('#fwInstallBtn').disabled = true;
+        $('#fwProgressWrap').style.display = '';
+        fetch('/update', { method: 'POST', body: fwState.latestVersion })
+            .then(function (response) {
+                if (!response.ok) return response.text().then(function (text) { throw new Error(text); });
                 const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-                let chunkAccumulator = '';
-                let success = false, message = '';
-
-                function processChunk({ done, value }) {
-                    if (done) {
+                let chunkAccumulator = '', success = false, message = '';
+                function processChunk(result) {
+                    if (result.done) {
                         if (success) {
-                            $(qsp + '#progress').innerHTML = 'Rebooting...';
-                            $(qsp + '#rUpdate').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+                            $('#fwProgressPct').textContent = 'Rebooting…';
+                            $('#fwUpdateResult').innerHTML = 'Waiting for device… <span id="cd">0</span>s';
                             redirectWhenReachable(location.origin, 60000);
                         } else {
-                            $(qsp + '#rUpdate').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${message})`;
-                            calculateAllButtonStates();
+                            $('#fwUpdateResult').innerHTML = '<span style="color:var(--danger);"><b>Failed</b></span> (' + message + ')';
+                            $('#fwInstallBtn').disabled = false;
                         }
                         return;
                     }
-                    chunkAccumulator += value;
+                    chunkAccumulator += result.value;
                     const chunks = chunkAccumulator.split('\n');
                     chunkAccumulator = chunks.pop();
-                    chunks.forEach((chunk, index) => {
-                        if (chunk.startsWith('p:')) $(qsp + '#progress').innerHTML = `${parseInt(chunk.substring(2))}%`;
+                    chunks.forEach(function (chunk) {
+                        if (chunk.startsWith('p:')) {
+                            const pct = parseInt(chunk.substring(2));
+                            $('#fwProgressPct').textContent = pct + '%';
+                            $('#fwProgressFill').style.width = pct + '%';
+                        }
                         else if (chunk.startsWith('s:')) success = chunk.substring(2) === 'true';
                         else if (chunk.startsWith('m:')) message = chunk.substring(2);
                     });
-                    reader.read().then(processChunk); // Read the next chunk
+                    reader.read().then(processChunk);
                 }
-                reader.read().then(processChunk); // Start reading chunks
+                reader.read().then(processChunk);
             })
-            .catch(error => {
-                $(qsp + '#rUpdate').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${error.message})`;
-                calculateAllButtonStates();
+            .catch(function (error) {
+                $('#fwUpdateResult').innerHTML = '<span style="color:var(--danger);"><b>Failed</b></span> (' + error.message + ')';
+                $('#fwInstallBtn').disabled = false;
             });
     });
 
-    $(qsp + "#f").addEventListener('submit', (evt) => {
-        evt.preventDefault();
-        if (!firmwareValidation()) return;
-        disableAllButtons();
+    // ---- manual upload ----
+    function validFilename(filename) {
+        const model = document.querySelector("meta[name='description']").content;
+        const esp32 = '(\\.esp32)?';
+        const ver = '(\\.\\d+\\.\\d+\\.\\d+)?';
+        const p1 = new RegExp(`^${model}${esp32}${ver}.*\\.bin$`, 'i');
+        let p2 = null;
+        if (model.startsWith('W')) {
+            p2 = new RegExp(`^Wireless${model.substring(1)}${esp32}${ver}.*\\.bin$`, 'i');
+        }
+        return p1.test(filename) || (p2 && p2.test(filename));
+    }
 
-        // Add loading animation to the submit button
-        $(qsp + '#uploadButton').innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
+    function uploadFirmware(file) {
+        if (!validFilename(file.name)) {
+            const model = document.querySelector("meta[name='description']").content;
+            alert(`This doesn't look like a valid firmware file for ${model} (expected something like ${model}.1.2.3.bin)`);
+            return;
+        }
+        if (!confirm('Please do not power off the device during the update process.')) return;
 
-        post('/fw',
-            new FormData($(qsp + '#f')),
-            () => {
-                $(qsp + '#progress').innerHTML = 'Rebooting...';
-                $(qsp + '#rUpload').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+        $('#fwDropzone').style.pointerEvents = 'none';
+        $('#fwUploadProgressWrap').style.display = '';
+        $('#fwUploadResult').innerHTML = '';
+
+        const formData = new FormData();
+        formData.append('fi', file);
+
+        post('/fw', formData,
+            function () {
+                $('#fwUploadPct').textContent = 'Rebooting…';
+                $('#fwUploadResult').innerHTML = 'Waiting for device… <span id="cd">0</span>s';
                 redirectWhenReachable(location.origin, 60000);
             },
-            (responseText) => {
-                $(qsp + '#rUpload').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${responseText})`;
-                $(qsp + '#f').reset();
-                calculateAllButtonStates();
+            function (responseText) {
+                $('#fwUploadResult').innerHTML = '<span style="color:var(--danger);"><b>Failed</b></span> (' + responseText + ')';
+                $('#fwDropzone').style.pointerEvents = '';
             },
             30000,
             function (evt) {
                 if (evt.lengthComputable) {
-                    const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                    $(qsp + '#progress').innerHTML = `${percentComplete}%`;
+                    const pct = Math.round((evt.loaded / evt.total) * 100);
+                    $('#fwUploadPct').textContent = pct + '%';
+                    $('#fwUploadFill').style.width = pct + '%';
                 }
             }
         );
     }
-    );
+
+    $('#fwDropzone').addEventListener('click', function () { $('#fwFileInput').click(); });
+    $('#fwFileInput').addEventListener('change', function () {
+        if (this.files[0]) uploadFirmware(this.files[0]);
+    });
+    $('#fwDropzone').addEventListener('dragover', function (e) { e.preventDefault(); });
+    $('#fwDropzone').addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (e.dataTransfer.files[0]) uploadFirmware(e.dataTransfer.files[0]);
+    });
+
+    onSectionOpen('Firmware', checkForUpdates);
 </script>

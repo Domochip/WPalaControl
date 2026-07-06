@@ -5,9 +5,9 @@
 #include "Version.h" //for BASE_VERSION define
 
 #include "data/index.html.gz.h"
-#include "data/pure-min.css.gz.h"
-#include "data/side-menu.css.gz.h"
-#include "data/side-menu.js.gz.h"
+#include "data/fonts/PlusJakartaSans-Variable.woff2.gz.h"
+#include "data/fonts/IBMPlexMono-400.woff2.gz.h"
+#include "data/fonts/IBMPlexMono-500.woff2.gz.h"
 
 const char *Core::getSerialNumber()
 {
@@ -86,31 +86,29 @@ void Core::appInitWebServer(WebServer &server)
             });
 
   // Ressources URLs
-  server.on(F("/pure-min.css"), HTTP_GET,
+  // Self-hosted fonts (not gzipped: woff2 is already compressed). Long cache since filenames are stable per firmware version.
+  server.on(F("/fonts/PlusJakartaSans-Variable.woff2"), HTTP_GET,
             [&server]()
             {
               SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
               server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/css"), puremincssgz, sizeof(puremincssgz));
+              server.send_P(200, PSTR("font/woff2"), PlusJakartaSansVariablewoff2, sizeof(PlusJakartaSansVariablewoff2));
             });
 
-  server.on(F("/side-menu.css"), HTTP_GET,
+  server.on(F("/fonts/IBMPlexMono-400.woff2"), HTTP_GET,
             [&server]()
             {
               SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
               server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/css"), sidemenucssgz, sizeof(sidemenucssgz));
+              server.send_P(200, PSTR("font/woff2"), IBMPlexMono400woff2, sizeof(IBMPlexMono400woff2));
             });
 
-  server.on(F("/side-menu.js"), HTTP_GET,
+  server.on(F("/fonts/IBMPlexMono-500.woff2"), HTTP_GET,
             [&server]()
             {
               SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
               server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/javascript"), sidemenujsgz, sizeof(sidemenujsgz));
+              server.send_P(200, PSTR("font/woff2"), IBMPlexMono500woff2, sizeof(IBMPlexMono500woff2));
             });
 
   // Get Latest Update Info ---------------------------------------------------------

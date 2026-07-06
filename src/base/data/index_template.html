@@ -7,69 +7,928 @@
     <meta name="description" content="{{APP_MODEL}}">
     <title>Domochip {{APP_MODEL}}</title>
 
-    <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="side-menu.css">
     <style>
-        .infotip {
-            background: #1Cb841;
-            padding: 0.3em 0.3em;
-            border-radius: 3px;
-            color: #fff;
-            font-weight: bold;
+        @font-face {
+            font-family: 'Plus Jakarta Sans';
+            font-style: normal;
+            font-weight: 400 700;
+            font-display: swap;
+            src: url(fonts/PlusJakartaSans-Variable.woff2) format('woff2');
         }
 
-        .infotipdiv {
-            background: #1Cb841;
-            padding: 0.3em 1em;
-            border-radius: 3px;
+        @font-face {
+            font-family: 'IBM Plex Mono';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url(fonts/IBMPlexMono-400.woff2) format('woff2');
+        }
+
+        @font-face {
+            font-family: 'IBM Plex Mono';
+            font-style: normal;
+            font-weight: 500;
+            font-display: swap;
+            src: url(fonts/IBMPlexMono-500.woff2) format('woff2');
+        }
+
+        :root {
+            --bg: #F5F6F8;
+            --surface: #FFFFFF;
+            --border: #E5E8EC;
+            --text: #12141C;
+            --text-dim: #666E7C;
+            --text-faint: #9AA1AD;
+            --accent: #2563EB;
+            --accent-soft: #EAF1FE;
+            --accent-text: #1D4ED8;
+            --danger: #DC2626;
+            --danger-soft: #FCE9E8;
+            --success: #189A52;
+            --success-soft: #E7F7ED;
+            --input-bg: #F5F6F8;
+            --shadow: 0 1px 2px rgba(15, 20, 30, 0.04), 0 6px 20px rgba(15, 20, 30, 0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #141414;
+                --surface: #1C1C1C;
+                --border: #2C2C2C;
+                --text: #EDEDED;
+                --text-dim: #999999;
+                --text-faint: #5C5C5C;
+                --accent: #5B9BF5;
+                --accent-soft: #1C2733;
+                --accent-text: #9CC1F7;
+                --danger: #EF6B5D;
+                --danger-soft: #241716;
+                --success: #45C97D;
+                --success-soft: #101E17;
+                --input-bg: #212121;
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        ::placeholder {
+            color: var(--text-faint);
+        }
+
+        input,
+        select,
+        button {
+            font-family: inherit;
+            color: var(--text);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent) !important;
+        }
+
+        a {
+            color: var(--accent);
+        }
+
+        .mono {
+            font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+        }
+
+        .pageWrap {
+            min-height: 100vh;
+        }
+
+        .pageInner {
+            max-width: 840px;
+            margin: 0 auto;
+            padding: 48px clamp(20px, 4vw, 48px) 100px;
+        }
+
+        /* ---- masthead ---- */
+        .masthead {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .masthead-title {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .masthead-sub {
+            font-size: 12.5px;
+            color: var(--text-dim);
+        }
+
+        .pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 11px;
+            border-radius: 99px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        .pill-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 99px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex: none;
+        }
+
+        .hoverWrap {
+            position: relative;
+        }
+
+        .hoverWrap .hoverMenu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            padding-top: 6px;
+            z-index: 60;
+        }
+
+        .hoverWrap:hover .hoverMenu,
+        .hoverWrap .hoverMenu:hover {
+            display: block;
+        }
+
+        .menuBox {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            width: 200px;
+            overflow: hidden;
+        }
+
+        .menuBox button {
+            display: block;
+            width: 100%;
+            padding: 11px 14px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .menuBox button:hover {
+            background: var(--input-bg);
+        }
+
+        .menuBox button+button {
+            border-top: 1px solid var(--border);
+        }
+
+        .menuBox button.danger {
+            color: var(--danger);
+        }
+
+        /* ---- AP collision banner ---- */
+        .apWarning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 16px;
             color: #fff;
-            margin-bottom: 0.5em;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--danger);
+            z-index: 100;
+        }
+
+        /* ---- hero ---- */
+        .hero {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px 28px;
+            margin-bottom: 20px;
+        }
+
+        .hero-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .hero-status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12.5px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .hero-updated {
+            font-size: 11.5px;
+            color: var(--text-faint);
+        }
+
+        .hero-body {
+            display: flex;
+            align-items: stretch;
+            gap: 32px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .hero-main {
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .hero-main-btn {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+            text-align: left;
+            color: var(--text);
+            width: fit-content;
+        }
+
+        .hero-main-value {
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hero-main-label {
+            font-size: 13.5px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .hero-divider {
+            width: 1px;
+            background: var(--border);
+            align-self: stretch;
+            flex: none;
+        }
+
+        .hero-grid {
+            flex: 1 1 260px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 8px;
+            align-content: center;
+        }
+
+        .hero-slot-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            width: 100%;
+            text-align: left;
+            color: var(--text);
+        }
+
+        .hero-slot-btn:hover {
+            background: var(--input-bg);
+        }
+
+        .hero-slot-label {
+            font-size: 11.5px;
+            color: var(--text-dim);
+        }
+
+        .hero-slot-value {
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'IBM Plex Mono', monospace;
+            margin-top: 2px;
+            color: var(--text);
+        }
+
+        .chev {
+            flex: none;
+            transition: transform .15s;
+        }
+
+        .chev.open {
+            transform: rotate(180deg);
+        }
+
+        .slotMenu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            width: 200px;
+            z-index: 60;
+            overflow: hidden;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .slotMenu button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 9px 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .slotMenu button.active {
+            background: var(--accent-soft);
+        }
+
+        .slotMenu button:hover {
+            background: var(--input-bg);
+        }
+
+        .slotBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 59;
+        }
+
+        /* ---- sections / accordion ---- */
+        .sections {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .section+.section {
+            border-top: 1px solid var(--border);
+        }
+
+        .accHeader {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            text-align: left;
+            color: var(--text);
+        }
+
+        .accHeader-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .accHeader-title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .accBody {
+            padding: 4px 20px 22px;
+            display: none;
+        }
+
+        .accBody.open {
+            display: block;
+        }
+
+        /* ---- generic content helpers (used inside fragments) ---- */
+        .grid4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding-top: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .grid4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .statLabel {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .statValue {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14.5px;
+            margin-top: 3px;
+        }
+
+        .subhead {
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text);
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .kvGrid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+            font-size: 13.5px;
+        }
+
+        @media (max-width: 480px) {
+            .kvGrid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .kvRow {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .kvRow>span:first-child {
+            color: var(--text-dim);
+        }
+
+        .hairlineTop {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .linkBtn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .rawGrid {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 18px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            background: var(--input-bg);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        @media (max-width: 480px) {
+            .rawGrid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rawRow {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .rawRow>span:first-child {
+            color: var(--text-dim);
+        }
+
+        label.formLabel {
+            display: block;
+            font-size: 12.5px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        label.formLabelSm {
+            display: block;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .field {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .fieldSm {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 13.5px;
+        }
+
+        .grid2gap10 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .grid2gap10 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btnPrimary {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13.5px;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btnPrimary:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+
+        .btnGhost {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12.5px;
+            background: var(--input-bg);
+            color: var(--text);
+        }
+
+        .btnDanger {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--danger);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12.5px;
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        /* real <input type=checkbox> styled as a pill toggle so form serialization needs no extra JS syncing */
+        .toggleCheckbox {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 38px;
+            height: 22px;
+            border-radius: 99px;
+            border: none;
+            background: var(--border);
+            position: relative;
+            cursor: pointer;
+            margin: 0;
+            flex: none;
+        }
+
+        .toggleCheckbox::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            transition: left .15s;
+        }
+
+        .toggleCheckbox:checked {
+            background: var(--accent);
+        }
+
+        .toggleCheckbox:checked::after {
+            left: 19px;
+        }
+
+        .rowBetween {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+
+        .segmented {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            width: fit-content;
+            background: var(--input-bg);
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .segmented button {
+            padding: 7px 16px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-dim);
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .segmented button.active {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .chipRow {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 7px 13px;
+            border-radius: 99px;
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            font-weight: 500;
+            font-size: 12.5px;
+            cursor: pointer;
+        }
+
+        .chip.active {
+            border-color: var(--accent-soft);
+            background: var(--accent-soft);
+            color: var(--accent-text);
+        }
+
+        .banner {
+            margin-top: 16px;
+            padding: 16px 18px;
+            border-radius: 10px;
+        }
+
+        .progressTrack {
+            height: 6px;
+            border-radius: 99px;
+            background: var(--input-bg);
+            overflow: hidden;
+        }
+
+        .progressFill {
+            height: 100%;
+            background: var(--accent);
+            transition: width .2s;
+        }
+
+        .dropzone {
+            border: 1.5px dashed var(--border);
+            border-radius: 10px;
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--text-faint);
+            font-size: 13px;
+            background: var(--input-bg);
+            cursor: pointer;
+        }
+
+        .spinner {
+            border: 2px solid rgba(120, 120, 120, 0.3);
+            border-left-color: var(--text-dim);
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
             display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ---- footer ---- */
+        .footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 28px;
+            padding-top: 20px;
+        }
+
+        .footer a {
+            color: var(--text-dim);
+            text-decoration: none;
         }
     </style>
 </head>
 
 <body>
-    <div id="layout">
-        <!-- Menu toggle -->
-        <a href="#menu" id="menuLink" class="menu-link">
-            <!-- Hamburger icon -->
-            <span></span>
-        </a>
+    <div class="pageWrap">
+        <div class="pageInner">
 
-        <div id="menu">
-            <div class="pure-menu">
-                <div class="pure-menu-heading" style="padding-left:0.5em;">Domochip</div>
-                <div class="pure-menu-heading" style="padding-left:0.5em; padding-top: 0;" id="menuModel">{{APP_MODEL}}</div>
-
-                <ul class="pure-menu-list">
-                    <li class="pure-menu-item" id="menuStatus"><a href="" class="pure-menu-link">Status</a></li>
-                    <li class="pure-menu-item" id="menuConfig"><a href="" class="pure-menu-link">Config</a></li>
-                    <li class="pure-menu-item" id="menuFirmware"><a href="" class="pure-menu-link">Firmware</a></li>
-                </ul>
+            <!-- Masthead -->
+            <div class="masthead">
+                <div style="flex:1;">
+                    <div class="masthead-title">{{APP_MODEL}}</div>
+                    <div class="masthead-sub">Fumis stove module</div>
+                </div>
+                <div class="hoverWrap" id="rebootWrap">
+                    <button class="pill-btn" id="rebootPillBtn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2v8m0 12v-3M4.9 4.9l2.1 2.1m10 10l2.1 2.1M2 12h3m14 0h3M4.9 19.1L7 17m10-10l2.1-2.1"
+                                stroke="var(--text-dim)" stroke-width="1.75" stroke-linecap="round" />
+                        </svg>
+                        <span id="rebootPillLabel">Reboot</span>
+                    </button>
+                    <div class="hoverMenu" id="rebootMenu">
+                        <div class="menuBox">
+                            <button id="rebootNormalBtn">Reboot</button>
+                            <button id="rebootRescueBtn" class="danger">Reboot in rescue mode</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="pill">
+                    <div class="dot" id="connDot" style="background:var(--text-faint);"></div>
+                    <span id="connLabel">—</span>
+                </div>
             </div>
-        </div>
 
-        <div id="main">
-            <div class="header">
-                <h1 id="mainHeader"></h1>
+            <!-- Hero -->
+            <div class="hero">
+                <div class="hero-top">
+                    <div class="hero-status">
+                        <div class="dot" id="heroStatusDot" style="background:var(--text-faint);"></div>
+                        <span id="heroStatusLabel">—</span>
+                    </div>
+                    <span class="hero-updated">Updated <span id="heroUpdated">—</span></span>
+                </div>
+                <div class="hero-body">
+                    <div class="hero-main" id="heroMain"></div>
+                    <div class="hero-divider"></div>
+                    <div class="hero-grid" id="heroGrid"></div>
+                </div>
             </div>
 
-            <div class="content" id="content"></div>
+            <!-- Sections -->
+            <div class="sections">
+                <div class="section">
+                    <button class="accHeader" id="accBtnStatus">
+                        <div class="accHeader-left">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                <path d="M3 12h4l2 8 4-16 2 8h6" stroke="var(--text-dim)" stroke-width="1.75"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <span class="accHeader-title">Status details</span>
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="chev" id="accChevStatus">
+                            <path d="M6 9l6 6 6-6" stroke="var(--text-dim)" stroke-width="1.75" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                    <div class="accBody open" id="accBodyStatus"></div>
+                </div>
+
+                <div class="section">
+                    <button class="accHeader" id="accBtnConfig">
+                        <div class="accHeader-left">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 6h10M4 12h16M4 18h7" stroke="var(--text-dim)" stroke-width="1.75"
+                                    stroke-linecap="round" />
+                                <circle cx="17" cy="6" r="2.2" fill="var(--surface)" stroke="var(--text-dim)"
+                                    stroke-width="1.75" />
+                                <circle cx="9" cy="18" r="2.2" fill="var(--surface)" stroke="var(--text-dim)"
+                                    stroke-width="1.75" />
+                            </svg>
+                            <span class="accHeader-title">Configuration</span>
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="chev" id="accChevConfig">
+                            <path d="M6 9l6 6 6-6" stroke="var(--text-dim)" stroke-width="1.75" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                    <div class="accBody" id="accBodyConfig"></div>
+                </div>
+
+                <div class="section">
+                    <button class="accHeader" id="accBtnFirmware">
+                        <div class="accHeader-left">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="var(--text-dim)" stroke-width="1.75"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <span class="accHeader-title">Firmware</span>
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="chev" id="accChevFirmware">
+                            <path d="M6 9l6 6 6-6" stroke="var(--text-dim)" stroke-width="1.75" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                    <div class="accBody" id="accBodyFirmware"></div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--text-faint)">
+                    <path
+                        d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5 0-.24-.01-1.04-.01-1.88-2.78.62-3.37-1.21-3.37-1.21-.46-1.2-1.11-1.53-1.11-1.53-.91-.64.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.86.09-.66.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05a9.3 9.3 0 015 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .28.18.6.69.5A10.26 10.26 0 0022 12.25C22 6.58 17.52 2 12 2z" />
+                </svg>
+                <span style="font-size:12px; color:var(--text-faint);">Built on <a
+                        href="https://github.com/Domochip/WPalaControl" target="_blank" rel="noopener">Domochip/WPalaControl</a></span>
+            </div>
+
         </div>
     </div>
 
-<!-- TEMPLATES -->
+    <!-- TEMPLATES -->
 
     <script>
         function $(selector, el = document) {
             return el.querySelector(selector);
         }
-    </script>
-    <script src="side-menu.js"></script>
-    <script>
-        const loadedScripts = new Set();
 
+        // ---- template mounting (fragments carry their own <script> which must be executed manually) ----
         function loadScript(code) {
             const script = document.createElement('script');
             const blob = new Blob([code], { type: 'application/javascript' });
@@ -77,17 +936,18 @@
             script.src = url;
             script.onload = () => URL.revokeObjectURL(url);
             document.head.appendChild(script);
-            loadedScripts.add(script);
         }
 
-        function unloadScripts() {
-            loadedScripts.forEach(script => {
-                if (script.src) { URL.revokeObjectURL(script.src); }
-                document.head.removeChild(script);
-            });
-            loadedScripts.clear();
+        function load(element, templateId) {
+            const tpl = document.getElementById(templateId);
+            element.innerHTML = tpl.innerHTML;
+            const scriptList = element.getElementsByTagName('script');
+            for (const script of scriptList) {
+                loadScript(script.innerHTML);
+            }
         }
 
+        // ---- generic request helpers (used by fragments too) ----
         function request(method, url, data, success, fail, timeout, uploadProgress) {
             const xhr = new XMLHttpRequest();
             xhr.onreadystatechange = () => {
@@ -106,25 +966,10 @@
             xhr.send(data);
         }
 
-        // Loads a page from an embedded <template> element into the target element.
-        // Scripts inside the template are executed via loadScript (scripts in innerHTML don't auto-execute).
-        function load(element, templateId) {
-            const tpl = document.getElementById(templateId);
-            element.innerHTML = tpl.innerHTML;
-            const scriptList = element.getElementsByTagName('script');
-            for (const script of scriptList) {
-                loadScript(script.innerHTML);
-            }
-        }
-
-        function get(url, success, fail) {
-            request("GET", url, null, success, fail);
-        }
+        function get(url, success, fail) { request("GET", url, null, success, fail); }
 
         function getJSON(url, success, fail) {
-            request("GET", url, null, function (response) {
-                success(JSON.parse(response));
-            }, fail);
+            request("GET", url, null, function (response) { success(JSON.parse(response)); }, fail);
         }
 
         function post(url, data, success, fail, timeout, uploadProgress) {
@@ -134,14 +979,8 @@
         function convertFormToJson(form) {
             const object = {};
             new FormData(form).forEach((value, key) => {
-                // Reflect.has in favor of: object.hasOwnProperty(key)
-                if (!Reflect.has(object, key)) {
-                    object[key] = value;
-                    return;
-                }
-                if (!Array.isArray(object[key])) {
-                    object[key] = [object[key]];
-                }
+                if (!Reflect.has(object, key)) { object[key] = value; return; }
+                if (!Array.isArray(object[key])) { object[key] = [object[key]]; }
                 object[key].push(value);
             });
             form.querySelectorAll('input[type=checkbox]').forEach(cb => {
@@ -150,41 +989,25 @@
             return JSON.stringify(object);
         }
 
-        function rssiToQuality(rssi) {
-            return Math.min(Math.max(2 * (rssi + 100), 0), 100);
-        }
-
-        function rssiToColor(rssi) {
-            return `hsl(${rssiToQuality(rssi) * 1.2}, 100%, 45%)`;
-        }
+        function rssiToQuality(rssi) { return Math.min(Math.max(2 * (rssi + 100), 0), 100); }
+        function rssiToColor(rssi) { return `hsl(${rssiToQuality(rssi) * 1.2}, 100%, 45%)`; }
 
         function fadeOut(el) {
-            if (!el || el.style.display === 'none') return; // Check if el is null or undefined
-
+            if (!el || el.style.display === 'none') return;
             el.style.opacity = 1;
-            const duration = 400; // Duration of the fade-out effect in milliseconds
+            const duration = 400;
             const start = Date.now();
-
             function tick() {
-                if (!el) return; // Check if el is null or undefined
-
+                if (!el) return;
                 const elapsed = Date.now() - start;
                 el.style.opacity = Math.max(1 - elapsed / duration, 0);
-
-                if (elapsed < duration) {
-                    requestAnimationFrame(tick);
-                } else {
-                    el.style.display = 'none';
-                }
+                if (elapsed < duration) requestAnimationFrame(tick);
+                else el.style.display = 'none';
             }
-
             requestAnimationFrame(tick);
         }
 
         // Waits 2s then polls HEAD / every 2s until the device responds, then redirects to url.
-        // The initial 2s delay lets the device start rebooting before polling begins.
-        // Uses no-cors to allow cross-origin probes. Updates id="cd" with elapsed seconds.
-        // Redirects after maxMs regardless.
         function redirectWhenReachable(url, maxMs) {
             const start = Date.now();
             const displayTimer = setInterval(() => {
@@ -201,43 +1024,234 @@
                     }
                     fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
                         .then(() => { clearInterval(displayTimer); clearInterval(pollTimer); location.assign(url); })
-                        .catch(() => {});
+                        .catch(() => { });
                 }, 2000);
             }, 2000);
         }
 
         function triggerEvent(el, evtName) {
-            var evt = new Event(evtName, {
-                bubbles: true,
-                cancelable: true
-            });
+            var evt = new Event(evtName, { bubbles: true, cancelable: true });
             el.dispatchEvent(evt);
         }
 
-        function clearMenuAndContent() {
-            unloadScripts();
-            document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
-            $('#content').innerHTML = '';
+        // ---------------------------------------------------------------
+        // Shared state (fed by the Status fragments) + hero rendering
+        // ---------------------------------------------------------------
+        const WPC = {
+            raw: {},
+            system: {},
+            wifi: {},
+            ha: { protocol: null, mqttStatus: null, lastPublish: null },
+            slotAssignments: ['power', 'fan', 'flue', 'eco'],
+            mainSlotKey: 't1',
+            openSlot: null,
+        };
+
+        (function () {
+            try {
+                const saved = JSON.parse(localStorage.getItem('wpalacontrol-hero-layout') || 'null');
+                if (saved && Array.isArray(saved.slotAssignments) && saved.mainSlotKey) {
+                    WPC.slotAssignments = saved.slotAssignments;
+                    WPC.mainSlotKey = saved.mainSlotKey;
+                }
+            } catch (e) { }
+        })();
+
+        function persistHeroLayout() {
+            try {
+                localStorage.setItem('wpalacontrol-hero-layout', JSON.stringify({
+                    slotAssignments: WPC.slotAssignments, mainSlotKey: WPC.mainSlotKey
+                }));
+            } catch (e) { }
         }
 
-        function handleMenuClick(menuId, headerText, loadFn) {
-            const menuElement = $(menuId);
-            menuElement.addEventListener("click", (evt) => {
-                evt.preventDefault();
-                clearMenuAndContent();
-                menuElement.classList.add("pure-menu-selected");
-                $("#mainHeader").textContent = headerText;
-                loadFn();
+        const fanLabels = ['Off', '1', '2', '3', '4', '5', 'Max', 'Auto'];
+        const thermoIcon = 'M12 2v13m0 0a3 3 0 103 3 3 3 0 00-3-3z';
+
+        function statDefs() {
+            const r = WPC.raw, w = WPC.wifi;
+            return [
+                { key: 'power', label: 'Power level', iconPath: 'M13 2L4 14h6l-1 8 9-12h-6l1-8z', strokeWidth: 1.6, value: (r.PWR ?? '—') + ' / 5' },
+                { key: 'fan', label: 'Fan speed', iconPath: 'M12 12a3 3 0 100-6c0 2 1 3 3 3zm0 0a3 3 0 110 6c0-2-1-3-3-3zm0 0a3 3 0 10-6 0c2 0 3-1 3-3zm0 0a3 3 0 106 0c-2 0-3 1-3 3z', strokeWidth: 1.4, value: r.F2L !== undefined ? (fanLabels[r.F2L] ?? r.F2L) : '—' },
+                { key: 'flue', label: 'Flue temp', iconPath: thermoIcon, strokeWidth: 1.6, value: r.T5 !== undefined ? (r.T5 + '°C') : '—' },
+                { key: 'eco', label: 'Eco mode', iconPath: 'M12 3c4 3 6 6 6 10a6 6 0 01-12 0c0-4 2-7 6-10z', strokeWidth: 1.6, value: r.BECO !== undefined ? (r.BECO ? 'On' : 'Off') : '—' },
+                { key: 'ignitions', label: 'Ignitions', iconPath: 'M12 2c1 3-2 4-2 7a3 3 0 006 0c0-1-.5-2-1-2.5 2 1 3.5 3.5 3.5 6.5a6.5 6.5 0 01-13 0C5.5 9 8 6 9 3c.3 1.5 1 2 1.5 1.5C11 4 11.5 3 12 2z', strokeWidth: 1.4, value: r.IGN !== undefined ? String(r.IGN) : '—' },
+                { key: 'ontime', label: 'On time', iconPath: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', strokeWidth: 1.6, value: r.ONTIME ?? '—' },
+                { key: 'powertime', label: 'Power time', iconPath: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', strokeWidth: 1.6, value: r.POWERTIME ?? '—' },
+                { key: 'servicetime', label: 'Service time', iconPath: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', strokeWidth: 1.6, value: r.SERVICETIME ?? '—' },
+                { key: 't1', label: 'Room temp (T1)', iconPath: thermoIcon, strokeWidth: 1.6, value: r.T1 !== undefined ? (r.T1 + '°C') : '—' },
+                { key: 't2', label: 'Sensor T2', iconPath: thermoIcon, strokeWidth: 1.6, value: r.T2 !== undefined ? (r.T2 + '°C') : '—' },
+                { key: 't3', label: 'Sensor T3', iconPath: thermoIcon, strokeWidth: 1.6, value: r.T3 !== undefined ? (r.T3 + '°C') : '—' },
+                { key: 'setpoint', label: 'Set point', iconPath: 'M12 12a3 3 0 100-6 3 3 0 000 6z', strokeWidth: 1.6, value: r.SETP !== undefined ? (r.SETP + '°') : '—' },
+                { key: 'wifi', label: 'Wi-Fi signal', iconPath: 'M12 2v8m0 12v-3M4.9 4.9l2.1 2.1m10 10l2.1 2.1M2 12h3m14 0h3M4.9 19.1L7 17m10-10l2.1-2.1', strokeWidth: 1.5, value: w.rssi !== undefined ? (w.rssi + ' dBm') : '—' },
+            ];
+        }
+
+        function statusInfo(code) {
+            if (code === undefined) return { label: '—', color: 'var(--text-faint)' };
+            if (code === 0) return { label: 'Off', color: 'var(--text-dim)' };
+            if (code >= 1 && code <= 5) return { label: 'Igniting…', color: 'var(--accent)' };
+            if (code === 6 || code === 9) return { label: 'Burning', color: 'var(--accent)' };
+            if (code === 51) return { label: 'Eco idle', color: 'var(--success)' };
+            return { label: 'Unknown (' + code + ')', color: 'var(--text-dim)' };
+        }
+
+        function closeSlotMenu() { WPC.openSlot = null; renderHero(); }
+        function toggleSlotMenu(i) { WPC.openSlot = (WPC.openSlot === i ? null : i); renderHero(); }
+        function selectSlotValue(i, key) {
+            WPC.slotAssignments[i] = key;
+            WPC.openSlot = null;
+            persistHeroLayout();
+            renderHero();
+        }
+        function toggleMainSlot() { WPC.openSlot = (WPC.openSlot === 'main' ? null : 'main'); renderHero(); }
+        function selectMainSlot(key) {
+            WPC.mainSlotKey = key;
+            WPC.openSlot = null;
+            persistHeroLayout();
+            renderHero();
+        }
+        // exposed for inline onclick handlers built into the rendered HTML
+        window.WPC = WPC;
+        window.toggleSlotMenu = toggleSlotMenu;
+        window.selectSlotValue = selectSlotValue;
+        window.toggleMainSlot = toggleMainSlot;
+        window.selectMainSlot = selectMainSlot;
+        window.closeSlotMenu = closeSlotMenu;
+
+        function slotOptionsHtml(defs, activeKey, selectFnName, extraArg) {
+            return defs.map(d => {
+                const active = d.key === activeKey;
+                const check = active ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '';
+                const args = extraArg !== undefined ? `${extraArg},'${d.key}'` : `'${d.key}'`;
+                return `<button class="${active ? 'active' : ''}" onclick="${selectFnName}(${args})">${d.label}${check}</button>`;
+            }).join('');
+        }
+
+        function renderHero() {
+            const r = WPC.raw;
+            const si = statusInfo(r.STATUS);
+            $('#heroStatusDot').style.background = si.color;
+            $('#heroStatusLabel').style.color = si.color;
+            $('#heroStatusLabel').textContent = si.label;
+            $('#heroUpdated').textContent = WPC.lastRefresh || '—';
+
+            const defs = statDefs();
+
+            // main slot
+            const mainDef = defs.find(d => d.key === WPC.mainSlotKey) || defs[0];
+            const mainOpen = WPC.openSlot === 'main';
+            $('#heroMain').innerHTML = `
+                <button class="hero-main-btn" onclick="toggleMainSlot()">
+                    <div class="hero-main-value">${mainDef.value}</div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="chev ${mainOpen ? 'open' : ''}" style="margin-bottom:14px;"><path d="M6 9l6 6 6-6" stroke="var(--text-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="hero-main-label">${mainDef.label}</div>
+                ${mainOpen ? `
+                    <div class="slotBackdrop" onclick="closeSlotMenu()"></div>
+                    <div class="slotMenu">${slotOptionsHtml(defs, WPC.mainSlotKey, 'selectMainSlot')}</div>
+                ` : ''}
+            `;
+
+            // 4 hero slots
+            $('#heroGrid').innerHTML = WPC.slotAssignments.map((key, i) => {
+                const def = defs.find(d => d.key === key) || defs[0];
+                const open = WPC.openSlot === i;
+                return `
+                <div style="position:relative;">
+                    <button class="hero-slot-btn" onclick="toggleSlotMenu(${i})">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="${def.iconPath}" stroke="var(--text-dim)" stroke-width="${def.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div style="flex:1; min-width:0;">
+                            <div class="hero-slot-label">${def.label}</div>
+                            <div class="hero-slot-value">${def.value}</div>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="chev ${open ? 'open' : ''}"><path d="M6 9l6 6 6-6" stroke="var(--text-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    ${open ? `
+                        <div class="slotBackdrop" onclick="closeSlotMenu()"></div>
+                        <div class="slotMenu">${slotOptionsHtml(defs, key, 'selectSlotValue', i)}</div>
+                    ` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        // called by status fragments whenever new data arrives
+        WPC.updateRaw = function (partial) {
+            Object.assign(WPC.raw, partial);
+            WPC.lastRefresh = (new Date()).toLocaleString();
+            renderHero();
+        };
+        WPC.setWifi = function (obj) { Object.assign(WPC.wifi, obj); renderHero(); };
+        WPC.setSystem = function (obj) { Object.assign(WPC.system, obj); };
+        WPC.setHaStatus = function (obj) {
+            Object.assign(WPC.ha, obj);
+            const off = !WPC.ha.protocol || WPC.ha.protocol === 'Disabled';
+            $('#connDot').style.background = off ? 'var(--text-faint)' : (WPC.ha.mqttStatus === 'Connected' ? 'var(--success)' : 'var(--danger)');
+            $('#connLabel').textContent = off ? 'HA off' : ('MQTT ' + (WPC.ha.mqttStatus || '').toLowerCase());
+        };
+
+        renderHero();
+
+        // ---------------------------------------------------------------
+        // Accordion: sections are mounted once, then only shown/hidden.
+        // A 'section:open:<key>' event fires the first time a section opens,
+        // so a fragment's own <script> can defer its network calls until then.
+        // ---------------------------------------------------------------
+        const openedSections = {};
+        window.openedSections = openedSections;
+        // Fragments are mounted via async blob scripts, so a section may already be flagged
+        // open (or open later) by the time a fragment's own script runs. This covers both cases.
+        window.onSectionOpen = function (key, fn) {
+            if (openedSections[key]) fn();
+            else document.addEventListener('section:open:' + key, fn, { once: true });
+        };
+        function toggleSection(key) {
+            const body = $('#accBody' + key);
+            const chev = $('#accChev' + key);
+            const nowOpen = !body.classList.contains('open');
+            body.classList.toggle('open', nowOpen);
+            chev.classList.toggle('open', nowOpen);
+            if (nowOpen && !openedSections[key]) {
+                openedSections[key] = true;
+                document.dispatchEvent(new CustomEvent('section:open:' + key));
+            }
+        }
+        $('#accBtnStatus').addEventListener('click', () => toggleSection('Status'));
+        $('#accBtnConfig').addEventListener('click', () => toggleSection('Config'));
+        $('#accBtnFirmware').addEventListener('click', () => toggleSection('Firmware'));
+
+        // ---------------------------------------------------------------
+        // Reboot (masthead)
+        // ---------------------------------------------------------------
+        let rebooting = false, rebootMode = null, rebootCountdown = 0, rebootTimer = null;
+        function setRebootLabels() {
+            $('#rebootPillLabel').textContent = rebooting ? ('Rebooting… ' + rebootCountdown + 's') : 'Reboot';
+            $('#rebootNormalBtn').textContent = (rebooting && rebootMode === 'normal') ? 'Rebooting…' : 'Reboot';
+            $('#rebootRescueBtn').textContent = (rebooting && rebootMode === 'rescue') ? 'Rebooting…' : 'Reboot in rescue mode';
+        }
+        function doReboot(mode) {
+            rebooting = true; rebootMode = mode; rebootCountdown = 0;
+            setRebootLabels();
+            post('/rbt' + (mode === 'rescue' ? '?rescue=true' : ''), null, function () {
+                rebootTimer = setInterval(() => { rebootCountdown++; setRebootLabels(); }, 1000);
+                redirectWhenReachable(mode === 'rescue' ? 'http://192.168.4.1' : location.origin, 30000);
+            }, function () {
+                rebooting = false; rebootMode = null; setRebootLabels();
             });
         }
+        $('#rebootNormalBtn').addEventListener('click', () => doReboot('normal'));
+        $('#rebootRescueBtn').addEventListener('click', () => doReboot('rescue'));
 
-        handleMenuClick("#menuStatus", "Status", () => load($('#content'), 'tpl-status'));
-        handleMenuClick("#menuConfig", "Config", () => load($('#content'), 'tpl-config'));
-        handleMenuClick("#menuFirmware", "Firmware", () => load($('#content'), 'tpl-fw'));
+        // ---------------------------------------------------------------
+        // Mount the three sections immediately (always present, no page nav)
+        // ---------------------------------------------------------------
+        load($('#accBodyStatus'), 'tpl-status');
+        load($('#accBodyConfig'), 'tpl-config');
+        load($('#accBodyFirmware'), 'tpl-fw');
 
-        const savedTab = sessionStorage.getItem('activeTab');
-        sessionStorage.removeItem('activeTab');
-        triggerEvent($(savedTab) || $('#menuStatus'), 'click');
+        // Status details is open by default -> fire its section:open right away
+        openedSections['Status'] = true;
+        document.dispatchEvent(new CustomEvent('section:open:Status'));
     </script>
 </body>
 

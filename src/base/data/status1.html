@@ -1,45 +1,44 @@
-<h2 class="content-subhead">WiFi<span id="l">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-MAC: <span id="mac"></span><br>
-Access Point: <span id="apmode"></span><br>
-<span id="apipe" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP: <span id="apip"></span><br></span>
-Station: <span id="stationmode"></span><br>
-<span id="stationipe" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP: <span id="stationip"></span><br></span>
-<span id="stationipsourcee" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span id="stationipsource"></span><br></span>
-<span id="bsside" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;BSSID: <span id="bssid"></span><br></span>
-<span id="rssie" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;RSSI: <span id="rssi"></span><br></span>
+<div class="kvGrid" style="margin-top:8px;">
+    <div class="kvRow"><span>Wi-Fi IP</span><span class="mono" id="wifiIp">—</span></div>
+    <div class="kvRow"><span>Signal</span><span class="mono" id="wifiSignal">—</span></div>
+    <div class="kvRow"><span>Access Point</span><span class="mono" id="wifiAp">—</span></div>
+    <div class="kvRow"><span>Station</span><span class="mono" id="wifiStation">—</span></div>
+</div>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content1 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py
 
-    getJSON("/gs" + qsp[8],
-        function (GS) {
-            for (k in GS) {
-                if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
-            }
+    onSectionOpen('Status', function () {
+        getJSON("/gs" + qsp[8],
+            function (GS) {
+                $(qsp + '#wifiAp').textContent = GS.apmode;
+                $(qsp + '#wifiStation').textContent = GS.stationmode;
 
-            $(qsp + "#apipe").style.display = (GS["apip"] ? '' : 'none');
-            $(qsp + "#stationipe").style.display = (GS["stationip"] ? '' : 'none');
-            $(qsp + "#stationipsourcee").style.display = (GS["stationipsource"] ? '' : 'none');
-            $(qsp + "#bsside").style.display = (GS["bssid"] ? '' : 'none');
-            const showRssi = GS["rssi"] !== undefined;
-            $(qsp + "#rssie").style.display = (showRssi ? '' : 'none');
-            if (showRssi) {
-                const rssiEl = $(qsp + "#rssi");
-                rssiEl.innerHTML = GS["rssi"] + ' dBm (' + rssiToQuality(GS["rssi"]) + '%)';
-                rssiEl.style.color = rssiToColor(GS["rssi"]);
-            }
+                if (GS.stationmode === 'on' && GS.rssi !== undefined) {
+                    const ipSource = GS.stationipsource || '';
+                    $(qsp + '#wifiIp').textContent = GS.stationip + (ipSource ? ' (' + ipSource + ')' : '');
+                    const el = $(qsp + '#wifiSignal');
+                    el.textContent = GS.rssi + ' dBm (' + Math.round(rssiToQuality(GS.rssi)) + '%)';
+                    el.style.color = rssiToColor(GS.rssi);
+                    WPC.setWifi({ rssi: GS.rssi, ip: GS.stationip, ipSource: ipSource, ap: GS.apmode, station: GS.stationmode, bssid: GS.bssid, mac: GS.mac });
+                } else {
+                    $(qsp + '#wifiIp').textContent = GS.apip ? (GS.apip + ' (AP)') : '—';
+                    WPC.setWifi({ ap: GS.apmode, station: GS.stationmode, mac: GS.mac });
+                }
 
-            if (GS["stationmode"] == "on" && GS["apmode"] == "on") {
-                var containerDiv = document.createElement('div');
-                containerDiv.innerHTML = "<div id='connectedToAP' class='pure-button pure-button-disabled' style='width:100%;position:fixed;top:0;color: white;text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);background: rgb(202, 60, 60);opacity:1;white-space:normal;'>!!! Disconnect devices from Access Point Wifi network to allow reconnection or modify WiFi configuration !!!</div>";
-                $("#main").appendChild(containerDiv.firstChild)
+                // if a client stays connected to the module's own Access Point while station mode
+                // is also up, WiFi reconfiguration/reconnection can't proceed - warn the user
+                if (GS.stationmode === 'on' && GS.apmode === 'on' && !$('#apWarningBanner')) {
+                    const banner = document.createElement('div');
+                    banner.id = 'apWarningBanner';
+                    banner.className = 'apWarning';
+                    banner.textContent = 'Disconnect devices from the Access Point Wi-Fi network to allow reconnection or Wi-Fi configuration changes.';
+                    document.body.appendChild(banner);
+                }
+            },
+            function () {
+                $(qsp + '#wifiIp').textContent = 'Failed';
             }
-            fadeOut($(qsp + "#l"));
-        },
-        function () {
-            $(qsp + "#l").innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
-        }
-    );
+        );
+    });
 </script>

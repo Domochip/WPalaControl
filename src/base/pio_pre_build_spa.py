@@ -12,11 +12,14 @@ def extract_macro_value(file_path, macro_name):
             raise ValueError(f"{macro_name} not found in {file_path}")
 
 # HTML fragments use 'qsp' as a scoped CSS selector prefix, substituted at build time:
-# - Numbered index N : qsp -> '#contentN ', qsp[8] -> 'N' (used in API endpoints like '/gsN')
-#                      content is wrapped in <div id="contentN"> to isolate element IDs
-# - Empty index ''   : qsp -> '#content ', no wrapper (fragment loads directly into #content)
-def preprocess_fragment(html, fragment_index):
-    wrapper_id = f'content{fragment_index}'
+# - Numbered index N : qsp -> '#<group>contentN ', qsp[8] -> 'N' (used in API endpoints like '/gsN')
+#                      content is wrapped in <div id="<group>contentN"> to isolate element IDs.
+#                      'group' distinguishes merge groups (e.g. status vs config) that are now all
+#                      mounted in the DOM at the same time (accordion sections, not page-swapped tabs),
+#                      so plain 'contentN' would collide between groups sharing the same app id N.
+# - Empty index ''   : qsp -> '#content ', no wrapper (fragment loads directly into its own mount point)
+def preprocess_fragment(html, fragment_index, group=''):
+    wrapper_id = f'{group}content{fragment_index}'
     qsp_replacement = f"'#{wrapper_id} '"
 
     # Replace qsp[8] before qsp to avoid double-substitution
@@ -31,13 +34,13 @@ def preprocess_fragment(html, fragment_index):
         return html
     return f'<div id="{wrapper_id}">\n{html}\n</div>\n'
 
-def merge_fragments(sources):
+def merge_fragments(sources, group):
     print(f'Merging {", ".join(os.path.basename(s) for s in sources)}')
     merged = ''
     for source in sources:
         fragment_index = int(re.search(r'(\d+)\.html$', os.path.basename(source)).group(1))
         with open(source, 'r', encoding='utf-8') as f:
-            merged += preprocess_fragment(f.read(), fragment_index)
+            merged += preprocess_fragment(f.read(), fragment_index, group)
     return merged
 
 def read_file(path):
@@ -71,8 +74,8 @@ print('--- pio_pre_build_spa.py start ---')
 build_spa(
     'src/base/data/index_template.html',
     [
-        ('tpl-status', merge_fragments(['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'])),
-        ('tpl-config', merge_fragments(['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'])),
+        ('tpl-status', merge_fragments(['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'], 'status')),
+        ('tpl-config', merge_fragments(['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'], 'config')),
         ('tpl-fw',     preprocess_fragment(read_file('src/base/data/fw.html'), '')),
     ],
     'src/base/data/index.html',

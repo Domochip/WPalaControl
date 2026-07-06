@@ -1,78 +1,97 @@
-<h2 class="content-subhead">WPalaControl<span id="l">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-Hardware Version: <span id="hwversion"></span><span id="hwdetection"></span><br>
-<h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
-<dl id="liveData"></dl>
-<h3 class="content-subhead">Home Automation Status</h3>
-Protocol: <span id="haprotocol"></span><br>
-<span id="hamqttstatuse" style='display:none'>
-    Connection State: <span id="hamqttstatus"></span><br>
-</span>
-<span id="hamqttlastpublishe" style='display:none'>
-    Last Publish : <span id="hamqttlastpublish"></span><br>
-</span>
+<div class="kvGrid" style="margin-top:8px;">
+    <div class="kvRow"><span>Hardware</span><span class="mono" id="appHwVersion">—</span></div>
+    <div class="kvRow"><span>Stove serial</span><span class="mono" id="appStoveSn" style="font-size:11.5px;">—</span></div>
+</div>
+
+<div class="hairlineTop">
+    <div class="subhead">Counters</div>
+    <div class="grid4" style="padding-top:0;">
+        <div>
+            <div class="statLabel">Ignitions</div>
+            <div class="statValue" id="cntIgn">—</div>
+        </div>
+        <div>
+            <div class="statLabel">Power time</div>
+            <div class="statValue" id="cntPower">—</div>
+        </div>
+        <div>
+            <div class="statLabel">Service</div>
+            <div class="statValue" id="cntService">—</div>
+        </div>
+        <div>
+            <div class="statLabel">On time</div>
+            <div class="statValue" id="cntOn">—</div>
+        </div>
+    </div>
+</div>
+
+<button class="linkBtn" id="rawToggleBtn" style="margin-top:20px;">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" class="chev" id="rawChev">
+        <path d="M6 9l6 6 6-6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    Raw data
+</button>
+<div class="rawGrid" id="rawGrid" style="display:none;"></div>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content2 ';
+    // qsp is substituted at build time by pio_pre_build_spa.py
 
-    function parseLiveData(liveData) {
-        if ($(qsp + '#liveData') == undefined) return;
-        for (k in liveData) {
-            kForId = (/[^a-zA-Z]/.test(k[0]) ? 'a' : '') + k; //k[0] is not in a-zA-Z then we need to add 'a'
-            kForId = kForId.replace(/ /g, '_');
-            if ($(qsp + '#' + kForId) != undefined) {
-                var existingElement = $(qsp + '#' + kForId + 'Value');
-                if (existingElement.innerText != liveData[k]) {
-                    existingElement.innerText = liveData[k];
-                    existingElement.style.fontWeight = "bold";
-                }
-                else {
-                    existingElement.style.fontWeight = "normal";
-                }
-            }
-            else {
-                var newElement = document.createElement("dd");
-                newElement.id = kForId;
-                newElement.innerHTML = k + ' : <span id="' + kForId + 'Value">' + liveData[k] + '</span>';
-                $(qsp + '#liveData').appendChild(newElement);
-            }
-        }
-        if ($(qsp + '#lastRefresh') != undefined) {
-            $(qsp + '#lastRefresh').innerText = (new Date()).toLocaleString();
-        }
+    let raw = {};
+    let rawOpen = false;
+
+    function renderRawGrid() {
+        const rows = Object.keys(raw).map(function (k) {
+            return '<div class="rawRow"><span>' + k + '</span><span>' + raw[k] + '</span></div>';
+        }).join('');
+        $(qsp + '#rawGrid').innerHTML = rows;
     }
 
-    getJSON("/gs" + qsp[8],
-        function (GS) {
-            for (k in GS) {
-                if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
-            }
+    function updateDerivedRows() {
+        if (raw.IGN !== undefined) $(qsp + '#cntIgn').textContent = raw.IGN;
+        if (raw.POWERTIME !== undefined) $(qsp + '#cntPower').textContent = raw.POWERTIME;
+        if (raw.SERVICETIME !== undefined) $(qsp + '#cntService').textContent = raw.SERVICETIME;
+        if (raw.ONTIME !== undefined) $(qsp + '#cntOn').textContent = raw.ONTIME;
+        if (raw.SN !== undefined) $(qsp + '#appStoveSn').textContent = raw.SN;
+    }
 
-            $(qsp + "#hamqttstatuse").style.display = (GS["hamqttstatus"] ? '' : 'none');
-            $(qsp + "#hamqttlastpublishe").style.display = (GS["hamqttlastpublish"] ? '' : 'none');
+    function mergeRaw(partial) {
+        Object.assign(raw, partial);
+        WPC.updateRaw(partial);
+        renderRawGrid();
+        updateDerivedRows();
+    }
 
-            fadeOut($(qsp + '#l'));
-        },
-        function () {
-            $(qsp + '#l').innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
-        }
-    );
+    $(qsp + '#rawToggleBtn').addEventListener('click', function () {
+        rawOpen = !rawOpen;
+        $(qsp + '#rawGrid').style.display = rawOpen ? 'grid' : 'none';
+        $(qsp + '#rawChev').classList.toggle('open', rawOpen);
+    });
 
-    getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
-        function (SERN) {
-            if (SERN.SUCCESS)
-                parseLiveData({ SN: SERN.DATA.SN });
-            else
-            parseLiveData({ MSG: (SERN.INFO.MSG + '! Please check cabling to your stove.') });
-        }
-    );
-
-    if (!!window.EventSource && (typeof statusEventSource === 'undefined' || statusEventSource.readyState === 2)) {
-        var statusEventSource = new EventSource('/statusEvt' + qsp[8]);
-        statusEventSource.addEventListener('message', function (e) {
-            console.log('statusEvt' + qsp[8] + ' : ' + e.data);
-            parseLiveData(JSON.parse(e.data));
+    onSectionOpen('Status', function () {
+        // Module/hardware + Home Automation connectivity info
+        getJSON("/gs" + qsp[8], function (GS) {
+            $(qsp + '#appHwVersion').textContent = GS.hwversion + (GS.hwdetection || '');
+            WPC.setHaStatus({ protocol: GS.haprotocol, mqttStatus: GS.hamqttstatus });
         });
-    }
+
+        // Seed the raw stove data instantly instead of waiting for the next periodic publish
+        // (same command set publishTick() runs, so field names line up with the SSE updates below)
+        const cmds = ['SERN', 'STAT', 'TMPS', 'FAND', 'CNTR', 'TIME', 'SETP', 'POWR', 'DPRS'];
+        Promise.all(cmds.map(function (cmd) {
+            return fetch('/cgi-bin/sendmsg.lua?cmd=GET+' + cmd)
+                .then(function (r) { return r.json(); })
+                .catch(function () { return null; });
+        })).then(function (results) {
+            results.forEach(function (res) {
+                if (res && res.SUCCESS && res.DATA) mergeRaw(res.DATA);
+            });
+        });
+
+        if (!!window.EventSource && (typeof statusEventSource === 'undefined' || statusEventSource.readyState === 2)) {
+            var statusEventSource = new EventSource('/statusEvt' + qsp[8]);
+            statusEventSource.addEventListener('message', function (e) {
+                mergeRaw(JSON.parse(e.data));
+            });
+        }
+    });
 </script>
