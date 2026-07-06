@@ -182,10 +182,11 @@
                 redirectWhenReachable(location.origin, 60000);
             },
             function (responseText) {
-                $('#fwUploadResult').innerHTML = '<span style="color:var(--danger);"><b>Failed</b></span> (' + responseText + ')';
+                const reason = responseText || 'no response from device — it may have restarted or the connection timed out';
+                $('#fwUploadResult').innerHTML = '<span style="color:var(--danger);"><b>Failed</b></span> (' + reason + ')';
                 $('#fwDropzone').style.pointerEvents = '';
             },
-            30000,
+            120000,
             function (evt) {
                 if (evt.lengthComputable) {
                     const pct = Math.round((evt.loaded / evt.total) * 100);
@@ -206,5 +207,7 @@
         if (e.dataTransfer.files[0]) uploadFirmware(e.dataTransfer.files[0]);
     });
 
-    onSectionOpen('Firmware', checkForUpdates);
+    // Runs on every page load, not gated behind opening the Firmware section:
+    // does a live HTTPS request to GitHub, so it adds a bit of latency at load time.
+    checkForUpdates();
 </script>

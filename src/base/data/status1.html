@@ -1,8 +1,11 @@
-<div class="kvGrid" style="margin-top:8px;">
-    <div class="kvRow"><span>Wi-Fi IP</span><span class="mono" id="wifiIp">—</span></div>
-    <div class="kvRow"><span>Signal</span><span class="mono" id="wifiSignal">—</span></div>
-    <div class="kvRow"><span>Access Point</span><span class="mono" id="wifiAp">—</span></div>
-    <div class="kvRow"><span>Station</span><span class="mono" id="wifiStation">—</span></div>
+<div class="hairlineTop">
+    <div class="subhead">Wi-Fi</div>
+    <div class="kvGrid">
+        <div class="kvRow"><span>Wi-Fi IP</span><span class="mono" id="wifiIp">—</span></div>
+        <div class="kvRow"><span>Signal</span><span class="mono" id="wifiSignal">—</span></div>
+        <div class="kvRow"><span>Access Point</span><span class="mono" id="wifiAp">—</span></div>
+        <div class="kvRow"><span>Home network</span><span class="mono" id="wifiStation">—</span></div>
+    </div>
 </div>
 
 <script>
@@ -11,8 +14,8 @@
     onSectionOpen('Status', function () {
         getJSON("/gs" + qsp[8],
             function (GS) {
-                $(qsp + '#wifiAp').textContent = GS.apmode;
-                $(qsp + '#wifiStation').textContent = GS.stationmode;
+                $(qsp + '#wifiAp').textContent = GS.apmode === 'on' ? 'Active' : 'Off';
+                $(qsp + '#wifiStation').textContent = GS.stationmode === 'on' ? 'Connected' : 'Not connected';
 
                 if (GS.stationmode === 'on' && GS.rssi !== undefined) {
                     const ipSource = GS.stationipsource || '';

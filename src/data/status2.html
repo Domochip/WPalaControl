@@ -1,27 +1,7 @@
-<div class="kvGrid" style="margin-top:8px;">
-    <div class="kvRow"><span>Hardware</span><span class="mono" id="appHwVersion">—</span></div>
-    <div class="kvRow"><span>Stove serial</span><span class="mono" id="appStoveSn" style="font-size:11.5px;">—</span></div>
-</div>
-
 <div class="hairlineTop">
-    <div class="subhead">Counters</div>
-    <div class="grid4" style="padding-top:0;">
-        <div>
-            <div class="statLabel">Ignitions</div>
-            <div class="statValue" id="cntIgn">—</div>
-        </div>
-        <div>
-            <div class="statLabel">Power time</div>
-            <div class="statValue" id="cntPower">—</div>
-        </div>
-        <div>
-            <div class="statLabel">Service</div>
-            <div class="statValue" id="cntService">—</div>
-        </div>
-        <div>
-            <div class="statLabel">On time</div>
-            <div class="statValue" id="cntOn">—</div>
-        </div>
+    <div class="subhead">Stove</div>
+    <div class="kvGrid">
+        <div class="kvRow"><span>Stove serial</span><span class="mono" id="appStoveSn" style="font-size:11.5px;">—</span></div>
     </div>
 </div>
 
@@ -47,10 +27,6 @@
     }
 
     function updateDerivedRows() {
-        if (raw.IGN !== undefined) $(qsp + '#cntIgn').textContent = raw.IGN;
-        if (raw.POWERTIME !== undefined) $(qsp + '#cntPower').textContent = raw.POWERTIME;
-        if (raw.SERVICETIME !== undefined) $(qsp + '#cntService').textContent = raw.SERVICETIME;
-        if (raw.ONTIME !== undefined) $(qsp + '#cntOn').textContent = raw.ONTIME;
         if (raw.SN !== undefined) $(qsp + '#appStoveSn').textContent = raw.SN;
     }
 
@@ -70,7 +46,10 @@
     onSectionOpen('Status', async function () {
         // Module/hardware + Home Automation connectivity info
         getJSON("/gs" + qsp[8], function (GS) {
-            $(qsp + '#appHwVersion').textContent = GS.hwversion + (GS.hwdetection || '');
+            // Written into status0's "Module" kvGrid (not scoped by qsp): hardware
+            // revision is module/device info, not Wi-Fi or stove-specific.
+            const hwEl = $('#sysHwVersion');
+            if (hwEl) hwEl.textContent = GS.hwversion + (GS.hwdetection || '');
             WPC.setHaStatus({ protocol: GS.haprotocol, mqttStatus: GS.hamqttstatus });
         });
 
@@ -81,19 +60,26 @@
             });
         }
 
-        // Seed the raw stove data instantly instead of waiting for the next periodic publish
-        // (same command set publishTick() runs, so field names line up with the SSE updates above).
+        // Seed the raw stove data instantly instead of waiting for the next periodic publish.
+        // STAT/TMPS/FAND/CNTR/TIME/SETP/POWR/DPRS are the same set publishTick() runs on the
+        // device, so a missed request here just gets backfilled by the next SSE tick.
+        // SERN is the exception: the device's publishTick() never sends it periodically, so a
+        // failed SERN request here has no self-healing - it stays blank until the next full
+        // page load. Give it a few retries since it's the one field that can't recover on its own.
         // Sent one at a time (not Promise.all): the device is a single-threaded ESP8266 web
-        // server with a very small TCP connection budget, so firing all 9 requests concurrently
+        // server with a very small TCP connection budget, so firing all requests concurrently
         // can exhaust its sockets and cause failed/reset connections. Sequential requests keep
         // at most one extra connection open on top of the SSE stream.
         const cmds = ['SERN', 'STAT', 'TMPS', 'FAND', 'CNTR', 'TIME', 'SETP', 'POWR', 'DPRS'];
         for (const cmd of cmds) {
-            try {
-                const res = await fetch('/cgi-bin/sendmsg.lua?cmd=GET+' + cmd).then(function (r) { return r.json(); });
-                if (res && res.SUCCESS && res.DATA) mergeRaw(res.DATA);
-            } catch (e) {
-                // ignore; the SSE stream above will backfill this field on its next tick
+            const attempts = cmd === 'SERN' ? 3 : 1;
+            for (let attempt = 0; attempt < attempts; attempt++) {
+                try {
+                    const res = await fetch('/cgi-bin/sendmsg.lua?cmd=GET+' + cmd).then(function (r) { return r.json(); });
+                    if (res && res.SUCCESS && res.DATA) { mergeRaw(res.DATA); break; }
+                } catch (e) {
+                    // fall through to retry (SERN) or let the next SSE tick backfill it (everything else)
+                }
             }
         }
     });

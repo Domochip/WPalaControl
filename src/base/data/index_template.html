@@ -183,9 +183,15 @@
             z-index: 60;
         }
 
-        .hoverWrap:hover .hoverMenu,
-        .hoverWrap .hoverMenu:hover {
+        .hoverWrap.open .hoverMenu {
             display: block;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .hoverWrap:hover .hoverMenu,
+            .hoverWrap .hoverMenu:hover {
+                display: block;
+            }
         }
 
         .menuBox {
@@ -284,7 +290,7 @@
 
         .hero-main-btn {
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             gap: 10px;
             border: none;
             background: none;
@@ -1143,8 +1149,9 @@
             const mainOpen = WPC.openSlot === 'main';
             $('#heroMain').innerHTML = `
                 <button class="hero-main-btn" onclick="toggleMainSlot()">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="${mainDef.iconPath}" stroke="var(--text-dim)" stroke-width="${mainDef.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <div class="hero-main-value">${mainDef.value}</div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="chev ${mainOpen ? 'open' : ''}" style="margin-bottom:14px;"><path d="M6 9l6 6 6-6" stroke="var(--text-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="chev ${mainOpen ? 'open' : ''}"><path d="M6 9l6 6 6-6" stroke="var(--text-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
                 <div class="hero-main-label">${mainDef.label}</div>
                 ${mainOpen ? `
@@ -1160,7 +1167,7 @@
                 return `
                 <div style="position:relative;">
                     <button class="hero-slot-btn" onclick="toggleSlotMenu(${i})">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="${def.iconPath}" stroke="var(--text-dim)" stroke-width="${def.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="${def.iconPath}" stroke="var(--text-dim)" stroke-width="${def.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <div style="flex:1; min-width:0;">
                             <div class="hero-slot-label">${def.label}</div>
                             <div class="hero-slot-value">${def.value}</div>
@@ -1205,10 +1212,19 @@
             if (openedSections[key]) fn();
             else document.addEventListener('section:open:' + key, fn, { once: true });
         };
+        const allSections = ['Status', 'Config', 'Firmware'];
         function toggleSection(key) {
             const body = $('#accBody' + key);
             const chev = $('#accChev' + key);
             const nowOpen = !body.classList.contains('open');
+
+            // Exclusive accordion: opening one section closes the others.
+            allSections.forEach(function (k) {
+                if (k === key) return;
+                $('#accBody' + k).classList.remove('open');
+                $('#accChev' + k).classList.remove('open');
+            });
+
             body.classList.toggle('open', nowOpen);
             chev.classList.toggle('open', nowOpen);
             if (nowOpen && !openedSections[key]) {
@@ -1239,8 +1255,19 @@
                 rebooting = false; rebootMode = null; setRebootLabels();
             });
         }
-        $('#rebootNormalBtn').addEventListener('click', () => doReboot('normal'));
-        $('#rebootRescueBtn').addEventListener('click', () => doReboot('rescue'));
+        $('#rebootNormalBtn').addEventListener('click', () => { doReboot('normal'); $('#rebootWrap').classList.remove('open'); });
+        $('#rebootRescueBtn').addEventListener('click', () => { doReboot('rescue'); $('#rebootWrap').classList.remove('open'); });
+
+        // CSS :hover opens this menu on desktop, but touch devices have no real hover state:
+        // a tap "sticks" the menu open with nothing to close it. Toggle an explicit .open
+        // class on tap and close it on any outside tap so it behaves on mobile too.
+        $('#rebootPillBtn').addEventListener('click', function (e) {
+            e.stopPropagation();
+            $('#rebootWrap').classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (!$('#rebootWrap').contains(e.target)) $('#rebootWrap').classList.remove('open');
+        });
 
         // ---------------------------------------------------------------
         // Mount the three sections immediately (always present, no page nav)
