@@ -67,24 +67,11 @@
         $(qsp + '#rawChev').classList.toggle('open', rawOpen);
     });
 
-    onSectionOpen('Status', function () {
+    onSectionOpen('Status', async function () {
         // Module/hardware + Home Automation connectivity info
         getJSON("/gs" + qsp[8], function (GS) {
             $(qsp + '#appHwVersion').textContent = GS.hwversion + (GS.hwdetection || '');
             WPC.setHaStatus({ protocol: GS.haprotocol, mqttStatus: GS.hamqttstatus });
-        });
-
-        // Seed the raw stove data instantly instead of waiting for the next periodic publish
-        // (same command set publishTick() runs, so field names line up with the SSE updates below)
-        const cmds = ['SERN', 'STAT', 'TMPS', 'FAND', 'CNTR', 'TIME', 'SETP', 'POWR', 'DPRS'];
-        Promise.all(cmds.map(function (cmd) {
-            return fetch('/cgi-bin/sendmsg.lua?cmd=GET+' + cmd)
-                .then(function (r) { return r.json(); })
-                .catch(function () { return null; });
-        })).then(function (results) {
-            results.forEach(function (res) {
-                if (res && res.SUCCESS && res.DATA) mergeRaw(res.DATA);
-            });
         });
 
         if (!!window.EventSource && (typeof statusEventSource === 'undefined' || statusEventSource.readyState === 2)) {
@@ -92,6 +79,22 @@
             statusEventSource.addEventListener('message', function (e) {
                 mergeRaw(JSON.parse(e.data));
             });
+        }
+
+        // Seed the raw stove data instantly instead of waiting for the next periodic publish
+        // (same command set publishTick() runs, so field names line up with the SSE updates above).
+        // Sent one at a time (not Promise.all): the device is a single-threaded ESP8266 web
+        // server with a very small TCP connection budget, so firing all 9 requests concurrently
+        // can exhaust its sockets and cause failed/reset connections. Sequential requests keep
+        // at most one extra connection open on top of the SSE stream.
+        const cmds = ['SERN', 'STAT', 'TMPS', 'FAND', 'CNTR', 'TIME', 'SETP', 'POWR', 'DPRS'];
+        for (const cmd of cmds) {
+            try {
+                const res = await fetch('/cgi-bin/sendmsg.lua?cmd=GET+' + cmd).then(function (r) { return r.json(); });
+                if (res && res.SUCCESS && res.DATA) mergeRaw(res.DATA);
+            } catch (e) {
+                // ignore; the SSE stream above will backfill this field on its next tick
+            }
         }
     });
 </script>
