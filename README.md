@@ -33,8 +33,7 @@ To determine if your stove is compatible with WPalaControl, look for the followi
 🔧 If you want to build it yourself, you can find all details here : [BUILD](BUILD.md) 🔧  
 
 🛍️🚀 Otherwise, I'm producing some small batches and offering it ready-to-use here :  
-<!-- markdownlint-disable-next-line MD033 -->
-<iframe src="https://lectronz.com/products/wpalacontrol/embed?layout=compact&color=ff4100" style="width:100%;max-width:320px;height:64px;border:0" loading="lazy" title="WPalaControl on Lectronz"></iframe>  
+[![Lectronz product](./img/lectronz-medium.png)](https://lectronz.com/products/wpalacontrol)  
 
 ## Connect
 
