@@ -316,7 +316,7 @@ void Core::mqttPublishHassDiscovery(HassDiscoveryCtx &ctx)
                           "\"entity_category\":\"diagnostic\","
                           "\"object_id\":\"" CUSTOM_APP_MODEL "_connectivity\","
                           "\"state_topic\":\"~/connected\","
-                          "\"value_template\": \"{{ iif(int(value) > 0, 'ON', 'OFF') }}\""
+                          "\"value_template\": \"{{ iif((value | int(0)) > 0, 'ON', 'OFF') }}\""
                           "}"));
   ctx.publishEntity(json, F("binary_sensor"), F("Connectivity"), false);
 

@@ -4,7 +4,7 @@ Application *Application::_applicationList[3] = {nullptr, nullptr, nullptr};
 
 void Application::HassDiscoveryCtx::publishEntity(JsonDocument &json, const String &type, const __FlashStringHelper *uniqueIdSuffix, bool withStandardAvail)
 {
-  static const __FlashStringHelper *standardAvailabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 0, 'online', 'offline') }}\"}");
+  static const __FlashStringHelper *standardAvailabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif((value | int(0)) > 0, 'online', 'offline') }}\"}");
 
   String uniqueId = uniqueIdPrefix + '_' + uniqueIdSuffix;
 
