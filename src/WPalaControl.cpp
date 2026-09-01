@@ -320,7 +320,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
   // but uniqueIdPrefix still contains the main device prefix
   uniqueIdPrefix = uniqueIdPrefixStove;
   // when stove is connected the value is 2, so the availabilityJSON is set to "online" when value > 1
-  ctx.availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif(int(value) > 1, 'online', 'offline') }}\"}");
+  ctx.availabilityJSON = F("{\"topic\":\"~/connected\",\"value_template\":\"{{ iif((value | int(0)) > 1, 'online', 'offline') }}\"}");
 
   mqttPublishStoveHassDiscovery(ctx, staticData, allStatusData);
 
@@ -431,7 +431,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"entity_category\":\"diagnostic\","
                           "\"object_id\":\"stove_connectivity\","
                           "\"state_topic\":\"~/connected\","
-                          "\"value_template\": \"{{ iif(int(value) > 1, 'ON', 'OFF') }}\""
+                          "\"value_template\": \"{{ iif((value | int(0)) > 1, 'ON', 'OFF') }}\""
                           "}"));
   // publish
   ctx.publishEntity(json, F("binary_sensor"), F("Connectivity"), false);
@@ -497,7 +497,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"temperature_command_topic\":\"~/cmd\","
                           "\"temperature_unit\":\"C\""
                           "}"));
-  setTemplateField(F("action_template"), F("STATUS"), F("{% set intSTATUS = int({v}) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}"));
+  setTemplateField(F("action_template"), F("STATUS"), F("{% set intSTATUS = ({v} | int(0)) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}"));
 
   json[F("action_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   if (_ha.mqtt.type == HaMqttType::GenericJson)
@@ -519,7 +519,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   json[F("max_temp")] = (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) ? staticData.SPLMAX : staticData.SPLMIN + 2 * (19 - staticData.SPLMIN);
   json[F("min_temp")] = staticData.SPLMIN;
 
-  setTemplateField(F("mode_state_template"), F("STATUS"), F("{{ iif(int({v}) > 0, 'heat', 'off') }}"));
+  setTemplateField(F("mode_state_template"), F("STATUS"), F("{{ iif(({v} | int(0)) > 0, 'heat', 'off') }}"));
 
   json[F("mode_state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
   // modes already in deserialized JSON
@@ -743,7 +743,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                             "\"state_on\":\"ON\""
                             "}"));
     json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
-    setTemplateField(F("value_template"), F("STATUS"), F("{{ iif(int({v}) > 1 and int({v}) != 10, 'ON', 'OFF') }}"));
+    setTemplateField(F("value_template"), F("STATUS"), F("{{ iif(({v} | int(0)) > 1 and ({v} | int(0)) != 10, 'ON', 'OFF') }}"));
 
     // publish
     ctx.publishEntity(json, F("switch"), F("ON_OFF"));
@@ -827,14 +827,14 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
     JsonObject availability_0 = availability.add<JsonObject>();
     availability_0["topic"] = F("~/connected");
-    availability_0["value_template"] = F("{{ iif(int(value) > 1, 'online', 'offline') }}");
+    availability_0["value_template"] = F("{{ iif((value | int(0)) > 1, 'online', 'offline') }}");
 
     JsonObject availability_1 = availability.add<JsonObject>();
     availability_1["topic"] = getStateTopic(F("FAND"), F("F2L"));
     if (_ha.mqtt.type == HaMqttType::Generic || _ha.mqtt.type == HaMqttType::GenericCategorized)
-      availability_1["value_template"] = F("{{ iif(int(value) < 7, 'online', 'offline') }}");
+      availability_1["value_template"] = F("{{ iif((value | int(7)) < 7, 'online', 'offline') }}");
     else if (_ha.mqtt.type == HaMqttType::GenericJson)
-      availability_1["value_template"] = F("{{ iif(int(value_json.F2L) < 7, 'online', 'offline') }}");
+      availability_1["value_template"] = F("{{ iif((value_json.F2L | int(7)) < 7, 'online', 'offline') }}");
 
     json[F("state_topic")] = getStateTopic(F("FAND"), F("F2L"));
     setValueTemplate(F("F2L"));
@@ -863,7 +863,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                             "\"state_on\":\"ON\""
                             "}"));
     json[F("state_topic")] = getStateTopic(F("FAND"), F("F2L"));
-    setTemplateField(F("value_template"), F("F2L"), F("{{ iif(int({v}) == 7, 'ON', 'OFF') }}"));
+    setTemplateField(F("value_template"), F("F2L"), F("{{ iif(({v} | int(0)) == 7, 'ON', 'OFF') }}"));
 
     // publish
     ctx.publishEntity(json, F("switch"), F("RFAN_Auto"));
