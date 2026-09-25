@@ -282,5 +282,7 @@ bool MQTTMan::loop()
 #endif
     }
 
-    return PubSubClient::loop();
+    if (connected())
+        return PubSubClient::loop();
+    return true;
 }
