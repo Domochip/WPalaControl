@@ -41,6 +41,7 @@ public:
 
     using PubSubClient::setClient;
     using PubSubClient::setServer;
+    using PubSubClient::setKeepAlive;
     MQTTMan &setConnectedAndWillTopic(const char *topic);
     MQTTMan &setConnectedCallback(ConnectedCallback connectedCallback);
     MQTTMan &setDisconnectedCallback(DisconnectedCallback disconnectedCallback);
