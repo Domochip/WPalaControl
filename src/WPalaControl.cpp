@@ -2350,6 +2350,7 @@ bool WPalaControl::appInit(bool reInit /* = false */)
     // (≈267 bytes worst-case: max baseTopic + max username/password + will topic).
     // 512 gives a ×2 safety margin
     _mqttMan.setBufferSize(512);
+    _mqttMan.setKeepAlive(42);
     _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
     _mqttMan.setBaseTopic(_ha.mqtt.generic.baseTopic);
     _mqttMan.setConnectedCallback([this](MQTTMan *mqttMan, bool firstConnection)
