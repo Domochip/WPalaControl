@@ -28,6 +28,7 @@ void SSEServer::handleSubscription(WebServer &server)
 
     // create/update subscription
     _clients[subPos] = server.client();
+    _clients[subPos].setTimeout(50);                 // Set the client timeout to 50ms (reduces the impact of unresponsive clients when payload is over 1072-128 bytes)
     server.setContentLength(CONTENT_LENGTH_UNKNOWN); // the payload can go on forever
     server.sendContent_P(PSTR("HTTP/1.1 200 OK\nContent-Type: text/event-stream;\nConnection: keep-alive\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *\n\n"));
 
@@ -41,9 +42,14 @@ void SSEServer::forEach(std::function<void(WiFiClient &, uint8_t)> action)
     for (uint8_t i = 0; i < SSE_SERVER_MAX_CLIENTS; i++)
     {
         if (_clients[i].connected())
-            action(_clients[i], i);
-        else if (_clients[i])
-            _clients[i].stop(); // Client disconnected — release slot so it can be reused
+        {                           // Check if the client is still connected
+            action(_clients[i], i); // Perform the action for the connected client
+
+            // if the client write buffer (measured initially at 1072 bytes) is almost full, try to flush it, then abort the unresponsive client connection if it fails
+            // this way we can still group multiple messages together and properly detect unresponsive clients without being much affected by delays/timeout
+            if (_clients[i].availableForWrite() < 128 && !_clients[i].flush(150))
+                _clients[i].abort(); // abort disconnect the unresponsive client without waiting
+        }
     }
 }
 
