@@ -68,11 +68,29 @@ Protocol: <span id="haprotocol"></span><br>
         }
     );
 
-    if (!!window.EventSource && (typeof statusEventSource === 'undefined' || statusEventSource.readyState === 2)) {
-        var statusEventSource = new EventSource('/statusEvt' + qsp[8]);
+    var statusEventSource;
+
+    function closeStatusEventSource() {
+        if (statusEventSource != undefined && statusEventSource.readyState !== 2) {
+            statusEventSource.close();
+        }
+    }
+
+    function connectStatusEventSource() {
+        if (!window.EventSource || document.hidden) return;
+        if (statusEventSource != undefined && statusEventSource.readyState !== 2) return;
+
+        statusEventSource = new EventSource('/statusEvt' + qsp[8]);
         statusEventSource.addEventListener('message', function (e) {
             console.log('statusEvt' + qsp[8] + ' : ' + e.data);
             parseLiveData(JSON.parse(e.data));
         });
     }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) closeStatusEventSource();
+        else connectStatusEventSource();
+    });
+
+    connectStatusEventSource();
 </script>
