@@ -138,6 +138,11 @@ void loop(void)
 
   wifiMan.run();
 
+  // required to maintain WiFi and send tcp packets (particularly for mesh wifi)
+#ifdef ESP8266
+  delay(10);
+#endif
+
   if (SystemState::shouldReboot)
   {
 #ifdef LOG_SERIAL
