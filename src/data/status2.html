@@ -1,6 +1,4 @@
-<h2 class="content-subhead">WPalaControl<span id="l">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
+<h2 class="content-subhead">WPalaControl<span id="l" class="ld">Loading...</span></h2>
 Hardware Version: <span id="hwversion"></span><span id="hwdetection"></span><br>
 <h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
 <dl id="liveData"></dl>
@@ -55,7 +53,7 @@ Protocol: <span id="haprotocol"></span><br>
             fadeOut($(qsp + '#l'));
         },
         function () {
-            $(qsp + '#l').innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+            $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
         }
     );
 
