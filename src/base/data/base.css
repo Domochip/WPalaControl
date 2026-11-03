@@ -1,0 +1,311 @@
+/* Shared Domochip stylesheet (layout, side menu and common UI helpers), loaded after pure-min.css */
+
+:root {
+    --text: #777;
+    --heading: #333;
+    --subhead: #888;
+    --border: #eee;
+    --menu-bg: #191818;
+    --menu-text: #999;
+    --menu-hover: #333;
+    --accent: #1f8dd6;
+    --ok: #1cb841;
+    --warn: #df7514;
+    --err: #ca3c3c;
+    --menu-width: 150px;
+}
+
+body {
+    color: var(--text);
+}
+
+/* -- Layout ---------------------------------------------------------------- */
+
+#layout,
+#menu,
+.menu-link {
+    transition: all 0.2s ease-out;
+}
+
+#layout {
+    position: relative;
+    left: 0;
+    padding-left: 0;
+}
+
+#layout.active #menu {
+    left: var(--menu-width);
+    width: var(--menu-width);
+}
+
+#layout.active .menu-link {
+    left: var(--menu-width);
+}
+
+.header {
+    margin: 0;
+    color: var(--heading);
+    text-align: center;
+    padding: 2.5em 2em 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+    margin: 0.2em 0;
+    font-size: 3em;
+    font-weight: 300;
+}
+
+.content {
+    margin: 0 auto 50px;
+    padding: 0 2em;
+    max-width: 800px;
+    line-height: 1.6em;
+}
+
+.content-subhead {
+    margin: 50px 0 20px 0;
+    font-weight: 300;
+    color: var(--subhead);
+}
+
+/* -- Side menu ------------------------------------------------------------- */
+
+#menu {
+    margin-left: calc(-1 * var(--menu-width));
+    width: var(--menu-width);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: var(--menu-bg);
+    overflow-y: auto;
+}
+
+#menu a {
+    color: var(--menu-text);
+    border: none;
+    padding: 0.6em 0 0.6em 0.6em;
+}
+
+#menu .pure-menu,
+#menu .pure-menu ul {
+    border: none;
+    background: transparent;
+}
+
+#menu .pure-menu ul {
+    border-top: 1px solid var(--menu-hover);
+}
+
+/* no lingering focus background after a mouse click */
+#menu .pure-menu-link:focus:not(:focus-visible) {
+    background: transparent;
+}
+
+#menu .pure-menu li a:hover,
+#menu .pure-menu li a:focus-visible {
+    background: var(--menu-hover);
+}
+
+#menu .pure-menu-selected,
+#menu .pure-menu-heading {
+    background: var(--accent);
+}
+
+/* selected item stays blue on hover/focus (same specificity as above, so must come after it) */
+#menu .pure-menu li.pure-menu-selected a {
+    color: #fff;
+    background: transparent;
+}
+
+#menu .pure-menu-heading {
+    font-size: 110%;
+    color: #fff;
+    margin: 0;
+    padding-left: 0.5em;
+}
+
+#menu .pure-menu-heading + .pure-menu-heading {
+    padding-top: 0;
+}
+
+/* Hamburger toggle, only visible on small screens */
+.menu-link {
+    position: fixed;
+    display: block;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.7);
+    font-size: 10px;
+    z-index: 10;
+    width: 2em;
+    height: auto;
+    padding: 2.1em 1.6em;
+}
+
+.menu-link:hover,
+.menu-link:focus {
+    background: #000;
+}
+
+.menu-link span {
+    position: relative;
+    display: block;
+}
+
+.menu-link span,
+.menu-link span:before,
+.menu-link span:after {
+    background-color: #fff;
+    pointer-events: none;
+    width: 100%;
+    height: 0.2em;
+}
+
+.menu-link span:before,
+.menu-link span:after {
+    position: absolute;
+    margin-top: -0.6em;
+    content: " ";
+}
+
+.menu-link span:after {
+    margin-top: 0.6em;
+}
+
+@media (min-width: 48em) {
+    #layout {
+        padding-left: var(--menu-width);
+    }
+
+    #menu {
+        left: var(--menu-width);
+    }
+
+    .menu-link {
+        left: var(--menu-width);
+        display: none;
+    }
+}
+
+@media (max-width: 48em) {
+    /* avoid extra left padding when the window grows back with the menu open */
+    #layout.active {
+        left: var(--menu-width);
+    }
+}
+
+/* -- Common UI helpers ----------------------------------------------------- */
+
+/* "Loading..." / "Failed" indicator next to a section title */
+.ld {
+    font-size: 0.6em;
+    font-weight: bold;
+    margin-left: 0.4em;
+}
+
+.ok {
+    color: var(--ok);
+    font-weight: bold;
+}
+
+.err {
+    color: var(--err);
+    font-weight: bold;
+}
+
+.pure-button.btn-ok,
+.pure-button.btn-warn,
+.pure-button.btn-err {
+    color: #fff;
+}
+
+.pure-button.btn-ok {
+    background: var(--ok);
+}
+
+.pure-button.btn-warn {
+    background: var(--warn);
+}
+
+.pure-button.btn-err {
+    background: var(--err);
+}
+
+.pure-button.btn-sm {
+    font-size: 0.75em;
+}
+
+.strong-labels label {
+    font-weight: bold;
+}
+
+.inline-block {
+    display: inline-block;
+}
+
+.align-top {
+    vertical-align: top;
+}
+
+/* "?" badge and the help box it toggles */
+.infotip {
+    background: var(--ok);
+    padding: 0.3em;
+    border-radius: 3px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.infotipdiv {
+    background: var(--ok);
+    padding: 0.3em 1em;
+    border-radius: 3px;
+    color: #fff;
+    margin-bottom: 0.5em;
+    display: inline-block;
+}
+
+/* Bordered box used to group an expandable section */
+.panel {
+    border: 3px solid var(--ok);
+    padding: 10px;
+    position: relative;
+    top: -10px;
+}
+
+.panel > .content-subhead:first-child {
+    margin-top: 10px;
+}
+
+/* Full-width alert pinned to the top of the page */
+.banner {
+    position: fixed;
+    top: 0;
+    right: 0;
+    padding: 0.5em 1em;
+    text-align: center;
+    color: #fff;
+    background: var(--err);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+}
+
+.spinner {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-left-color: #fff;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

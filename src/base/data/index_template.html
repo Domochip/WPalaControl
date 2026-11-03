@@ -8,25 +8,7 @@
     <title>Domochip {{APP_MODEL}}</title>
 
     <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="side-menu.css">
-    <style>
-        .infotip {
-            background: #1Cb841;
-            padding: 0.3em 0.3em;
-            border-radius: 3px;
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .infotipdiv {
-            background: #1Cb841;
-            padding: 0.3em 1em;
-            border-radius: 3px;
-            color: #fff;
-            margin-bottom: 0.5em;
-            display: inline-block;
-        }
-    </style>
+    <link rel="stylesheet" href="base.css">
 </head>
 
 <body>
@@ -39,8 +21,8 @@
 
         <div id="menu">
             <div class="pure-menu">
-                <div class="pure-menu-heading" style="padding-left:0.5em;">Domochip</div>
-                <div class="pure-menu-heading" style="padding-left:0.5em; padding-top: 0;" id="menuModel">{{APP_MODEL}}</div>
+                <div class="pure-menu-heading">Domochip</div>
+                <div class="pure-menu-heading" id="menuModel">{{APP_MODEL}}</div>
 
                 <ul class="pure-menu-list">
                     <li class="pure-menu-item" id="menuStatus"><a href="" class="pure-menu-link">Status</a></li>
@@ -66,7 +48,6 @@
             return el.querySelector(selector);
         }
     </script>
-    <script src="side-menu.js"></script>
     <script>
         const loadedScripts = new Set();
 
@@ -220,11 +201,22 @@
             $('#content').innerHTML = '';
         }
 
+        // Side menu toggle (small screens): hamburger opens/closes it, clicking the page closes it
+        function toggleMenu(evt) {
+            evt.preventDefault();
+            $('#layout').classList.toggle('active');
+        }
+        $('#menuLink').addEventListener('click', toggleMenu);
+        $('#main').addEventListener('click', (evt) => {
+            if ($('#layout').classList.contains('active')) toggleMenu(evt);
+        });
+
         function handleMenuClick(menuId, headerText, loadFn) {
             const menuElement = $(menuId);
             menuElement.addEventListener("click", (evt) => {
                 evt.preventDefault();
                 clearMenuAndContent();
+                $('#layout').classList.remove('active');
                 menuElement.classList.add("pure-menu-selected");
                 $("#mainHeader").textContent = headerText;
                 loadFn();

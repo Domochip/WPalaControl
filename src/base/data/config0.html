@@ -3,8 +3,7 @@
 <form class="pure-form pure-form-aligned" id='f0' method='POST' action='/rbt'>
     <fieldset>
         <div class="pure-controls">
-            <input type='submit' name='subRbt' id='subRbt' value='Reboot' class="pure-button pure-button-primary"
-                style="background: rgb(223, 117, 20);">
+            <input type='submit' name='subRbt' id='subRbt' value='Reboot' class="pure-button pure-button-primary btn-warn">
         </div>
     </fieldset>
 </form>
@@ -12,7 +11,7 @@
     <fieldset>
         <div class="pure-controls">
             <input type='submit' name='subRbtRsc' id='subRbtRsc' value='Reboot in Rescue Mode'
-                class="pure-button pure-button-primary" style="background: rgb(202, 60, 60);">
+                class="pure-button pure-button-primary btn-err">
         </div>
     </fieldset>
 </form>
@@ -22,7 +21,7 @@
     // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content0 ';
 
     function postFailed() {
-        $(qsp + '#r').innerHTML = '<span style="color: red;"><b>Failed</b></span>';
+        $(qsp + '#r').innerHTML = '<span class="err">Failed</span>';
         $(qsp + '#f0').reset();
         $(qsp + '#f0b').reset();
         $(qsp + '#subRbt').disabled = false;
@@ -35,7 +34,7 @@
         $(qsp + '#subRbtRsc').disabled = true;
 
         post(url, null, function () {
-            $(qsp + '#r').innerHTML = `<h3><span style="color: green;"><b>Done</b></span> ${successMessage} Waiting for device... <span id="cd">0</span>s</h3>`;
+            $(qsp + '#r').innerHTML = `<h3><span class="ok">Done</span> ${successMessage} Waiting for device... <span id="cd">0</span>s</h3>`;
             redirectWhenReachable(targetUrl, 30000);
         }, postFailed);
     }

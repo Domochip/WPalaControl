@@ -1,58 +1,28 @@
-<style>
-    .pure-control-group label {
-        font-weight: bold;
-    }
-
-    .spinner {
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-left-color: #fff;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        display: inline-block;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>
-
-<h2>Current Firmware<span id="l1">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-<div class="pure-form pure-form-aligned">
+<h2>Current Firmware<span id="l1" class="ld">Loading...</span></h2>
+<div class="pure-form pure-form-aligned strong-labels">
     <div class="pure-control-group">
         <label for="installed_version">Version</label>
         <span id='installed_version'></span>
     </div>
 </div>
 
-<h2>Online Update<span id="l2">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
-<div class="pure-form pure-form-aligned">
+<h2>Online Update<span id="l2" class="ld">Loading...</span></h2>
+<div class="pure-form pure-form-aligned strong-labels">
     <div class="pure-control-group">
         <label for="latest_version">Latest Version</label>
         <span id='latest_version'></span>
     </div>
     <div class="pure-control-group">
         <label for="title">Title</label>
-        <span id='title' style="display: inline-block;"></span>
+        <span id='title' class="inline-block"></span>
     </div>
     <div class="pure-control-group">
         <label for="release_date">Release Date</label>
         <span id='release_date'></span>
     </div>
     <div class="pure-control-group">
-        <label for="release_summary" style="vertical-align: top;">Summary</label>
-        <span id='release_summary' style="display: inline-block;"></span>
+        <label for="release_summary" class="align-top">Summary</label>
+        <span id='release_summary' class="inline-block"></span>
     </div>
 
     <div class="pure-control-group">
@@ -60,15 +30,15 @@
         <span id='release_url'></span>
     </div>
     <div class="pure-controls">
-        <button class="pure-button pure-button-primary" id="refreshButton" style="background: #1cb841;">Refresh</button>
-        <button class="pure-button pure-button-primary" id="updateButton" style="background: #df7514;"
+        <button class="pure-button pure-button-primary btn-ok" id="refreshButton">Refresh</button>
+        <button class="pure-button pure-button-primary btn-warn" id="updateButton"
             disabled>Update</button>
         &nbsp;&nbsp;<span id='rUpdate'></span>
     </div>
 </div>
 
 <h2>Manual Update</h2>
-<form class="pure-form pure-form-aligned" id="f" method='POST' action='/fw' enctype='multipart/form-data'>
+<form class="pure-form pure-form-aligned strong-labels" id="f" method='POST' action='/fw' enctype='multipart/form-data'>
     <fieldset>
         <div class="pure-control-group">
             <label for="name">Firmware File</label>
@@ -200,7 +170,7 @@
 
                 calculateAllButtonStates();
                 ['#l1', '#l2'].forEach(id => {
-                    $(qsp + id).innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+                    $(qsp + id).innerHTML = '<span class="err">Failed</span>';
                 });
             }
         );
@@ -233,7 +203,7 @@
                             $(qsp + '#rUpdate').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
                             redirectWhenReachable(location.origin, 60000);
                         } else {
-                            $(qsp + '#rUpdate').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${message})`;
+                            $(qsp + '#rUpdate').innerHTML = `<span class="err">Failed</span> (${message})`;
                             calculateAllButtonStates();
                         }
                         return;
@@ -251,7 +221,7 @@
                 reader.read().then(processChunk); // Start reading chunks
             })
             .catch(error => {
-                $(qsp + '#rUpdate').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${error.message})`;
+                $(qsp + '#rUpdate').innerHTML = `<span class="err">Failed</span> (${error.message})`;
                 calculateAllButtonStates();
             });
     });
@@ -272,7 +242,7 @@
                 redirectWhenReachable(location.origin, 60000);
             },
             (responseText) => {
-                $(qsp + '#rUpload').innerHTML = `<span style="color: red;"><b>Failed</b></span> (${responseText})`;
+                $(qsp + '#rUpload').innerHTML = `<span class="err">Failed</span> (${responseText})`;
                 $(qsp + '#f').reset();
                 calculateAllButtonStates();
             },

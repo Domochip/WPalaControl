@@ -1,6 +1,4 @@
-<h2 class="content-subhead">System<span id="l">
-        <h6 style="display:inline"><b> Loading...</b></h6>
-    </span></h2>
+<h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
 
 SN : <span id="sn"></span><br>
 Version : <span id="version"></span><br>
@@ -10,8 +8,8 @@ FreeHeap : <span id="freeheap"></span><br>
 <div id="cdiv" style="display:none">
 Crash logged : <span id="crashcount"></span><br>
 Crash files :<span id="cbtns">
-&nbsp;<a href="/crashdl" class="pure-button pure-button-primary" style="font-size:0.75em">Download</a>
-&nbsp;<button class="pure-button pure-button-primary" style="font-size:0.75em;background:rgb(202,60,60)" onclick="clrCrashes()">Clear</button>
+&nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
+&nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" onclick="clrCrashes()">Clear</button>
 </span>
 </div>
 
@@ -27,7 +25,7 @@ Crash files :<span id="cbtns">
         }
         fadeOut($(qsp + "#l"));
     }, function () {
-        $(qsp + "#l").innerHTML = '<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+        $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
     });
 
     function clrCrashes() {

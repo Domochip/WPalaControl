@@ -6,8 +6,7 @@
 
 #include "data/index.html.gz.h"
 #include "data/pure-min.css.gz.h"
-#include "data/side-menu.css.gz.h"
-#include "data/side-menu.js.gz.h"
+#include "data/base.css.gz.h"
 
 const char *Core::getSerialNumber()
 {
@@ -95,22 +94,13 @@ void Core::appInitWebServer(WebServer &server)
               server.send_P(200, PSTR("text/css"), puremincssgz, sizeof(puremincssgz));
             });
 
-  server.on(F("/side-menu.css"), HTTP_GET,
+  server.on(F("/base.css"), HTTP_GET,
             [&server]()
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Content-Encoding"), F("gzip"));
               server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/css"), sidemenucssgz, sizeof(sidemenucssgz));
-            });
-
-  server.on(F("/side-menu.js"), HTTP_GET,
-            [&server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/javascript"), sidemenujsgz, sizeof(sidemenujsgz));
+              server.send_P(200, PSTR("text/css"), basecssgz, sizeof(basecssgz));
             });
 
   // Get Latest Update Info ---------------------------------------------------------
