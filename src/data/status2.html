@@ -3,16 +3,17 @@ Hardware Version: <span id="hwversion"></span><span id="hwdetection"></span><br>
 <h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
 <dl id="liveData"></dl>
 <h3 class="content-subhead">Home Automation Status</h3>
-Protocol: <span id="haprotocol"></span><br>
+Protocol: <span id="haproto"></span><br>
 <span id="hamqttstatuse" style='display:none'>
     Connection State: <span id="hamqttstatus"></span><br>
-</span>
-<span id="hamqttlastpublishe" style='display:none'>
     Last Publish : <span id="hamqttlastpublish"></span><br>
 </span>
 
 <script>
     // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content2 ';
+
+    function show(id, cond) { $(qsp + "#" + id).style.display = (cond ? '' : 'none'); }
+    function failed() { $(qsp + "#l").innerHTML = '<span class="err">Failed</span>'; }
 
     function parseLiveData(liveData) {
         if ($(qsp + '#liveData') == undefined) return;
@@ -41,20 +42,37 @@ Protocol: <span id="haprotocol"></span><br>
         }
     }
 
-    getJSON("/gs" + qsp[8],
-        function (GS) {
-            for (k in GS) {
-                if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
-            }
-
-            $(qsp + "#hamqttstatuse").style.display = (GS["hamqttstatus"] ? '' : 'none');
-            $(qsp + "#hamqttlastpublishe").style.display = (GS["hamqttlastpublish"] ? '' : 'none');
-
-            fadeOut($(qsp + '#l'));
-        },
-        function () {
-            $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
+    // update displayed values from a (possibly partial) status JSON object (from /gs or an SSE event)
+    function applyStatus(status) {
+        for (var k in status) {
+            var e = $(qsp + '#' + k);
+            if (e != undefined) e.innerHTML = status[k];
         }
+    }
+
+    // fetch the complete status and refresh all displayed data
+    function refreshStatus() {
+        getJSON("/gs" + qsp[8],
+            function (GS) {
+                applyStatus(GS);
+                fadeOut($(qsp + "#l"));
+            },
+            failed
+        );
+    }
+
+    // get configuration first to know which protocols are configured (0:Disabled, 1:MQTT)
+    getJSON("/gc" + qsp[8],
+        function (GC) {
+            var haP = GC["haproto"];
+            var protoNames = ["Disabled", "MQTT"];
+            $(qsp + "#haproto").innerHTML = protoNames[haP];
+
+            show("hamqttstatuse", haP == 1);
+
+            refreshStatus();
+        },
+        failed
     );
 
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
