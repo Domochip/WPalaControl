@@ -81,12 +81,14 @@ body {
     z-index: 1000;
     background: var(--menu-bg);
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 #menu a {
     color: var(--menu-text);
     border: none;
-    padding: 0.6em 0 0.6em 0.6em;
+    padding: 0.6em 0.8em;
+    white-space: nowrap;
 }
 
 #menu .pure-menu,
@@ -182,6 +184,9 @@ body {
 
     #menu {
         left: var(--menu-width);
+        width: max-content;
+        min-width: 180px;
+        max-width: 400px;
     }
 
     .menu-link {
