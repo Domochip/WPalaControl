@@ -56,6 +56,17 @@ int WPalaControl::myFlushSerial()
 }
 void WPalaControl::myUSleep(unsigned long usecond) { delayMicroseconds(usecond); }
 
+// broadcast application status (including MQTT connection status and last publish result) to web clients
+void WPalaControl::broadcastMqttStatus()
+{
+  if (_ha.protocol != HaProtocol::Mqtt)
+    return;
+
+  JsonDocument status;
+  fillStatusJSON(status);
+  _sse.broadcast(status);
+}
+
 void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 {
   // Subscribe command topic --------------------------------
@@ -84,12 +95,16 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 
   // To be removed at 2027-06-12: clean retained message on base topic (used in early versions)
   mqttMan->publish(_mqttMan.getBaseTopic(), "", true);
+
+  broadcastMqttStatus();
 }
 
 void WPalaControl::mqttDisconnectedCallback()
 {
   // if MQTT is disconnected, MQTT Reconnection will publish "1" to connectedTopic
   _publishedStoveConnected = false;
+
+  broadcastMqttStatus();
 }
 
 void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
@@ -2195,6 +2210,8 @@ void WPalaControl::publishTick()
     if (!executePalaCmd(cmd, json, true))
       break;
   }
+
+  broadcastMqttStatus();
 }
 
 void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)

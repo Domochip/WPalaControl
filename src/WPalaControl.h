@@ -88,6 +88,7 @@ private:
   int myFlushSerial();
   void myUSleep(unsigned long usecond);
 
+  void broadcastMqttStatus();
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
   void mqttDisconnectedCallback();
   void mqttCallback(char *topic, uint8_t *payload, unsigned int length);

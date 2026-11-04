@@ -43,7 +43,7 @@ Protocol: <span id="haproto"></span><br>
         }
     }
 
-    // update displayed values from a (possibly partial) status JSON object (from /gs or an SSE event)
+    // update displayed values from a status JSON object (from /gs or an SSE event)
     function applyStatus(status) {
         for (var k in status) {
             var e = $(qsp + '#' + k);
@@ -51,7 +51,7 @@ Protocol: <span id="haproto"></span><br>
         }
     }
 
-    // fetch the complete status and refresh all displayed data
+    // fetch the status and refresh all displayed data
     function refreshStatus() {
         getJSON("/gs" + qsp[8],
             function (GS) {
