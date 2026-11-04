@@ -330,6 +330,10 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
 {
   json[F("installed_version")] = VERSION;
 
+  // Skip fetching update info if device is in AP mode (no internet connectivity)
+  if (WiFi.getMode() & WIFI_AP)
+    return;
+
   char version[10], title[64], releaseDate[11], summary[256];
 
   if (getLatestUpdateInfo(version, title, releaseDate, summary))
