@@ -2322,6 +2322,8 @@ void WPalaControl::fillStatusJSON(JsonVariant json)
 
     if (_mqttMan.state() == MQTT_CONNECTED)
       json[F("hamqttlastpublish")] = (_haSendResult ? F("OK") : F("Failed"));
+    else
+      json[F("hamqttlastpublish")] = "";
 
     // add MQTT connection count for debug and statistic
     json[F("mqttconnectcount")] = _mqttMan.getConnectionCount();
