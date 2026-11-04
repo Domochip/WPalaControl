@@ -15,8 +15,9 @@ Protocol: <span id="haproto"></span><br>
     function show(id, cond) { $(qsp + "#" + id).style.display = (cond ? '' : 'none'); }
     function failed() { $(qsp + "#l").innerHTML = '<span class="err">Failed</span>'; }
 
-    function parseLiveData(liveData) {
+    function parseLiveData(response) {
         if ($(qsp + '#liveData') == undefined) return;
+        var liveData = response.SUCCESS === true ? response.DATA : { MSG: response.INFO.MSG };
         for (k in liveData) {
             kForId = (/[^a-zA-Z]/.test(k[0]) ? 'a' : '') + k; //k[0] is not in a-zA-Z then we need to add 'a'
             kForId = kForId.replace(/ /g, '_');
@@ -76,12 +77,7 @@ Protocol: <span id="haproto"></span><br>
     );
 
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
-        function (SERN) {
-            if (SERN.SUCCESS)
-                parseLiveData(SERN.DATA);
-            else
-            parseLiveData({ MSG: SERN.INFO.MSG });
-        }
+        parseLiveData
     );
 
     var statusEventSource;
@@ -99,7 +95,9 @@ Protocol: <span id="haproto"></span><br>
         statusEventSource = new EventSource('/statusEvt' + qsp[8]);
         statusEventSource.addEventListener('message', function (e) {
             console.log('statusEvt' + qsp[8] + ' : ' + e.data);
-            parseLiveData(JSON.parse(e.data));
+            var msg = JSON.parse(e.data);
+            if (!('SUCCESS' in msg)) applyStatus(msg);
+            else parseLiveData(msg);
         });
     }
 
