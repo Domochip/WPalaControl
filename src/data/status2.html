@@ -60,9 +60,9 @@ Protocol: <span id="haprotocol"></span><br>
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
         function (SERN) {
             if (SERN.SUCCESS)
-                parseLiveData({ SN: SERN.DATA.SN });
+                parseLiveData(SERN.DATA);
             else
-            parseLiveData({ MSG: (SERN.INFO.MSG + '! Please check cabling to your stove.') });
+            parseLiveData({ MSG: SERN.INFO.MSG });
         }
     );
 
