@@ -1,4 +1,5 @@
 #include "WPalaControl.h"
+#include <cmath>
 
 #ifdef ESP8266
 #define PALA_SERIAL Serial
@@ -1205,8 +1206,17 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
-    dtostrf(val, 1, 2, buf);
+    // "nan" or "inf" would make the JSON invalid
+    if (!std::isfinite(val))
+    {
+      obj[key] = nullptr;
+      return;
+    }
+
+    // bounded write: dtostrf() has no size limit, and raw int16 values such as T3/T4
+    // need up to 10 bytes ("-32768.00"), more than the previous 8-byte buffer
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", val);
     obj[key] = serialized(buf);
   };
 
@@ -1670,8 +1680,17 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
-    dtostrf(val, 1, 2, buf);
+    // "nan" or "inf" would make the JSON invalid
+    if (!std::isfinite(val))
+    {
+      obj[key] = nullptr;
+      return;
+    }
+
+    // bounded write: dtostrf() has no size limit, and raw int16 values such as T3/T4
+    // need up to 10 bytes ("-32768.00"), more than the previous 8-byte buffer
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", val);
     obj[key] = serialized(buf);
   };
 
