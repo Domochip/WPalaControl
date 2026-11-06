@@ -1,4 +1,19 @@
-<h2 class="content-subhead">System</h2>
+<h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
+
+<form class="pure-form pure-form-aligned" id='f' method='POST' action='/sc0'>
+    <fieldset>
+        <div class="pure-control-group">
+            <label for="tz">NTP Timezone</label>
+            <select id='tz' name='tz'>
+            </select>
+            <span class="pure-form-message-inline">Select your timezone</span>
+        </div>
+        <div class="pure-controls">
+            <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
+        </div>
+    </fieldset>
+</form>
+<span id='r'></span>
 
 <form class="pure-form pure-form-aligned" id='f0' method='POST' action='/rbt'>
     <fieldset>
@@ -15,10 +30,112 @@
         </div>
     </fieldset>
 </form>
-<span id='r'></span>
 
 <script>
     // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content0 ';
+
+    // Populate timezone dropdown
+    function populateTimezones() {
+        // Timezone data: display name | POSIX TZ string
+        const TIMEZONE_DATA = [
+            'Africa/Cairo|EET-2',
+            'Africa/Johannesburg|SAST-2',
+            'Africa/Lagos|WAT-1',
+            'Africa/Nairobi|EAT-3',
+            'America/Anchorage|AKST9AKDT,M3.2.0,M11.1.0',
+            'America/Buenos_Aires|ART3',
+            'America/Chicago|CST6CDT,M3.2.0,M11.1.0',
+            'America/Denver|MST7MDT,M3.2.0,M11.1.0',
+            'America/Los_Angeles|PST8PDT,M3.2.0,M11.1.0',
+            'America/Mexico_City|CST6CDT,M4.1.0,M10.5.0',
+            'America/New_York|EST5EDT,M3.2.0,M11.1.0',
+            'America/Sao_Paulo|BRST3BRDT,M10.3.0/0,M2.3.0/0',
+            'America/Toronto|EST5EDT,M3.2.0,M11.1.0',
+            'Asia/Bangkok|ICT-7',
+            'Asia/Dubai|GST-4',
+            'Asia/Hong_Kong|HKT-8',
+            'Asia/Seoul|KST-9',
+            'Asia/Shanghai|CST-8',
+            'Asia/Tokyo|JST-9',
+            'Australia/Brisbane|AEST-10',
+            'Australia/Melbourne|AEST-10AEDT,M10.1.0,M4.1.0/3',
+            'Australia/Sydney|AEST-10AEDT,M10.1.0,M4.1.0/3',
+            'Europe/Amsterdam|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Athens|EET-2EEST,M3.5.0/3,M10.5.0/4',
+            'Europe/Berlin|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Brussels|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Budapest|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Helsinki|EET-2EEST,M3.5.0/3,M10.5.0/4',
+            'Europe/Istanbul|EET-2EEST,M3.5.0/3,M10.5.0/4',
+            'Europe/London|GMT0BST,M3.5.0/1,M10.5.0',
+            'Europe/Madrid|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Prague|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Rome|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Stockholm|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Vienna|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Europe/Warsaw|CET-1CEST,M3.5.0,M10.5.0/3',
+            'Pacific/Auckland|NZST-12NZDT,M9.5.0,M4.1.0/3',
+            'Pacific/Honolulu|HST10',
+            'UTC|UTC0',
+        ];
+        
+        const select = $(qsp + '#tz');
+        const defaultValue = 'Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3';
+        
+        TIMEZONE_DATA.forEach(tz => {
+            const [displayName, posixString] = tz.split('|');
+            const option = document.createElement('option');
+            option.value = tz; // Full value: displayName|posixString
+            option.textContent = displayName;
+            if (tz === defaultValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    }
+
+    $(qsp + "#f").addEventListener('submit', function (event) {
+        event.preventDefault();
+        $(qsp + '#r').innerHTML = "Saving Configuration...";
+        post("/sc" + qsp[8],
+            convertFormToJson($(qsp + "#f")),
+            function () {
+                $(qsp + "#f").style.display = 'none';
+
+                sessionStorage.setItem('activeTab', '#menuConfig');
+
+                $(qsp + '#r').innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
+                redirectWhenReachable(location.origin, 30000);
+            },
+            function () {
+                $(qsp + '#r').innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
+            }
+        );
+    });
+
+    // Load configuration
+    getJSON("/gc" + qsp[8],
+        function (GC) {
+            // Populate timezone dropdown first
+            populateTimezones();
+
+            for (k in GC) {
+                if ($(qsp + '#' + k)) {
+                    if ($(qsp + '#' + k).type != 'checkbox') $(qsp + '#' + k).value = GC[k];
+                    else $(qsp + '#' + k).checked = GC[k];
+
+                    triggerEvent($(qsp + '#' + k), 'change');
+                }
+            }
+
+            $(qsp + "#f input[type=submit]").disabled = false;
+            fadeOut($(qsp + "#l"));
+        }, 
+        function () {
+            $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
+        }
+    );
 
     function postFailed() {
         $(qsp + '#r').innerHTML = '<span class="err">Failed</span>';

@@ -3,6 +3,7 @@
 
 #include "../Main.h"
 #include "SystemState.h"
+#include "TimeManager.h"
 #include <LittleFS.h>
 #ifdef ESP8266
 #include <ESP8266WebServer.h>
@@ -79,6 +80,7 @@ protected:
 
   static bool getLatestUpdateInfo(char *version, char *title = nullptr, char *releaseDate = nullptr, char *summary = nullptr);
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
+  static bool isValidVersion(const char *version);
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 
 public:

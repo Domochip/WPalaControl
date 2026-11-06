@@ -25,9 +25,21 @@ const char *Core::getSerialNumber()
   return sn;
 }
 
-void Core::setConfigDefaultValues() {};
-bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */) { return true; };
-void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */) {};
+void Core::setConfigDefaultValues()
+{
+  strcpy_P(ntpTimezone, PSTR("Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3"));
+};
+
+bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
+{
+  parseField(json["tz"], ntpTimezone);
+  return true;
+};
+
+void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
+{
+  json["tz"] = ntpTimezone;
+};
 void Core::fillStatusJSON(JsonVariant json)
 {
   unsigned long minutes = millis() / 60000;
@@ -40,6 +52,14 @@ void Core::fillStatusJSON(JsonVariant json)
   char uptime[12];
   snprintf_P(uptime, sizeof(uptime), PSTR("%dd%dh%dm"), (uint8_t)(minutes / 1440), (uint8_t)(minutes / 60 % 24), (uint8_t)(minutes % 60));
   json[F("uptime")] = uptime;
+  
+  char localtimeBuf[24];
+  if (TimeManager::getLocalTime(localtimeBuf, sizeof(localtimeBuf)) > 0) {
+    json[F("localtime")] = localtimeBuf;
+  } else {
+    json[F("localtime")] = "NTP not synchronized";
+  }
+  
   json[F("freeheap")] = ESP.getFreeHeap();
 #ifdef ESP8266
   json[F("freestack")] = ESP.getFreeContStack();
@@ -54,6 +74,17 @@ void Core::fillStatusJSON(JsonVariant json)
 }
 bool Core::appInit(bool reInit /* = false */)
 {
+  // Extract POSIX TZ string from concatenated value (format: "DisplayName|POSIX_TZ_STRING")
+  const char *tzToUse = ntpTimezone;
+  char posixTz[64 + 1] = {0};
+  
+  const char *pipePos = strchr(ntpTimezone, '|');
+  if (pipePos != nullptr && pipePos[1] != '\0') {
+    strncpy(posixTz, pipePos + 1, sizeof(posixTz) - 1);
+    tzToUse = posixTz;
+  }
+  
+  TimeManager::setTimezone(tzToUse);
   return true;
 };
 void Core::appInitWebServer(WebServer &server)

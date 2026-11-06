@@ -81,10 +81,6 @@ bool Application::saveConfig()
 
 bool Application::loadConfig()
 {
-  // special exception for Core, there is no Core.json file to Load
-  if (_appId == CoreApp)
-    return true;
-
   bool result = true; // missing file is not an error: default values are already set
   char configPath[32];
   snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
@@ -353,6 +349,36 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
   }
 }
 
+// Returns true if version matches "X.Y.Z" (1 to 3 digits per part, max 11 chars)
+bool Application::isValidVersion(const char *version)
+{
+  if (!version)
+    return false;
+
+  uint8_t parts = 1;
+  uint8_t digits = 0;
+  const char *p = version;
+
+  for (; *p; p++)
+  {
+    if (*p >= '0' && *p <= '9')
+    {
+      if (++digits > 3)
+        return false;
+    }
+    else if (*p == '.')
+    {
+      if (digits == 0 || ++parts > 3)
+        return false;
+      digits = 0;
+    }
+    else
+      return false;
+  }
+
+  return parts == 3 && digits > 0;
+}
+
 bool Application::updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback /* = nullptr */)
 {
   if (!version || !version[0])
@@ -371,6 +397,13 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
     }
 
     version = latestVersion;
+  }
+
+  // only accept a strict "X.Y.Z" format
+  if (!isValidVersion(version))
+  {
+    retMsg = F("Invalid version format");
+    return false;
   }
 
   WiFiClientSecure clientSecure;

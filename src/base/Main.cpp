@@ -133,6 +133,8 @@ void loop(void)
   // Handle WebServer
   server.handleClient();
 
+  core.run();
+
   if (!SystemState::pauseCustomApp && !SystemState::shouldReboot)
     custom.run();
 

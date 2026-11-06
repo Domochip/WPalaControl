@@ -11,6 +11,9 @@
 class Core : public Application
 {
 private:
+  // Configuration Properties
+  char ntpTimezone[64 + 1] = {0};
+
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonVariant json, bool fromWebPage = false);
   void fillConfigJSON(JsonVariant json, bool forSaveFile = false);
