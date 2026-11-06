@@ -109,6 +109,9 @@ void WPalaControl::mqttDisconnectedCallback()
 
 void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
+  // /!\ topic and payload point into the MQTT client buffer, which is overwritten by any publish:
+  // read or copy everything needed from them before publishing anything
+
   // calculate command topic
   String cmdTopic = _mqttMan.getBaseTopic();
 
@@ -139,19 +142,34 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     String resTopic = _mqttMan.getBaseTopic();
     resTopic += F("/result");
     _mqttMan.publish(resTopic.c_str(), json);
+
+    // topic is no longer valid after a publish
+    return;
   }
 
   // if topic ends with "/update/install"
   const size_t topicLen = strlen(topic);
   if (topicLen >= 15 && memcmp_P(topic + topicLen - 15, PSTR("/update/install"), 15) == 0)
   {
+    // empty payload: nothing to install
+    // (this is also the message received back when the install command is cleared below)
+    if (length == 0)
+      return;
+
     String version;
     String retMsg;
     unsigned long lastProgressPublish = 0;
 
+    // copy the install topic now: topic becomes invalid as soon as something is published
+    String installTopic(topic);
+
     // result topic is topic without the last 8 characters ("/install")
-    String resTopic(topic);
+    String resTopic(installTopic);
     resTopic.remove(resTopic.length() - 8);
+
+    // failure message topic ("<base>/update/error")
+    String errorTopic(resTopic);
+    errorTopic += F("/error");
 
     if (length > 10)
       retMsg = F("Version is too long");
@@ -178,12 +196,21 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     }
 
     if (SystemState::shouldReboot)
+    {
+      // clear a previous failure message
+      _mqttMan.publish(errorTopic.c_str(), "", true);
       retMsg = F("{\"update_percentage\":null,\"in_progress\":true}");
+    }
     else
     {
-      _mqttMan.publish(topic, (String(F("Update failed: ")) + retMsg).c_str(), true);
+      // the failure is reported on its own topic: published on the install topic (which is subscribed),
+      // it would come back to this callback as a new install command
+      _mqttMan.publish(errorTopic.c_str(), (String(F("Update failed: ")) + retMsg).c_str(), true);
       retMsg = F("{\"in_progress\":false}");
     }
+
+    // clear a retained install command (if any) so it is not replayed at next connection or after reboot
+    _mqttMan.publish(installTopic.c_str(), "", true);
 
     // publish result
     _mqttMan.publish(resTopic.c_str(), retMsg.c_str(), true);
