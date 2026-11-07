@@ -18,7 +18,10 @@ model = extract_macro_value(r'./src/Main.h', 'CUSTOM_APP_MODEL')
 version = extract_macro_value(r'./src/Main.h', 'VERSION_NUMBER')
 developper_mode = extract_macro_value(r'./src/Main.h', 'DEVELOPPER_MODE')
 
-platform = env.GetProjectOption("platform")
+# Platform name without version or source: platformio.ini may pin a version
+# ("espressif32@7.1.3"), and comparing the raw option with "espressif32"
+# would then name the ESP32 firmware like the ESP8266 one.
+platform = env.PioPlatform().name
 build_type = env.GetProjectOption("build_type", "release")
 
 esp32suffix = ".esp32" if platform == "espressif32" else ""

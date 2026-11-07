@@ -109,6 +109,9 @@ Aallows you to flash a new firmware version directly from GitHub releases or usi
 ![firmware screenshot](img/firmware.png)  
 Ensure the module has Internet access and/or DNS configured if IP address is static
 
+Each release includes a `SHA256SUMS.txt` file. To check a firmware file downloaded from the release page before uploading it, run in the download folder:
+`sha256sum -c --ignore-missing SHA256SUMS.txt` (Linux, macOS: `shasum -a 256 -c --ignore-missing SHA256SUMS.txt`, Windows PowerShell: `Get-FileHash WPalaControl.*.bin` and compare with the file)
+
 ## Use it
 
 ### HTTP
