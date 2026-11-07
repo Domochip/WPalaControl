@@ -1,4 +1,5 @@
 #include "WPalaControl.h"
+#include "base/RequestGuard.h" // from WBase (Host and Origin checks of web requests)
 
 #ifdef ESP8266
 #define PALA_SERIAL Serial
@@ -2471,8 +2472,17 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 void WPalaControl::appInitWebServer(WebServer &server)
 {
   // Handle HTTP GET requests
+  // Both sendmsg.lua handlers start with RequestGuard::check() (base, see src/base/RequestGuard.h):
+  // - Host check: a web site using DNS rebinding can't send commands or read the answers;
+  // - Origin check (POST only): a web site can't post commands through the user's browser.
+  // Home Assistant, Jeedom and scripts are not browsers: they send no Origin header and use
+  // the device IP or name, so they are not affected.
+  // Note: a command sent with GET from another web site (an <img> tag) carries no Origin header
+  // and can't be told apart from a Home Assistant request; it is still accepted here.
   server.on(F("/cgi-bin/sendmsg.lua"), HTTP_GET, [this, &server]()
             {
+    if (!RequestGuard::check(server))
+      return;
     String cmd;
 
     if (server.hasArg(F("cmd")))
@@ -2611,6 +2621,8 @@ void WPalaControl::appInitWebServer(WebServer &server)
   server.on(
       F("/cgi-bin/sendmsg.lua"), HTTP_POST, [this, &server]()
       {
+        if (!RequestGuard::check(server))
+          return;
         String cmd;
         JsonDocument json;
 
