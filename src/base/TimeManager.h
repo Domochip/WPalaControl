@@ -5,7 +5,11 @@
 #include <Arduino.h>
 #include <time.h>
 #include <sys/time.h>
+#ifdef ESP8266
 #include <sntp.h>
+#else
+#include <esp_sntp.h>
+#endif
 
 class TimeManager
 {

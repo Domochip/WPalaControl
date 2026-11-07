@@ -49,10 +49,13 @@ void SSEServer::forEach(std::function<void(WiFiClient &, uint8_t)> action)
         {                           // Check if the client is still connected
             action(_clients[i], i); // Perform the action for the connected client
 
+#ifdef ESP8266 // ESP32 has no such mechanism for checking available write buffer and flushing it
+
             // if the client write buffer (measured initially at 1072 bytes) is almost full, try to flush it, then abort the unresponsive client connection if it fails
             // this way we can still group multiple messages together and properly detect unresponsive clients without being much affected by delays/timeout
             if (_clients[i].availableForWrite() < 128 && !_clients[i].flush(150))
                 _clients[i].abort(); // abort disconnect the unresponsive client without waiting
+#endif
         }
     }
 }

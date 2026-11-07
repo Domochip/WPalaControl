@@ -13,6 +13,7 @@ using WebServer = ESP8266WebServer;
 #else
 #include <WebServer.h>
 #define SERVER_KEEPALIVE_FALSE()
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Update.h>
 #endif

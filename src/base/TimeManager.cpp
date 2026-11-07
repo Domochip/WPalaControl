@@ -1,21 +1,25 @@
 #include "TimeManager.h"
 
-#ifdef ESP8266
-#include <user_interface.h>
-#else
-#include <esp_sntp.h>
-#endif
-
 uint32_t TimeManager::_ntpEpoch = 0;
 uint32_t TimeManager::_ntpMillis = 0;
 
 void TimeManager::init(const char *ntpServer)
 {
+#ifdef ESP8266
     sntp_stop();
     sntp_setservername(0, ntpServer);
     sntp_init();
+#else
+    esp_sntp_stop();
+    esp_sntp_setservername(0, ntpServer);
+    esp_sntp_init();
+#endif
 
+#ifdef ESP8266
     settimeofday_cb([]()
+#else
+    sntp_set_time_sync_notification_cb([](struct timeval *)
+#endif
                     {
         time_t t = time(nullptr);
         if (t > 1000000000UL)
@@ -27,8 +31,11 @@ void TimeManager::init(const char *ntpServer)
 
 void TimeManager::setTimezone(const char *tzString)
 {
-    if (tzString)
-        setTZ(tzString);
+    if (!tzString)
+        return;
+
+    setenv("TZ", tzString, 1);
+    tzset();
 }
 
 int TimeManager::formatTime(bool utc, char *buf, size_t bufSize)
