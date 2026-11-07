@@ -60,6 +60,9 @@ private:
   };
 
   HwDetection _hwDetection;
+  // Allow commands that write stove (hidden) parameters: SET PARM, SET HPAR (and EXT ADWR in DEVELOPPER_MODE builds).
+  // Disabled by default: see requireParamWriteAllowed() in executePalaCmdSet().
+  bool _allowParamWrite;
   HwVersion _detectedHwVersion = HwVersion::Unknown;
 
   HomeAutomation _ha;

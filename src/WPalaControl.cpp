@@ -1686,6 +1686,25 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     return true;
   };
 
+  // Guard for the commands that write stove parameters (SET PARM, SET HPAR), if not allowed set error message in info
+  // and return false.
+  //
+  // Why: parameters and hidden parameters are the board's tuning (pellet type and feed rates, fan speeds, timings,
+  // safety thresholds...). A wrong value can cause poor combustion, alarms, or a stove that doesn't start.
+  // These commands are reachable without any authentication: HTTP GET on /cgi-bin/sendmsg.lua (so also from any web page
+  // opened on the local network, through a simple <img> tag), and MQTT on the command topic (any client allowed
+  // to publish there). Reading parameters (GET PARM/HPAR, BKP) stays available; only writing needs the option
+  // "Allow parameter writes" of the configuration page, so that it is a deliberate choice of the owner.
+  auto requireParamWriteAllowed = [&]() -> bool
+  {
+    if (!_allowParamWrite)
+    {
+      info["MSG"] = F("Parameter writes are disabled (Config > PalaControl > Allow parameter writes)");
+      return false;
+    }
+    return true;
+  };
+
   if (cmd.startsWith(F("SET CDAY ")))
   {
     cmdProcessed = true;
@@ -1888,7 +1907,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
-    if (requireParams(2))
+    if (requireParamWriteAllowed() && requireParams(2))
     {
       cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
 
@@ -1903,7 +1922,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
-    if (requireParams(2))
+    if (requireParamWriteAllowed() && requireParams(2))
     {
       cmdSuccess = _Pala.setParameter(cmdParams[0], cmdParams[1]);
 
@@ -2163,7 +2182,10 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("ADWR");
 
-    if (cmdParamNumber != 3 && cmdParamNumber != 4)
+    // raw memory write: at least as sensitive as SET PARM / SET HPAR, so it follows the same option
+    if (!_allowParamWrite)
+      info["MSG"] = F("Parameter writes are disabled (Config > PalaControl > Allow parameter writes)");
+    else if (cmdParamNumber != 3 && cmdParamNumber != 4)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
 
     // the fourth parameter was designed for Micronova MB and is not used in Fumis board
@@ -2250,6 +2272,9 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 void WPalaControl::setConfigDefaultValues()
 {
   _hwDetection = HwDetection::AutoDetect;
+  // Parameter writes are off unless the user enables them in the configuration page.
+  // Configuration files saved by previous versions don't contain "parmwrite", so they get this default too.
+  _allowParamWrite = false;
 
   _ha.protocol = HaProtocol::Disabled;
   _ha.hostname[0] = 0;
@@ -2269,6 +2294,7 @@ void WPalaControl::setConfigDefaultValues()
 bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   parseField(json[F("hwdetection")], _hwDetection);
+  parseField(json[F("parmwrite")], _allowParamWrite);
 
   // Home Automation common
   parseField(json[F("haproto")], _ha.protocol);
@@ -2301,6 +2327,7 @@ void WPalaControl::validateConfig()
 void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json[F("hwdetection")] = _hwDetection;
+  json[F("parmwrite")] = _allowParamWrite;
 
   // Home Automation common
   json[F("haproto")] = _ha.protocol;

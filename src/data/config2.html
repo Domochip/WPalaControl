@@ -11,6 +11,21 @@
             </select>
         </div>
 
+        <div class="pure-control-group">
+            <label for="parmwrite">Allow parameter writes</label>
+            <input id='parmwrite' name='parmwrite' type="checkbox">
+            <span id="parmwritei" name="parmwritei" class="infotip">?</span>
+        </div>
+        <div class="pure-control-group" id="parmwritediv" name="parmwritediv" style="display:none;">
+            <label></label>
+            <div class="infotipdiv">
+                Enables <b>SET PARM</b> and <b>SET HPAR</b> (HTTP and MQTT).<br>
+                These commands change the stove board tuning: a wrong value can cause poor combustion or alarms.<br>
+                They require no authentication: enable only while you need them, and back up parameters first
+                (<b>BKP PARM CSV</b>, <b>BKP HPAR CSV</b>).
+            </div>
+        </div>
+
         <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip">?</span></h3>
         <div class="infotipdiv" id="haidiv" name="haidiv" style="display:none;">
             HTTP GET request can be send to this device.<br>
@@ -121,6 +136,10 @@
 
 <script>
     // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content2 ';
+
+    $(qsp + "#parmwritei").addEventListener('click', function () {
+        $(qsp + "#parmwritediv").style.display = ($(qsp + "#parmwritediv").style.display == '' ? 'none' : '');
+    });
 
     $(qsp + "#hai").addEventListener('click', function () {
         $(qsp + "#haidiv").style.display = ($(qsp + "#haidiv").style.display == '' ? 'none' : '');
