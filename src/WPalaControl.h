@@ -68,6 +68,7 @@ private:
   MQTTMan _mqttMan;
   SSEServer _sse;
   WiFiUDP _udpServer;
+  unsigned long _lastUdpAnswerMillis = 0; // rate limit of the UDP discovery answers (see udpRequestHandler())
 
   Palazzetti _Pala;
   unsigned long _lastAllStatusRefreshMillis = 0;
