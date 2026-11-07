@@ -32,9 +32,16 @@ Protocol: <span id="haproto"></span><br>
                 }
             }
             else {
+                // Built with DOM calls and textContent, not innerHTML: names and values come
+                // from the stove (serial bus) and from command results, and must never be
+                // interpreted as markup in this page.
                 var newElement = document.createElement("dd");
                 newElement.id = kForId;
-                newElement.innerHTML = k + ' : <span id="' + kForId + 'Value">' + liveData[k] + '</span>';
+                newElement.appendChild(document.createTextNode(k + ' : '));
+                var valueElement = document.createElement("span");
+                valueElement.id = kForId + 'Value';
+                valueElement.textContent = liveData[k];
+                newElement.appendChild(valueElement);
                 $(qsp + '#liveData').appendChild(newElement);
             }
         }
@@ -47,7 +54,7 @@ Protocol: <span id="haproto"></span><br>
     function applyStatus(status) {
         for (var k in status) {
             var e = $(qsp + '#' + k);
-            if (e != undefined) e.innerHTML = status[k];
+            if (e != undefined) e.textContent = status[k]; // values are data: text, not HTML
         }
     }
 
@@ -67,7 +74,7 @@ Protocol: <span id="haproto"></span><br>
         function (GC) {
             var haP = GC["haproto"];
             var protoNames = ["Disabled", "MQTT"];
-            $(qsp + "#haproto").innerHTML = protoNames[haP];
+            $(qsp + "#haproto").textContent = protoNames[haP];
 
             show("hamqttstatuse", haP == 1);
 
