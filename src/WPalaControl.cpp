@@ -1,4 +1,5 @@
 #include "WPalaControl.h"
+#include <cmath> // std::isfinite() used by addFloat()
 
 #ifdef ESP8266
 #define PALA_SERIAL Serial
@@ -1203,10 +1204,31 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
+  // Adds val to obj[key] as a JSON number printed with exactly 2 decimals (e.g. 21.50).
+  // serialized() inserts the text as-is (raw JSON) instead of letting ArduinoJson format the float.
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
-    dtostrf(val, 1, 2, buf);
+    // snprintf() would print "nan" or "inf", which are not valid JSON numbers:
+    // write null instead so that consumers (web page, Home Assistant, Jeedom, ...) can still parse the answer.
+    if (!std::isfinite(val))
+    {
+      obj[key] = nullptr;
+      return;
+    }
+
+    // Size of the text:
+    // most values come from small integers (temperatures / 10, setpoints / 5, ...),
+    // but T3 and T4 are raw int16 readings from the stove (not divided by 10).
+    // A reading >= 10000 or <= -1000 (e.g. a probe error reported as 32767) needs more than 8 bytes:
+    // "-32768.00" + '\0' = 10 bytes.
+    // dtostrf() is not used because it takes no buffer size: with a too small buffer (previously char buf[8])
+    // it writes past the end (stack overflow, which can corrupt other local variables or crash the module).
+    // 16 bytes fit every int16-derived value, and snprintf() never writes past sizeof(buf)
+    // (in the worst case the text would be truncated, never overflow).
+    // Float formatting with snprintf() is available: ESP8266 PlatformIO builds link with -u _printf_float,
+    // and ESP32 supports it natively.
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", val);
     obj[key] = serialized(buf);
   };
 
@@ -1277,6 +1299,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["OUT"] = allStatusData.OUT;
       addFloat(data, "T1", allStatusData.T1);
       addFloat(data, "T2", allStatusData.T2);
+      // T3 and T4 are raw int16 values (not divided by 10): see addFloat() for the buffer size
       addFloat(data, "T3", allStatusData.T3);
       addFloat(data, "T4", allStatusData.T4);
       addFloat(data, "T5", allStatusData.T5);
@@ -1628,6 +1651,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     {
       addFloat(data, "T1", allTempsData.T1);
       addFloat(data, "T2", allTempsData.T2);
+      // T3 and T4 are raw int16 values (not divided by 10): see addFloat() for the buffer size
       addFloat(data, "T3", allTempsData.T3);
       addFloat(data, "T4", allTempsData.T4);
       addFloat(data, "T5", allTempsData.T5);
@@ -1668,10 +1692,32 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 {
   Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
 
+  // Adds val to obj[key] as a JSON number printed with exactly 2 decimals (e.g. 21.50).
+  // serialized() inserts the text as-is (raw JSON) instead of letting ArduinoJson format the float.
+  // (same helper as in executePalaCmdGet())
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
-    dtostrf(val, 1, 2, buf);
+    // snprintf() would print "nan" or "inf", which are not valid JSON numbers:
+    // write null instead so that consumers (web page, Home Assistant, Jeedom, ...) can still parse the answer.
+    if (!std::isfinite(val))
+    {
+      obj[key] = nullptr;
+      return;
+    }
+
+    // Size of the text:
+    // most values come from small integers (temperatures / 10, setpoints / 5, ...),
+    // but T3 and T4 are raw int16 readings from the stove (not divided by 10).
+    // A reading >= 10000 or <= -1000 (e.g. a probe error reported as 32767) needs more than 8 bytes:
+    // "-32768.00" + '\0' = 10 bytes.
+    // dtostrf() is not used because it takes no buffer size: with a too small buffer (previously char buf[8])
+    // it writes past the end (stack overflow, which can corrupt other local variables or crash the module).
+    // 16 bytes fit every int16-derived value, and snprintf() never writes past sizeof(buf)
+    // (in the worst case the text would be truncated, never overflow).
+    // Float formatting with snprintf() is available: ESP8266 PlatformIO builds link with -u _printf_float,
+    // and ESP32 supports it natively.
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", val);
     obj[key] = serialized(buf);
   };
 
