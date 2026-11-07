@@ -2288,9 +2288,41 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
 }
 
 //------------------------------------------
-// Disable protocols with missing required fields
+// Bring every configuration value back into its valid range, and disable protocols with missing required fields.
+//
+// Why this is needed: the limits of the configuration page (min/max attributes, select lists) are only applied by
+// the browser. The /sc2 endpoint accepts any JSON (sent by a script, by curl, or by a modified page), and a
+// configuration file saved by another firmware version may hold values this version doesn't know.
+// parseConfigJSON() copies values as they are; this function runs right after it, both when the configuration
+// file is loaded at boot and when the configuration page is saved (before the file is written), so invalid
+// values are corrected in memory AND in the saved file.
+//
+// Each invalid value is replaced by the default value of setConfigDefaultValues() or clamped to the page limits.
 void WPalaControl::validateConfig()
 {
+  // Enumerations: parseField() stores any number (0 to 255) in the enum variable.
+  // An unknown value would select no case of the switch statements using it
+  // (e.g. an unknown MQTT type leaves the command topic without "/cmd" and getStateTopic() empty).
+  if (_hwDetection > HwDetection::ForcedV2)
+    _hwDetection = HwDetection::AutoDetect;
+  if (_ha.protocol > HaProtocol::Mqtt)
+    _ha.protocol = HaProtocol::Disabled;
+  if (_ha.mqtt.type > HaMqttType::GenericCategorized)
+    _ha.mqtt.type = HaMqttType::GenericJson;
+
+  // Upload period, in seconds: the page allows 15 to 65535.
+  // 0 is the dangerous case: the publish Ticker would be armed with a 0 s period, i.e. publishTick() requested
+  // continuously, polling the stove without pause and flooding the MQTT broker.
+  // (A value above 65535 can't reach here: it doesn't fit in uint16_t and ArduinoJson converts it to 0.)
+  if (_ha.uploadPeriod < 15)
+    _ha.uploadPeriod = 15;
+
+  // MQTT port: 1 to 65535. _ha.mqtt.port is a uint32_t but MQTT setServer() takes a uint16_t:
+  // 70000 would silently become 4464. 0 is not a usable port.
+  if (_ha.mqtt.port == 0 || _ha.mqtt.port > 65535)
+    _ha.mqtt.port = 1883;
+
+  // MQTT needs a server and a base topic: without them, disable it rather than run a half-configured client
   if (_ha.protocol == HaProtocol::Mqtt)
     if (!_ha.hostname[0] || !_ha.mqtt.generic.baseTopic[0])
       _ha.protocol = HaProtocol::Disabled;
@@ -2363,7 +2395,9 @@ bool WPalaControl::appInit(bool reInit /* = false */)
     // (≈267 bytes worst-case: max baseTopic + max username/password + will topic).
     // 512 gives a ×2 safety margin
     _mqttMan.setBufferSize(512);
-    _mqttMan.setKeepAlive(_ha.uploadPeriod + 15);
+    // keep-alive slightly longer than the upload period; capped because setKeepAlive() takes a uint16_t
+    // (65535 + 15 would wrap around to 14 s)
+    _mqttMan.setKeepAlive(_ha.uploadPeriod <= 65535 - 15 ? _ha.uploadPeriod + 15 : 65535);
     _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
     _mqttMan.setBaseTopic(_ha.mqtt.generic.baseTopic);
     _mqttMan.setConnectedCallback([this](MQTTMan *mqttMan, bool firstConnection)
