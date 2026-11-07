@@ -349,6 +349,20 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
   }
 }
 
+// Discards any running/partial update and clears the Updater error state
+void Application::resetUpdate()
+{
+  if (Update.isRunning())
+  {
+#ifdef ESP8266
+    Update.end(); // without evenIfRemaining, end() resets the Updater
+#else
+    Update.abort(); // on ESP32, end() does not reset when an error is already set
+#endif
+  }
+  Update.clearError();
+}
+
 // Returns true if version matches "X.Y.Z" (1 to 3 digits per part, max 11 chars)
 bool Application::isValidVersion(const char *version)
 {
@@ -454,35 +468,57 @@ bool Application::updateFirmware(const char *version, String &retMsg, std::funct
   fwName = fwName ? fwName + 1 : fwUrl;
   LOG_SERIAL_PRINTF_P(PSTR("Update Start: %s (Online Update)\n"), fwName);
 
+  // without a valid size, Update.begin(-1) would fail with a misleading "Not Enough Space"
+  if (contentLength <= 0)
+  {
+    https.end();
+    retMsg = F("Invalid firmware size (no Content-Length)");
+    LOG_SERIAL_PRINTLN(retMsg);
+    return false;
+  }
+
+  // discard any leftover update (e.g. aborted upload) so begin() doesn't fail with "already running"
+  resetUpdate();
+
   if (progressCallback)
     Update.onProgress(progressCallback);
 
-  Update.begin(contentLength);
+  bool began = Update.begin(contentLength);
+  if (began)
+  {
+    // sometime the stream is not yet ready (no data available yet)
+    // and writeStream start by a peek which then fail
+    // so wait up to 500ms for the first byte to be available
+    uint32_t streamWaitStart = millis();
+    while (stream->available() == 0 && millis() - streamWaitStart < 500)
+      delay(1); // cooperative yield, lets the WiFi/lwIP stack process incoming segments
+    Update.writeStream(*stream);
 
-  // sometime the stream is not yet ready (no data available yet)
-  // and writeStream start by a peek which then fail
-  // so wait up to 500ms for the first byte to be available
-  uint32_t streamWaitStart = millis();
-  while (stream->available() == 0 && millis() - streamWaitStart < 500)
-    delay(1); // cooperative yield, lets the WiFi/lwIP stack process incoming segments
-  Update.writeStream(*stream);
+    Update.end();
+  }
 
-  Update.end();
+  // progress callback is global: don't leak it into a later /fw upload
+  Update.onProgress(nullptr);
 
   https.end();
 
-  bool success = !Update.hasError();
+  bool success = began && !Update.hasError();
   if (success)
     LOG_SERIAL_PRINTLN(F("Update successful"));
   else
   {
+    if (Update.hasError())
+    {
 #ifdef ESP8266
-    retMsg = Update.getErrorString();
+      retMsg = Update.getErrorString();
 #else
-    retMsg = Update.errorString();
+      retMsg = Update.errorString();
 #endif
+    }
+    else
+      retMsg = F("Update.begin failed");
     LOG_SERIAL_PRINTF_P(PSTR("Update failed: %s\n"), retMsg.c_str());
-    Update.clearError();
+    resetUpdate();
   }
 
   return success;
