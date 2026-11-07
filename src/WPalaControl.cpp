@@ -2214,33 +2214,79 @@ void WPalaControl::publishTick()
   broadcastMqttStatus();
 }
 
+// UDP port 54549 implements the discovery protocol of the Palazzetti ConnectionBox:
+// a client (Palazzetti app, Home Assistant integration...) broadcasts "plzbridge?" on the local network,
+// and each box answers with its identity (GET STDT: MAC, IP, SSID, stove model...).
+// "plzbridge?GET ALLS" asks for the full stove status instead.
+//
+// The answers must stay compatible with that protocol, but nothing else needs to be answered.
+// Before, every incoming packet got an answer (an error JSON for unknown requests) and started a serial exchange
+// with the stove. That allowed:
+//  - reflection/amplification: a few bytes sent with a spoofed source address produce a ~1 KB answer sent
+//    to that address (relevant if the port is ever forwarded or reachable from another network);
+//  - flooding the stove serial bus: each packet costs a stove request, and the main loop blocks meanwhile.
+// So this handler now only answers:
+//  - the two known requests (anything else is silently ignored),
+//  - short packets (a request is ~20 bytes),
+//  - senders of the local network (same subnet as the station or the access point interface),
+//  - at most one request every UDP_MIN_ANSWER_INTERVAL_MS (extra requests are dropped; discovery clients retry).
 void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 {
+  static constexpr int UDP_MAX_REQUEST_SIZE = 32;
+  static constexpr unsigned long UDP_MIN_ANSWER_INTERVAL_MS = 500;
 
   int packetSize = udpServer.parsePacket();
   if (packetSize <= 0)
     return;
 
-  String strData;
-  JsonDocument json;
+  // too long to be a discovery request: ignore it
+  // (unread data is discarded by the next parsePacket())
+  if (packetSize > UDP_MAX_REQUEST_SIZE)
+    return;
 
-  strData.reserve(packetSize + 1);
+  // only answer senders of the local network
+  IPAddress remoteIP = udpServer.remoteIP();
+  auto sameSubnet = [&remoteIP](IPAddress localIP, IPAddress mask) -> bool
+  {
+    return (uint32_t)localIP != 0 && ((uint32_t)remoteIP & (uint32_t)mask) == ((uint32_t)localIP & (uint32_t)mask);
+  };
+  bool fromLocalNetwork = sameSubnet(WiFi.localIP(), WiFi.subnetMask());
+  if (!fromLocalNetwork && (WiFi.getMode() & WIFI_AP))
+    fromLocalNetwork = sameSubnet(WiFi.softAPIP(), IPAddress(255, 255, 255, 0)); // access point subnet (/24)
+  if (!fromLocalNetwork)
+    return;
 
-  // while udpServer.read() do not return -1, get returned value and add it to strData
-  int bufferByte;
-  while ((bufferByte = udpServer.read()) >= 0)
-    strData += (char)bufferByte;
+  // read the request (bounded: packetSize <= UDP_MAX_REQUEST_SIZE)
+  char request[UDP_MAX_REQUEST_SIZE + 1];
+  int requestLen = udpServer.read(request, packetSize);
+  if (requestLen <= 0)
+    return;
+  request[requestLen] = '\0';
 
-  // process request
-  if (strData.endsWith(F("bridge?")))
-    executePalaCmd(F("GET STDT"), json);
-  else if (strData.endsWith(F("bridge?GET ALLS")))
-    executePalaCmd(F("GET ALLS"), json);
+  // known requests only (compared on the end of the packet, as before: clients send "plzbridge?...")
+  auto endsWith = [&request, requestLen](const char *suffix) -> bool
+  {
+    int suffixLen = strlen(suffix);
+    return requestLen >= suffixLen && strcmp(request + requestLen - suffixLen, suffix) == 0;
+  };
+  const __FlashStringHelper *cmd = nullptr;
+  if (endsWith("bridge?"))
+    cmd = F("GET STDT");
+  else if (endsWith("bridge?GET ALLS"))
+    cmd = F("GET ALLS");
   else
-    executePalaCmd("", json);
+    return; // unknown request: no answer at all
+
+  // rate limit (checked last, so that ignored packets don't consume the budget)
+  if (millis() - _lastUdpAnswerMillis < UDP_MIN_ANSWER_INTERVAL_MS)
+    return;
+  _lastUdpAnswerMillis = millis();
+
+  JsonDocument json;
+  executePalaCmd(cmd, json);
 
   // answer to the requester
-  udpServer.beginPacket(udpServer.remoteIP(), udpServer.remotePort());
+  udpServer.beginPacket(remoteIP, udpServer.remotePort());
   serializeJson(json, udpServer);
   udpServer.endPacket();
 }
