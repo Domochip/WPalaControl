@@ -81,6 +81,7 @@ protected:
   static bool getLatestUpdateInfo(char *version, char *title = nullptr, char *releaseDate = nullptr, char *summary = nullptr);
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
   static bool isValidVersion(const char *version);
+  static void resetUpdate();
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 
 public:
