@@ -109,8 +109,16 @@ void WPalaControl::mqttDisconnectedCallback()
 
 void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
-  // /!\ topic and payload point into the MQTT client buffer, which is overwritten by any publish:
-  // read or copy everything needed from them before publishing anything
+  // /!\ topic and payload are not copies: PubSubClient passes pointers into its own internal buffer,
+  // and that same buffer is used to build every outgoing packet.
+  // Any publish (result, progress, error...) overwrites it with the packet being sent
+  // (header, topic length, topic, payload), so after a publish:
+  //  - topic no longer contains the received topic and may no longer be NUL-terminated
+  //    (strlen()/memcmp() on it read garbage, possibly past the end of the buffer)
+  //  - topic must never be passed to publish(): the library would copy the buffer onto itself
+  //    and send a corrupted topic (e.g. "WP\x00\x1BaControl/update/install"); a NUL in a topic is forbidden
+  //    by MQTT (MQTT-1.5.3-2) and the broker closes the connection
+  // Rule: read or copy everything needed from topic and payload BEFORE the first publish.
 
   // calculate command topic
   String cmdTopic = _mqttMan.getBaseTopic();
@@ -143,16 +151,25 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     resTopic += F("/result");
     _mqttMan.publish(resTopic.c_str(), json);
 
-    // topic is no longer valid after a publish
+    // topic is no longer valid after the publish above: stop here,
+    // otherwise the "/update/install" test below would run strlen()/memcmp() on the overwritten buffer
     return;
   }
+
+  // Update topics (used by the Home Assistant MQTT "update" entity):
+  //   <base>/update          state: in_progress, update_percentage... (retained)
+  //   <base>/update/install  command: "latest" or a version number (subscribed by this device)
+  //   <base>/update/error    last failure message (retained, cleared when an update starts successfully)
 
   // if topic ends with "/update/install"
   const size_t topicLen = strlen(topic);
   if (topicLen >= 15 && memcmp_P(topic + topicLen - 15, PSTR("/update/install"), 15) == 0)
   {
-    // empty payload: nothing to install
-    // (this is also the message received back when the install command is cleared below)
+    // Empty payload: nothing to install.
+    // This is also what comes back when this device clears the install command at the end of this block:
+    // in MQTT, an empty retained publish deletes the retained message on the broker,
+    // and the broker still delivers that empty message to subscribers, this device included.
+    // Ignoring it is what prevents a publish/receive loop.
     if (length == 0)
       return;
 
@@ -161,6 +178,7 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     unsigned long lastProgressPublish = 0;
 
     // copy the install topic now: topic becomes invalid as soon as something is published
+    // (the progress callback below publishes during the download)
     String installTopic(topic);
 
     // result topic is topic without the last 8 characters ("/install")
@@ -197,19 +215,26 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
 
     if (SystemState::shouldReboot)
     {
-      // clear a previous failure message
+      // firmware downloaded and written: the module reboots from loop() to start it
+      // clear the failure message of a previous attempt (empty retained publish = delete)
       _mqttMan.publish(errorTopic.c_str(), "", true);
       retMsg = F("{\"update_percentage\":null,\"in_progress\":true}");
     }
     else
     {
-      // the failure is reported on its own topic: published on the install topic (which is subscribed),
-      // it would come back to this callback as a new install command
+      // The failure is reported on its own topic, not on the install topic:
+      // this device is subscribed to the install topic, so a message published there would come back
+      // to this callback as a new install command ("Update failed: ..." is longer than 10 characters,
+      // which would publish "Update failed: Version is too long" again, and so on).
+      // Retained so that a client connecting later (e.g. Home Assistant after a restart) still sees it.
       _mqttMan.publish(errorTopic.c_str(), (String(F("Update failed: ")) + retMsg).c_str(), true);
       retMsg = F("{\"in_progress\":false}");
     }
 
-    // clear a retained install command (if any) so it is not replayed at next connection or after reboot
+    // Clear a retained install command, if any.
+    // If the command was published with the retain flag (by Home Assistant or by hand), the broker sends it again
+    // at every (re)connection: after a successful update and reboot, the device would download and install
+    // the firmware again, endlessly. An empty retained publish deletes it (and comes back here with length 0).
     _mqttMan.publish(installTopic.c_str(), "", true);
 
     // publish result
