@@ -1,5 +1,10 @@
 #include "WifiMan.h"
 
+// WPA2 requires 8 to 63 characters (empty = open AP); softAP() fails otherwise
+static_assert(sizeof(DEFAULT_AP_PSK) == 1 || (sizeof(DEFAULT_AP_PSK) - 1 >= 8 && sizeof(DEFAULT_AP_PSK) - 1 <= 63),
+              "DEFAULT_AP_PSK must be empty or 8 to 63 characters long");
+static_assert(sizeof(DEFAULT_AP_SSID) - 1 <= 32, "DEFAULT_AP_SSID must be at most 32 characters long");
+
 const char *WifiMan::ipToCString(IPAddress ip)
 {
   static char buf[16];
@@ -25,96 +30,168 @@ const char *WifiMan::getMacAddress()
   return mac;
 }
 
-void WifiMan::enableAP(bool force /* = false */)
+// Scan networks and return the least crowded non-overlapping channel (1, 6 or 11)
+// each network overlapping a candidate (+/-4 channels) adds a weight based on its signal strength
+// returns 1 if no network is found or if the scan fails
+static uint8_t scanForApChannel()
 {
-  if (!(WiFi.getMode() & WIFI_AP) || force)
+  static const uint8_t candidates[] = {1, 6, 11};
+  uint8_t best = candidates[0];
+  uint32_t bestScore = UINT32_MAX;
+
+  int n = WiFi.scanNetworks();
+
+  if (n > 0)
   {
-    WiFi.enableAP(true);
-    WiFi.softAP(F(DEFAULT_AP_SSID), F(DEFAULT_AP_PSK), _apChannel);
-    // Free existing DNS server if any, and start a new one
-    if (_dnsServer)
+    for (uint8_t candidate : candidates)
     {
-      _dnsServer->stop();
-      delete _dnsServer;
-      _dnsServer = nullptr;
+      uint32_t score = 0;
+      for (int i = 0; i < n; i++)
+      {
+        if (abs((int)WiFi.channel(i) - candidate) <= 4)
+          score += constrain((int)WiFi.RSSI(i) + 100, 1, 100); // -40dBm weighs more than -90dBm
+      }
+      if (score < bestScore)
+      {
+        bestScore = score;
+        best = candidate;
+      }
     }
-    _dnsServer = new DNSServer();
-    _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
-    while (WiFi.softAPIP() == INADDR_NONE)
-    {
-      delay(10);
-    }
-    _dnsServer->start(53, F("*"), WiFi.softAPIP());
   }
+  WiFi.scanDelete();
+
+  LOG_SERIAL_PRINTF_P(PSTR("%dN-CH%u "), n, best);
+  return best;
 }
 
-void WifiMan::refreshWiFi()
+// Start the AP (with captive portal DNS) if not already running
+// returns true if the AP is running (already or just started)
+bool WifiMan::enableAP()
+{
+  // AP already running: nothing to do (and keep its channel)
+  if (WiFi.getMode() & WIFI_AP)
+    return true;
+
+  // AP is off: no client can be disturbed by a scan, so choose the channel now
+  uint8_t apChannel = scanForApChannel();
+
+  if (!WiFi.softAP(F(DEFAULT_AP_SSID), F(DEFAULT_AP_PSK), apChannel))
+  {
+    LOG_SERIAL_PRINTLN(F("/!\\ softAP failed (check SSID / PSK) /!\\"));
+    WiFi.enableAP(false); // disable AP mode for a later retry if softAP failed
+    return false;
+  }
+
+  // wait (max 2s) for the AP to get its IP
+  // compare to 0.0.0.0 explicitly: INADDR_NONE is 255.255.255.255 on ESP8266 but 0.0.0.0 on ESP32 ...
+  const IPAddress noIP(0, 0, 0, 0);
+  uint32_t waitStart = millis();
+  while (WiFi.softAPIP() == noIP && millis() - waitStart < 2000)
+    delay(10);
+
+  if (WiFi.softAPIP() == noIP)
+  {
+    LOG_SERIAL_PRINTLN(F("/!\\ softAP has no IP /!\\"));
+    WiFi.enableAP(false); // disable AP mode for a later retry if softAP failed
+    return false;
+  }
+
+  // start captive portal DNS server
+  _dnsServer = new DNSServer();
+  _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
+  _dnsServer->start(53, F("*"), WiFi.softAPIP());
+
+  LOG_SERIAL_PRINTF_P(PSTR("AP started (%s - ch %u - %s) "), F(DEFAULT_AP_SSID), apChannel, ipToCString(WiFi.softAPIP()));
+  return true;
+}
+
+void WifiMan::setStaState(StaState state)
+{
+  _staState = state;
+  _staStateMillis = millis();
+}
+
+// Start a connection attempt
+void WifiMan::startConnect()
+{
+  WiFi.config(ip, gw, mask, dns1, dns2);
+  WiFi.begin(ssid, password);
+  setStaState(StaState::Connecting);
+}
+
+void WifiMan::onConnected()
+{
+  // stop DNS server
+  if (_dnsServer)
+  {
+    _dnsServer->stop();
+    delete _dnsServer;
+    _dnsServer = nullptr;
+  }
+  // disable AP
+  WiFi.enableAP(false);
+#ifdef STATUS_LED_GOOD
+  STATUS_LED_GOOD
+#endif
+  _connectionCount++;
+
+  // Init TimeManager for NTP synchronization when WiFi is connected
+  TimeManager::init();
+
+  setStaState(StaState::Connected);
+
+  LOG_SERIAL_PRINTF_P(PSTR("WiFi connected (%s)\n"), ipToCString(WiFi.localIP()));
+}
+
+void WifiMan::onConnectFailed()
+{
+  LOG_SERIAL_PRINTF_P(PSTR("WiFi connection failed (reason: %u), enabling AP, next attempt in %us\n"), _lastDiscoReason, _refreshPeriod);
+
+  // stop STA activity first, so the AP channel scan runs with an idle radio
+  WiFi.disconnect();
+  // enable AP as fallback to let the user reach the device
+  enableAP();
+  setStaState(StaState::WaitRetry);
+}
+
+// Initial connection, blocking (used by appInit only: state is Off and STA disconnected)
+void WifiMan::initialConnect()
 {
   if (ssid[0]) // if STA configured
   {
-    if (!WiFi.isConnected() || WiFi.SSID() != ssid || WiFi.psk() != password)
+    LOG_SERIAL_PRINT(F("Connect"));
+
+    startConnect();
+
+    // Wait _reconnectDuration for connection
+    for (int i = 0; i < (((uint16_t)_reconnectDuration) * 10) && !WiFi.isConnected(); i++)
     {
-      enableAP();
-
-      LOG_SERIAL_PRINT(F("Connect"));
-
-      WiFi.config(ip, gw, mask, dns1, dns2);
-      WiFi.begin(ssid, password);
-
-      // Wait _reconnectDuration for connection
-      for (int i = 0; i < (((uint16_t)_reconnectDuration) * 10) && !WiFi.isConnected(); i++)
-      {
-        if ((i % 10) == 0)
-          LOG_SERIAL_PRINT(".");
-        delay(100);
-      }
-
-      // if connection is successfull
-      if (WiFi.isConnected())
-      {
-        // stop DNS server
-        if (_dnsServer)
-        {
-          _dnsServer->stop();
-          delete _dnsServer;
-          _dnsServer = nullptr;
-        }
-        // disable AP
-        WiFi.enableAP(false);
-#ifdef STATUS_LED_GOOD
-        STATUS_LED_GOOD
-#endif
-        _connectionCount++;
-
-        // Init TimeManager for NTP synchronization when WiFi is connected
-        TimeManager::init();
-
-        LOG_SERIAL_PRINTF_P(PSTR("Connected (%s) "), ipToCString(WiFi.localIP()));
-      }
-      else // connection failed
-      {
-        WiFi.disconnect();
-        LOG_SERIAL_PRINT(F("AP not found "));
-#ifdef ESP8266
-        _refreshTicker.once(_refreshPeriod, [this]()
-                            { _needRefreshWifi = true; });
-#else
-        _refreshTicker.once<WifiMan *>(_refreshPeriod, [](WifiMan *wifiMan)
-                                       { wifiMan->_needRefreshWifi = true; }, this);
-#endif
-      }
+      if ((i % 10) == 0)
+        LOG_SERIAL_PRINT(".");
+      delay(100);
     }
+
+    // if connection is successfull
+    if (WiFi.isConnected())
+      onConnected();
+    else // connection failed
+      onConnectFailed();
   }
   else // else if AP is configured
   {
-    _refreshTicker.detach();
-    enableAP();
-    WiFi.disconnect();
+    // AP is the normal mode here: LED good if it started (if not, appRun retries periodically)
+    if (enableAP())
+    {
 #ifdef STATUS_LED_GOOD
-    STATUS_LED_GOOD
+      STATUS_LED_GOOD
 #endif
-
-    LOG_SERIAL_PRINTF_P(PSTR(" AP mode(%s - %s) "), F(DEFAULT_AP_SSID), ipToCString(WiFi.softAPIP()));
+    }
+    else
+    {
+#ifdef STATUS_LED_WARNING
+      STATUS_LED_WARNING
+#endif
+    }
   }
 }
 
@@ -183,6 +260,32 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   else
     json[F("stationmode")] = F("off");
 
+  // station connection state
+  switch (_staState)
+  {
+  case StaState::Connecting:
+    json[F("stastate")] = F("connecting");
+    break;
+  case StaState::Connected:
+    json[F("stastate")] = F("connected");
+    break;
+  case StaState::Lost:
+    json[F("stastate")] = F("lost");
+    break;
+  case StaState::WaitRetry:
+  {
+    json[F("stastate")] = F("waitretry");
+    // seconds until next attempt (forced attempt after _maxRetryDelay if a client is connected to the softAP)
+    uint32_t elapsed = millis() - _staStateMillis;
+    uint32_t target = (WiFi.softAPgetStationNum() == 0 ? _refreshPeriod : _maxRetryDelay) * 1000UL;
+    json[F("nextretry")] = (elapsed < target) ? (target - elapsed + 999) / 1000 : 0;
+    break;
+  }
+  default:
+    json[F("stastate")] = F("off");
+    break;
+  }
+
   json[F("mac")] = getMacAddress();
   json[F("connectcount")] = _connectionCount;
   json[F("discoreason")] = _lastDiscoReason;
@@ -190,113 +293,40 @@ void WifiMan::fillStatusJSON(JsonVariant json)
 
 bool WifiMan::appInit(bool reInit /* = false */)
 {
+  // do not store WiFi config in SDK flash/NVS
+  WiFi.persistent(false);
 
-  // make changes saved to flash
-  WiFi.persistent(true);
+  // Set hostname before any WiFi start (ESP32 applies it to the STA interface only when the WiFi mode changes)
+  WiFi.hostname(hostname);
 
-  // Enable AP at start
-  enableAP(true);
-
-  // Stop RefreshWiFi and disconnect before WiFi operations -----
-  _refreshTicker.detach();
+  // Initialize connection state and disconnect before WiFi operations -----
+  setStaState(StaState::Off);
   WiFi.disconnect();
 
-  // scan networks to search for best free channel
-  int n = WiFi.scanNetworks();
-
-  LOG_SERIAL_PRINTF_P(PSTR("%dN-CH"), n);
-
-  if (n)
-  {
-    while (_apChannel < 12)
-    {
-      int i = 0;
-      while (i < n && WiFi.channel(i) != _apChannel)
-        i++;
-      if (i == n)
-        break;
-      _apChannel++;
-    }
-  }
-
-  LOG_SERIAL_PRINT(_apChannel);
-  LOG_SERIAL_PRINT(' ');
+  // let the SDK handle short drops by itself (see appRun, StaState::Lost)
+  WiFi.setAutoReconnect(true);
 
   // Configure handlers
   if (!reInit)
   {
+    // only keep the reason (also for failed attempts: wrong password, AP not found, ...)
+    // detection, log and reconnection are handled by appRun
 #ifdef ESP8266
     _discoEventHandler = WiFi.onStationModeDisconnected([this](const WiFiEventStationModeDisconnected &evt)
+                                                        { _lastDiscoReason = evt.reason; });
 #else
     WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info)
+                 { _lastDiscoReason = info.wifi_sta_disconnected.reason; },
+                 WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 #endif
-                                                        {
-                                                          if (!(WiFi.getMode() & WIFI_AP) && ssid[0])
-                                                          {
-                                                            // stop reconnection
-                                                            WiFi.disconnect();
-                                                            LOG_SERIAL_PRINT(F("Wifi disconnected (reason: "));
-#ifdef ESP8266
-                                                            _lastDiscoReason = evt.reason;
-#else
-                     _lastDiscoReason = info.wifi_sta_disconnected.reason;
-#endif
-                                                            LOG_SERIAL_PRINT(_lastDiscoReason);
-                                                            LOG_SERIAL_PRINTLN(')');
-                                                            // call RefreshWifi shortly
-                                                            _needRefreshWifi = true;
-                                                          }
-#ifdef STATUS_LED_WARNING
-                                                          STATUS_LED_WARNING
-#endif
-                                                        }
-#ifndef ESP8266
-                                                        ,
-                                                        WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED
-#endif
-    );
-
-    // if station connect to softAP
-#ifdef ESP8266
-    _staConnectedHandler = WiFi.onSoftAPModeStationConnected([this](const WiFiEventSoftAPModeStationConnected &evt)
-#else
-    WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info)
-#endif
-                                                             {
-      //flag it in _stationConnectedToSoftAP
-      _stationConnectedToSoftAP = true; }
-#ifndef ESP8266
-                                                             ,
-                                                             WiFiEvent_t::ARDUINO_EVENT_WIFI_AP_STACONNECTED
-#endif
-    );
-
-    // if station disconnect of the softAP
-#ifdef ESP8266
-    _staDisconnectedHandler = WiFi.onSoftAPModeStationDisconnected([this](const WiFiEventSoftAPModeStationDisconnected &evt)
-#else
-    WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info)
-#endif
-                                                                   {
-      //check if a station left
-      _stationConnectedToSoftAP = WiFi.softAPgetStationNum(); }
-#ifndef ESP8266
-                                                                   ,
-                                                                   WiFiEvent_t::ARDUINO_EVENT_WIFI_AP_STADISCONNECTED
-#endif
-    );
   }
 
-  // Set hostname
-  WiFi.hostname(hostname);
-
-  // Call RefreshWiFi to initiate configuration
-  refreshWiFi();
-
-  // right config so no need to touch again flash
-  WiFi.persistent(false);
+  // Initial connection (blocking, enables AP when needed)
+  initialConnect();
 
   // start MDNS
+  if (reInit)
+    MDNS.end();
   MDNS.begin(CUSTOM_APP_MODEL);
 
   return (ssid[0] ? WiFi.isConnected() : true);
@@ -343,11 +373,69 @@ void WifiMan::appInitWebServer(WebServer &server)
 
 void WifiMan::appRun()
 {
-  // if refreshWifi is required and no client is connected to the softAP
-  if (_needRefreshWifi && !_stationConnectedToSoftAP)
+  // Non-blocking station connection management
+  uint32_t elapsed = millis() - _staStateMillis;
+
+  switch (_staState)
   {
-    _needRefreshWifi = false;
-    refreshWiFi();
+  case StaState::Off:
+    // AP-only mode: make sure the AP is running (retry if it failed to start)
+    if (!(WiFi.getMode() & WIFI_AP) && elapsed >= _refreshPeriod * 1000UL)
+    {
+      setStaState(StaState::Off); // restart the retry delay
+      if (enableAP())
+      {
+#ifdef STATUS_LED_GOOD
+        STATUS_LED_GOOD
+#endif
+      }
+    }
+    break;
+
+  case StaState::Connected:
+    // connection lost: let the SDK auto-reconnect for a while (AP stays off)
+    if (!WiFi.isConnected())
+    {
+      LOG_SERIAL_PRINTF_P(PSTR("WiFi disconnected (reason: %u)\n"), _lastDiscoReason);
+#ifdef STATUS_LED_WARNING
+      STATUS_LED_WARNING
+#endif
+      setStaState(StaState::Lost);
+    }
+    break;
+
+  case StaState::Lost:
+    if (WiFi.isConnected())
+      onConnected();
+    else if (elapsed >= _autoReconnectGrace * 1000UL)
+      onConnectFailed(); // drop is not short: handle it as a failed attempt (AP enabled, next attempt after _refreshPeriod)
+    break;
+
+  case StaState::Connecting:
+    if (WiFi.isConnected())
+      onConnected();
+    else if (elapsed >= _reconnectDuration * 1000UL)
+      onConnectFailed();
+    break;
+
+  case StaState::WaitRetry:
+    // retry only if no client is connected to the softAP
+    // (the attempt would make the AP follow the router channel and kick the client)
+    // but don't wait forever: retry anyway after _maxRetryDelay
+    if (elapsed >= _refreshPeriod * 1000UL)
+    {
+      if (WiFi.softAPgetStationNum() == 0)
+        startConnect();
+      else if (elapsed >= _maxRetryDelay * 1000UL)
+      {
+        LOG_SERIAL_PRINTLN(F("WiFi retry forced (client still connected to AP)"));
+        startConnect();
+      }
+    }
+    break;
+
+  default:
+    break;
   }
 
   if (_dnsServer)

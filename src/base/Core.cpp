@@ -185,11 +185,15 @@ void Core::appInitWebServer(WebServer &server)
       });
 
   // Firmware POST URL allows to push new firmware ----------------------------
+  // true only if the upload reached its end and Update.end() succeeded
+  static bool fwUploadOk = false;
+
   server.on(
       F("/fw"), HTTP_POST,
       [&server]()
       {
-        SystemState::shouldReboot = !Update.hasError();
+        SystemState::shouldReboot = fwUploadOk && !Update.hasError();
+        fwUploadOk = false;
 
         String msg;
 
@@ -224,19 +228,35 @@ void Core::appInitWebServer(WebServer &server)
 
           LOG_SERIAL_PRINTF_P(PSTR("Update Start: %s\n"), upload.filename.c_str());
 
+          fwUploadOk = false;
+
+          // discard leftover of a previous aborted/failed upload
+          // (otherwise begin() fails and write() appends to the old partial image)
+          resetUpdate();
+
 #ifdef ESP8266
-          Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000);
+          bool began = Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000);
 #else
-          Update.begin();
+          bool began = Update.begin();
 #endif
+          if (!began)
+            LOG_SERIAL_PRINTLN(F("Update.begin failed"));
         }
         else if (upload.status == UPLOAD_FILE_WRITE)
         {
-          Update.write(upload.buf, upload.currentSize);
+          if (Update.isRunning() && !Update.hasError())
+            Update.write(upload.buf, upload.currentSize);
         }
         else if (upload.status == UPLOAD_FILE_END)
         {
-          Update.end(true);
+          fwUploadOk = Update.isRunning() && Update.end(true);
+        }
+        else if (upload.status == UPLOAD_FILE_ABORTED)
+        {
+          // client disconnected: the final handler won't be called, so clean up here
+          resetUpdate();
+          SystemState::pauseCustomApp = false;
+          LOG_SERIAL_PRINTLN(F("Update aborted"));
         }
 
 #ifdef ESP8266

@@ -4,7 +4,6 @@
 #include "../Main.h"
 #include "Application.h"
 
-#include <Ticker.h>
 #ifdef ESP8266
 #include <ESP8266mDNS.h>
 #else
@@ -29,21 +28,33 @@ private:
 // Run properties
 #ifdef ESP8266
   WiFiEventHandler _discoEventHandler;
-  WiFiEventHandler _staConnectedHandler;
-  WiFiEventHandler _staDisconnectedHandler;
 #endif
-  DNSServer *_dnsServer = nullptr;
-  uint8_t _apChannel = 2;
-  bool _needRefreshWifi = false;
-  bool _stationConnectedToSoftAP = false;
-  Ticker _refreshTicker;
-  uint8_t _refreshPeriod = 60;     // try to reconnect as station mode every 60 seconds
-  uint8_t _reconnectDuration = 20; // duration to try to connect to Wifi in seconds
-  uint16_t _connectionCount = 0;   // count of successful WiFi connections
-  uint8_t _lastDiscoReason = 0;    // last WiFi disconnection reason code
+  // Station connection state
+  enum class StaState : uint8_t
+  {
+    Off,        // no station configured (AP only)
+    Connecting, // WiFi.begin() called, waiting for connection (AP kept as is: off on first attempt, on during retries)
+    Connected,  // connected (AP disabled)
+    Lost,       // connection lost, SDK auto-reconnect is trying (AP still disabled)
+    WaitRetry   // connection attempt failed, waiting before next attempt (AP enabled)
+  };
 
-  void enableAP(bool force = false);
-  void refreshWiFi();
+  DNSServer *_dnsServer = nullptr;
+  StaState _staState = StaState::Off;
+  uint32_t _staStateMillis = 0;          // millis() when _staState was last changed
+  uint8_t _refreshPeriod = 60;           // try to reconnect as station mode every 60 seconds
+  uint16_t _maxRetryDelay = 300;         // retry even if a client is connected to the softAP after this delay, in seconds
+  uint8_t _reconnectDuration = 20;       // duration to try to connect to Wifi in seconds
+  uint8_t _autoReconnectGrace = 15;      // time left to SDK auto-reconnect after a drop before falling back to AP, in seconds
+  uint16_t _connectionCount = 0;         // count of successful WiFi connections
+  volatile uint8_t _lastDiscoReason = 0; // last WiFi disconnection reason code (written from WiFi event)
+
+  bool enableAP();
+  void setStaState(StaState state);
+  void startConnect();
+  void onConnected();
+  void onConnectFailed();
+  void initialConnect();
 
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonVariant json, bool fromWebPage = false);
