@@ -1718,26 +1718,33 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    // SET CPRD needs all 6 parameters: program number, setpoint, start hour, start minute, stop hour, stop minute.
+    // Without this check, missing parameters were sent as 0 (cmdParams is zero-initialized):
+    // "SET CPRD 1 20" programmed 00:00 - 00:00 and answered SUCCESS, which looks like a valid command.
+    // Every other multi-parameter SET command already calls requireParams().
+    if (requireParams(6))
     {
-      char programName[3] = {'P', 'X', 0};
-      char time[6] = {'0', '0', ':', '0', '0', 0};
+      cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
 
-      programName[1] = cmdParams[0] + '0';
-      JsonObject px = data[programName].to<JsonObject>();
-      px["CHRSETP"] = (float)cmdParams[1];
-      time[0] = cmdParams[2] / 10 + '0';
-      time[1] = cmdParams[2] % 10 + '0';
-      time[3] = cmdParams[3] / 10 + '0';
-      time[4] = cmdParams[3] % 10 + '0';
-      px["START"] = time;
-      time[0] = cmdParams[4] / 10 + '0';
-      time[1] = cmdParams[4] % 10 + '0';
-      time[3] = cmdParams[5] / 10 + '0';
-      time[4] = cmdParams[5] % 10 + '0';
-      px["STOP"] = time;
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        char programName[3] = {'P', 'X', 0};
+        char time[6] = {'0', '0', ':', '0', '0', 0};
+
+        programName[1] = cmdParams[0] + '0';
+        JsonObject px = data[programName].to<JsonObject>();
+        px["CHRSETP"] = (float)cmdParams[1];
+        time[0] = cmdParams[2] / 10 + '0';
+        time[1] = cmdParams[2] % 10 + '0';
+        time[3] = cmdParams[3] / 10 + '0';
+        time[4] = cmdParams[3] % 10 + '0';
+        px["START"] = time;
+        time[0] = cmdParams[4] / 10 + '0';
+        time[1] = cmdParams[4] % 10 + '0';
+        time[3] = cmdParams[5] / 10 + '0';
+        time[4] = cmdParams[5] % 10 + '0';
+        px["STOP"] = time;
+      }
     }
   }
   else if (cmd.startsWith(F("SET CSET ")))
@@ -2140,20 +2147,26 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("ADRD");
 
+    // Expected parameters: address (hexadecimal), word mode (0 = byte, 1 = word), and an optional third one
+    // (designed for Micronova boards, not used with Fumis boards).
+    // The stove must only be queried when the count is right: before, the error message was set but readData()
+    // was called anyway with the missing parameters at 0 (cmdParams is zero-initialized), e.g. "EXT ADRD" alone
+    // read address 0; if that read succeeded, the answer was SUCCESS: true, with "Incorrect Parameter Number"
+    // in INFO.MSG, which is contradictory.
     if (cmdParamNumber != 2 && cmdParamNumber != 3)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    // the third parameter was designed for Micronova MB and is not used in Fumis board
-
-    uint16_t ADDR_DATA;
-    cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    else
     {
-      String addrName(F("ADDR_"));
-      // append the first parameter as hex string
-      addrName += String(cmdParams[0], HEX);
-      data[addrName] = ADDR_DATA;
+      uint16_t ADDR_DATA;
+      cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        String addrName(F("ADDR_"));
+        // append the first parameter as hex string
+        addrName += String(cmdParams[0], HEX);
+        data[addrName] = ADDR_DATA;
+      }
     }
   }
 #if DEVELOPPER_MODE
@@ -2163,12 +2176,14 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("ADWR");
 
+    // Expected parameters: address (hexadecimal), word mode, value, and an optional fourth one
+    // (designed for Micronova boards, not used with Fumis boards).
+    // Same issue as EXT ADRD, but more serious because this WRITES into the board memory: with a wrong count,
+    // writeData() was called anyway with missing parameters at 0 (e.g. "EXT ADWR 2000 1" wrote 0 at 0x2000).
     if (cmdParamNumber != 3 && cmdParamNumber != 4)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    // the fourth parameter was designed for Micronova MB and is not used in Fumis board
-
-    cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
+    else
+      cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
   }
 #endif
 
