@@ -1405,8 +1405,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
+    // the number must also fit in a byte: getHiddenParameter() takes it as a uint8_t, so a larger number would be
+    // silently truncated to its low byte (e.g. "GET HPAR 256" would read HPAR0 and report it as HPAR256)
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else if (cmdParams[0] > 0xFF)
+      info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
     {
@@ -1473,8 +1477,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
+    // the number must also fit in a byte: getParameter() takes it as a uint8_t, so a larger number would be
+    // silently truncated to its low byte (e.g. "GET PARM 300" would read PAR44 and report it as PAR300)
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else if (cmdParams[0] > 0xFF)
+      info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
     {
@@ -1686,12 +1694,39 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     return true;
   };
 
+  // Helper to check that the first `count` parameters fit in a byte, if not set error message in info and return false.
+  //
+  // Why: the command parser stores every parameter as a uint16_t (needed for SET TIME year, EXT ADRD address,
+  // SET HPAR value...), but the Palazzetti library takes uint8_t for parameter numbers and most values.
+  // Passing a uint16_t where a uint8_t is expected silently keeps the low byte only (value % 256):
+  // the compiler doesn't warn (no -Wconversion), the library receives a valid-looking value,
+  // and the JSON answer echoes the value that was requested, not the one written. For example:
+  //   "SET PARM 259 5"  writes PAR3 = 5   and answers PAR259 = 5
+  //   "SET PARM 3 300"  writes PAR3 = 44  and answers PAR3 = 300
+  //   "SET POWR 257"    sets power 1
+  // On a stove, a typo could therefore change another combustion parameter without any visible error.
+  //
+  // Only the first `count` parameters are checked: the next ones keep their 16-bit range
+  // (e.g. SET HPAR: the number is a uint8_t, the value a uint16_t).
+  auto requireByteParams = [&](byte count) -> bool
+  {
+    for (byte i = 0; i < count; i++)
+    {
+      if (cmdParams[i] > 0xFF)
+      {
+        info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[i];
+        return false;
+      }
+    }
+    return true;
+  };
+
   if (cmd.startsWith(F("SET CDAY ")))
   {
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    if (requireParams(3))
+    if (requireParams(3) && requireByteParams(3))
     {
       cmdSuccess = _Pala.setChronoDay(cmdParams[0], cmdParams[1], cmdParams[2]);
 
@@ -1718,47 +1753,52 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    // all 6 values are uint8_t in setChronoPrg()
+    // (the parameter count is still not checked here, as before this change: missing parameters are sent as 0)
+    if (requireByteParams(6))
     {
-      char programName[3] = {'P', 'X', 0};
-      char time[6] = {'0', '0', ':', '0', '0', 0};
+      cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
 
-      programName[1] = cmdParams[0] + '0';
-      JsonObject px = data[programName].to<JsonObject>();
-      px["CHRSETP"] = (float)cmdParams[1];
-      time[0] = cmdParams[2] / 10 + '0';
-      time[1] = cmdParams[2] % 10 + '0';
-      time[3] = cmdParams[3] / 10 + '0';
-      time[4] = cmdParams[3] % 10 + '0';
-      px["START"] = time;
-      time[0] = cmdParams[4] / 10 + '0';
-      time[1] = cmdParams[4] % 10 + '0';
-      time[3] = cmdParams[5] / 10 + '0';
-      time[4] = cmdParams[5] % 10 + '0';
-      px["STOP"] = time;
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        char programName[3] = {'P', 'X', 0};
+        char time[6] = {'0', '0', ':', '0', '0', 0};
+
+        programName[1] = cmdParams[0] + '0';
+        JsonObject px = data[programName].to<JsonObject>();
+        px["CHRSETP"] = (float)cmdParams[1];
+        time[0] = cmdParams[2] / 10 + '0';
+        time[1] = cmdParams[2] % 10 + '0';
+        time[3] = cmdParams[3] / 10 + '0';
+        time[4] = cmdParams[3] % 10 + '0';
+        px["START"] = time;
+        time[0] = cmdParams[4] / 10 + '0';
+        time[1] = cmdParams[4] % 10 + '0';
+        time[3] = cmdParams[5] / 10 + '0';
+        time[4] = cmdParams[5] % 10 + '0';
+        px["STOP"] = time;
+      }
     }
   }
   else if (cmd.startsWith(F("SET CSET ")))
   {
     cmdProcessed = true;
 
-    if (requireParams(2))
+    if (requireParams(2) && requireByteParams(2))
       cmdSuccess = _Pala.setChronoSetpoint(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSPH ")))
   {
     cmdProcessed = true;
 
-    if (requireParams(2))
+    if (requireParams(2) && requireByteParams(2))
       cmdSuccess = _Pala.setChronoStopHH(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSPM ")))
   {
     cmdProcessed = true;
 
-    if (requireParams(2))
+    if (requireParams(2) && requireByteParams(2))
       cmdSuccess = _Pala.setChronoStopMM(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSST ")))
@@ -1781,14 +1821,14 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
   {
     cmdProcessed = true;
 
-    if (requireParams(2))
+    if (requireParams(2) && requireByteParams(2))
       cmdSuccess = _Pala.setChronoStartHH(cmdParams[0], cmdParams[1]);
   }
   else if (cmd.startsWith(F("SET CSTM ")))
   {
     cmdProcessed = true;
 
-    if (requireParams(2))
+    if (requireParams(2) && requireByteParams(2))
       cmdSuccess = _Pala.setChronoStartMM(cmdParams[0], cmdParams[1]);
   }
   else if (cmd == F("SET FN2D"))
@@ -1828,7 +1868,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       uint16_t F3LResult;
       cmdSuccess = _Pala.setRoomFan3(cmdParams[0], &F3LResult);
@@ -1844,7 +1884,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       uint16_t F4LResult;
       cmdSuccess = _Pala.setRoomFan4(cmdParams[0], &F4LResult);
@@ -1860,7 +1900,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       float F3SResult;
       cmdSuccess = _Pala.setSetPointFan3(cmdParams[0], &F3SResult);
@@ -1874,7 +1914,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       float F4SResult;
       cmdSuccess = _Pala.setSetPointFan4(cmdParams[0], &F4SResult);
@@ -1888,7 +1928,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
-    if (requireParams(2))
+    // only the hidden parameter number is a uint8_t: the value is a uint16_t in setHiddenParameter()
+    if (requireParams(2) && requireByteParams(1))
     {
       cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
 
@@ -1903,7 +1944,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
-    if (requireParams(2))
+    // parameter number and value are both uint8_t in setParameter()
+    if (requireParams(2) && requireByteParams(2))
     {
       cmdSuccess = _Pala.setParameter(cmdParams[0], cmdParams[1]);
 
@@ -1918,7 +1960,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("POWR");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       Palazzetti::SetPowerResult setPowerResult;
       cmdSuccess = _Pala.setPower(cmdParams[0], &setPowerResult);
@@ -1987,7 +2029,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       Palazzetti::SetRoomFanResult setRoomFanResult;
       cmdSuccess = _Pala.setRoomFan(cmdParams[0], &setRoomFanResult);
@@ -2006,7 +2048,9 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
-    if (requireParams(1))
+    // requireByteParams(1) makes the (uint8_t) cast below safe:
+    // the cast only selects the integer overload of setSetpoint() and no longer truncates anything
+    if (requireParams(1) && requireByteParams(1))
     {
       float SETPResult;
       cmdSuccess = _Pala.setSetpoint((uint8_t)cmdParams[0], &SETPResult);
@@ -2020,7 +2064,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("FAND");
 
-    if (requireParams(1))
+    if (requireParams(1) && requireByteParams(1))
     {
       Palazzetti::SetSilentModeResult setSilentModeResult;
       cmdSuccess = _Pala.setSilentMode(cmdParams[0], &setSilentModeResult);
