@@ -183,6 +183,8 @@ Module connection status is published to `%BaseTopic%/connected`:
 - `SET+PARM+92+2`: set parameter 92 to value 2 (ex : 92=pellet type (1-3))
 - `SET+HPAR+57+95`: set hidden parameter 57 to value 95 (ex : 57=% of pellet to feed for pellet type 3)
 
+⚠️ `SET+PARM` and `SET+HPAR` change the stove board tuning and are disabled by default: enable *Allow parameter writes* in the configuration page (PalaControl section) only while you need them, and back up parameters first (`BKP+PARM+CSV`, `BKP+HPAR+CSV`).
+
 ⏲️: Published automatically  
 ✨: WPalaControl specific commands
 
