@@ -1405,9 +1405,11 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
+    // the number must also fit in a byte: getHiddenParameter() takes it as a uint8_t, so a larger number would be
+    // silently truncated to its low byte (e.g. "GET HPAR 256" would read HPAR0 and report it as HPAR256)
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-    else if (cmdParams[0] > 0xFF) // getHiddenParameter() takes a uint8_t: a larger number would be silently truncated
+    else if (cmdParams[0] > 0xFF)
       info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
@@ -1475,9 +1477,11 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
+    // the number must also fit in a byte: getParameter() takes it as a uint8_t, so a larger number would be
+    // silently truncated to its low byte (e.g. "GET PARM 300" would read PAR44 and report it as PAR300)
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-    else if (cmdParams[0] > 0xFF) // getParameter() takes a uint8_t: a larger number would be silently truncated
+    else if (cmdParams[0] > 0xFF)
       info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
@@ -1690,9 +1694,20 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     return true;
   };
 
-  // Helper to check that the first `count` parameters fit in a byte, if not set error message in info and return false
-  // (the Palazzetti library takes uint8_t for these values: a larger value would be silently truncated,
-  // e.g. "SET PARM 259 5" would write parameter 3, and "SET PARM 3 300" would write 44)
+  // Helper to check that the first `count` parameters fit in a byte, if not set error message in info and return false.
+  //
+  // Why: the command parser stores every parameter as a uint16_t (needed for SET TIME year, EXT ADRD address,
+  // SET HPAR value...), but the Palazzetti library takes uint8_t for parameter numbers and most values.
+  // Passing a uint16_t where a uint8_t is expected silently keeps the low byte only (value % 256):
+  // the compiler doesn't warn (no -Wconversion), the library receives a valid-looking value,
+  // and the JSON answer echoes the value that was requested, not the one written. For example:
+  //   "SET PARM 259 5"  writes PAR3 = 5   and answers PAR259 = 5
+  //   "SET PARM 3 300"  writes PAR3 = 44  and answers PAR3 = 300
+  //   "SET POWR 257"    sets power 1
+  // On a stove, a typo could therefore change another combustion parameter without any visible error.
+  //
+  // Only the first `count` parameters are checked: the next ones keep their 16-bit range
+  // (e.g. SET HPAR: the number is a uint8_t, the value a uint16_t).
   auto requireByteParams = [&](byte count) -> bool
   {
     for (byte i = 0; i < count; i++)
@@ -1738,6 +1753,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
+    // all 6 values are uint8_t in setChronoPrg()
+    // (the parameter count is still not checked here, as before this change: missing parameters are sent as 0)
     if (requireByteParams(6))
     {
       cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
@@ -1911,6 +1928,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
+    // only the hidden parameter number is a uint8_t: the value is a uint16_t in setHiddenParameter()
     if (requireParams(2) && requireByteParams(1))
     {
       cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
@@ -1926,6 +1944,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("PARM");
 
+    // parameter number and value are both uint8_t in setParameter()
     if (requireParams(2) && requireByteParams(2))
     {
       cmdSuccess = _Pala.setParameter(cmdParams[0], cmdParams[1]);
@@ -2029,6 +2048,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("SETP");
 
+    // requireByteParams(1) makes the (uint8_t) cast below safe:
+    // the cast only selects the integer overload of setSetpoint() and no longer truncates anything
     if (requireParams(1) && requireByteParams(1))
     {
       float SETPResult;
