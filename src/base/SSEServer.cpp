@@ -30,7 +30,11 @@ void SSEServer::handleSubscription(WebServer &server)
     _clients[subPos] = server.client();
     _clients[subPos].setTimeout(50);                 // Set the client timeout to 50ms (reduces the impact of unresponsive clients when payload is over 1072-128 bytes)
     server.setContentLength(CONTENT_LENGTH_UNKNOWN); // the payload can go on forever
-    server.sendContent_P(PSTR("HTTP/1.1 200 OK\nContent-Type: text/event-stream;\nConnection: keep-alive\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *\n\n"));
+    server.sendContent_P(PSTR("HTTP/1.1 200 OK\r\n"
+                              "Content-Type: text/event-stream\r\n"
+                              "Connection: keep-alive\r\n"
+                              "Cache-Control: no-cache\r\n"
+                              "\r\n"));
 
 #if DEVELOPPER_MODE
     LOG_SERIAL_PRINTF_P(PSTR("statusSSEHandler - client #%d (%s:%d) registered\n"), subPos, server.client().remoteIP().toString().c_str(), server.client().remotePort());

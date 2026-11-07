@@ -344,12 +344,12 @@ void WifiMan::appInitWebServer(WebServer &server)
               int8_t n = WiFi.scanComplete();
               if (n == -2)
               {
-                server.send(200, F("text/json"), F("{\"r\":-2,\"wnl\":[]}"));
+                server.send(200, F("application/json"), F("{\"r\":-2,\"wnl\":[]}"));
                 WiFi.scanNetworks(true);
               }
               else if (n == -1)
               {
-                server.send(200, F("text/json"), F("{\"r\":-1,\"wnl\":[]}"));
+                server.send(200, F("application/json"), F("{\"r\":-1,\"wnl\":[]}"));
               }
               else
               {
@@ -363,7 +363,7 @@ void WifiMan::appInitWebServer(WebServer &server)
                   wnl0["RSSI"] = WiFi.RSSI(i);
                 }
                 server.setContentLength(measureJson(json));
-                server.send(200, F("text/json"), "");
+                server.send(200, F("application/json"), "");
                 WiFiClient client = server.client();
                 serializeJson(json, client);
                 WiFi.scanDelete();

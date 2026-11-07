@@ -581,7 +581,7 @@ void Application::initWebServer(WebServer &server)
               JsonDocument json;
               fillStatusJSON(json);
               server.setContentLength(measureJson(json));
-              server.send(200, F("text/json"), "");
+              server.send(200, F("application/json"), "");
               WiFiClient client = server.client();
               serializeJson(json, client);
             });
@@ -596,7 +596,7 @@ void Application::initWebServer(WebServer &server)
               JsonDocument json;
               fillConfigJSON(json);
               server.setContentLength(measureJson(json));
-              server.send(200, F("text/json"), "");
+              server.send(200, F("application/json"), "");
               WiFiClient client = server.client();
               serializeJson(json, client);
             });
