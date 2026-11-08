@@ -77,7 +77,7 @@ private:
   bool _publishedStoveConnected = false;
   bool _needPublishHassDiscovery = false;
   bool _needPublishUpdate = false;
-  Ticker _publishUpdateTicker;
+  unsigned long _lastPublishUpdateMillis = 0;
 
   int myOpenSerial(uint32_t baudrate);
   void myCloseSerial();

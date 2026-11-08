@@ -2448,17 +2448,9 @@ bool WPalaControl::appInit(bool reInit /* = false */)
                                         { palaControl->_needPublish = true; }, this);
 #endif
 
-  // flag to force publish update (init and reinit)
+  // flag to force publish update (init and reinit) and restart the daily period
   _needPublishUpdate = true;
-
-  // start publish update Ticker
-#ifdef ESP8266
-  _publishUpdateTicker.attach(86400, [this]()
-                              { this->_needPublishUpdate = true; });
-#else
-  _publishUpdateTicker.attach<WPalaControl *>(86400, [](WPalaControl *palaSensor)
-                                              { palaSensor->_needPublishUpdate = true; }, this);
-#endif
+  _lastPublishUpdateMillis = millis();
 
   // Start UDP Server
   _udpServer.begin(54549);
@@ -2645,6 +2637,13 @@ void WPalaControl::appRun()
     {
       _needPublishHassDiscovery = false;
       _needPublish = true; // force publishTick after discovery
+    }
+
+    // request a publish update once a day
+    if (millis() - _lastPublishUpdateMillis >= 86400000UL)
+    {
+      _lastPublishUpdateMillis = millis();
+      _needPublishUpdate = true;
     }
 
     if (_needPublishUpdate && mqttPublishUpdate(_mqttMan))
