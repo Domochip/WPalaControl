@@ -2098,8 +2098,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
 
     // Check if date is valid
-    // basic control
-    if (cmdParams[0] < 2000 || cmdParams[0] > 2099)
+    else if (cmdParams[0] < 2000 || cmdParams[0] > 2099)
       info["MSG"] = F("Incorrect Year");
     else if (cmdParams[1] < 1 || cmdParams[1] > 12)
       info["MSG"] = F("Incorrect Month");
