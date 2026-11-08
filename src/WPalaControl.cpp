@@ -1718,26 +1718,29 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("CHRD");
 
-    cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    if (requireParams(6))
     {
-      char programName[3] = {'P', 'X', 0};
-      char time[6] = {'0', '0', ':', '0', '0', 0};
+      cmdSuccess = _Pala.setChronoPrg(cmdParams[0], cmdParams[1], cmdParams[2], cmdParams[3], cmdParams[4], cmdParams[5]);
 
-      programName[1] = cmdParams[0] + '0';
-      JsonObject px = data[programName].to<JsonObject>();
-      px["CHRSETP"] = (float)cmdParams[1];
-      time[0] = cmdParams[2] / 10 + '0';
-      time[1] = cmdParams[2] % 10 + '0';
-      time[3] = cmdParams[3] / 10 + '0';
-      time[4] = cmdParams[3] % 10 + '0';
-      px["START"] = time;
-      time[0] = cmdParams[4] / 10 + '0';
-      time[1] = cmdParams[4] % 10 + '0';
-      time[3] = cmdParams[5] / 10 + '0';
-      time[4] = cmdParams[5] % 10 + '0';
-      px["STOP"] = time;
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        char programName[3] = {'P', 'X', 0};
+        char time[6] = {'0', '0', ':', '0', '0', 0};
+
+        programName[1] = cmdParams[0] + '0';
+        JsonObject px = data[programName].to<JsonObject>();
+        px["CHRSETP"] = (float)cmdParams[1];
+        time[0] = cmdParams[2] / 10 + '0';
+        time[1] = cmdParams[2] % 10 + '0';
+        time[3] = cmdParams[3] / 10 + '0';
+        time[4] = cmdParams[3] % 10 + '0';
+        px["START"] = time;
+        time[0] = cmdParams[4] / 10 + '0';
+        time[1] = cmdParams[4] % 10 + '0';
+        time[3] = cmdParams[5] / 10 + '0';
+        time[4] = cmdParams[5] % 10 + '0';
+        px["STOP"] = time;
+      }
     }
   }
   else if (cmd.startsWith(F("SET CSET ")))
