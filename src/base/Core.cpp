@@ -18,7 +18,7 @@ const char *Core::getSerialNumber()
 #ifdef ESP8266
     sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
 #else
-    sprintf_P(sn, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+    sprintf_P(sn, PSTR("%08x"), (unsigned int)(ESP.getEfuseMac() << 40 >> 40));
 #endif
   }
 

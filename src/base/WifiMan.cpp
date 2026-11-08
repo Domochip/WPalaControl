@@ -101,7 +101,7 @@ bool WifiMan::enableAP()
   _dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
   _dnsServer->start(53, F("*"), WiFi.softAPIP());
 
-  LOG_SERIAL_PRINTF_P(PSTR("AP started (%s - ch %u - %s) "), F(DEFAULT_AP_SSID), apChannel, ipToCString(WiFi.softAPIP()));
+  LOG_SERIAL_PRINTF_P(PSTR("AP started (" DEFAULT_AP_SSID " - ch %u - %s) "), apChannel, ipToCString(WiFi.softAPIP()));
   return true;
 }
 

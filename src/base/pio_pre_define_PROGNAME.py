@@ -21,7 +21,7 @@ developper_mode = extract_macro_value(r'./src/Main.h', 'DEVELOPPER_MODE')
 platform = env.GetProjectOption("platform")
 build_type = env.GetProjectOption("build_type", "release")
 
-esp32suffix = ".esp32" if platform == "espressif32" else ""
+esp32suffix = ".esp32" if str(platform).startswith("espressif32") else ""
 developpersuffix = ".dev" if developper_mode == "1" else ""
 debugsuffix = ".debug" if str(build_type).strip().lower() == "debug" else ""
 

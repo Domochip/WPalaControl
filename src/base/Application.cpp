@@ -193,7 +193,9 @@ bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */
 
   // while there is data to read
   char c;
+#ifdef ESP8266
   uint16_t byteCount = 0;
+#endif
   while (readNextChar(c))
   {
 #ifdef ESP8266
