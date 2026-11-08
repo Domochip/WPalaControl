@@ -2144,18 +2144,20 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, Jso
 
     if (cmdParamNumber != 2 && cmdParamNumber != 3)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
-
-    // the third parameter was designed for Micronova MB and is not used in Fumis board
-
-    uint16_t ADDR_DATA;
-    cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
-
-    if (cmdSuccess == Palazzetti::CommandResult::OK)
+    else
     {
-      String addrName(F("ADDR_"));
-      // append the first parameter as hex string
-      addrName += String(cmdParams[0], HEX);
-      data[addrName] = ADDR_DATA;
+      // the third parameter was designed for Micronova MB and is not used in Fumis board
+
+      uint16_t ADDR_DATA;
+      cmdSuccess = _Pala.readData(cmdParams[0], cmdParams[1], &ADDR_DATA);
+
+      if (cmdSuccess == Palazzetti::CommandResult::OK)
+      {
+        String addrName(F("ADDR_"));
+        // append the first parameter as hex string
+        addrName += String(cmdParams[0], HEX);
+        data[addrName] = ADDR_DATA;
+      }
     }
   }
 #if DEVELOPPER_MODE
@@ -2167,10 +2169,12 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, Jso
 
     if (cmdParamNumber != 3 && cmdParamNumber != 4)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else
+    {
+      // the fourth parameter was designed for Micronova MB and is not used in Fumis board
 
-    // the fourth parameter was designed for Micronova MB and is not used in Fumis board
-
-    cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
+      cmdSuccess = _Pala.writeData(cmdParams[0], cmdParams[1], cmdParams[2]);
+    }
   }
 #endif
 
