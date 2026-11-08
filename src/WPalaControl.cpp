@@ -2634,7 +2634,7 @@ void WPalaControl::appRun()
     // request a publish update once a day
     if (millis() - _lastPublishUpdateMillis >= 86400000UL)
     {
-      _lastPublishUpdateMillis = millis();
+      _lastPublishUpdateMillis += 86400000UL;
       _needPublishUpdate = true;
     }
 
@@ -2645,7 +2645,7 @@ void WPalaControl::appRun()
   // request a publish every uploadPeriod seconds
   if (millis() - _lastPublishMillis >= _ha.uploadPeriod * 1000UL)
   {
-    _lastPublishMillis = millis();
+    _lastPublishMillis += _ha.uploadPeriod * 1000UL;
     _needPublish = true;
   }
 
