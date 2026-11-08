@@ -191,6 +191,9 @@ bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */
     return true;
   };
 
+  // number of requested keys still to be read
+  uint8_t keysToFind = (version ? 1 : 0) + (title ? 1 : 0) + (releaseDate ? 1 : 0) + (summary ? 1 : 0);
+
   // while there is data to read
   char c;
 #ifdef ESP8266
@@ -317,6 +320,10 @@ bool Application::getLatestUpdateInfo(char *version, char *title /* = nullptr */
         targetMaxLen = curLen;
       }
     }
+
+    // all requested keys have been read: no need to parse the rest of the response
+    if (--keysToFind == 0)
+      break;
   }
 
   http.end();
