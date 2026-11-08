@@ -11,7 +11,6 @@ using WebServer = ESP8266WebServer;
 #include <WebServer.h>
 #endif
 
-#include <Ticker.h>
 #include <ArduinoJson.h>
 
 // Server-Sent Events manager — keeps a fixed pool of open HTTP connections and
@@ -26,8 +25,7 @@ private:
     void forEach(std::function<void(WiFiClient &, uint8_t)> action);
 
 #if SSE_SERVER_KEEPALIVE
-    bool _needKeepAlive = false;
-    Ticker _keepAliveTicker;
+    unsigned long _lastKeepAliveMillis = 0;
 
     void sendKeepAlive();
 #endif

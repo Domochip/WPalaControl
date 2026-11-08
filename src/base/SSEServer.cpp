@@ -65,7 +65,7 @@ void SSEServer::sendKeepAlive()
 {
     forEach([](WiFiClient &client, uint8_t i)
             {
-                client.println(F(":keepalive\n\n"));
+                client.print(F(":keepalive\n\n"));
 
 #if DEVELOPPER_MODE
                 LOG_SERIAL_PRINTF_P(PSTR("statusSSEKeepAlive - keep-alive sent to client #%d (%s:%d)\n"), i, client.remoteIP().toString().c_str(), client.remotePort());
@@ -82,14 +82,7 @@ void SSEServer::init(char appIdChar, WebServer &server)
     server.on(url, HTTP_GET, [this, &server]()
               { handleSubscription(server); });
 #if SSE_SERVER_KEEPALIVE
-    // send keep alive event every 60 seconds
-#ifdef ESP8266
-    _keepAliveTicker.attach(60, [this]()
-                            { _needKeepAlive = true; });
-#else
-    _keepAliveTicker.attach<SSEServer *>(60, [](SSEServer *sse)
-                                         { sse->_needKeepAlive = true; }, this);
-#endif
+    _lastKeepAliveMillis = millis();
 #endif
 }
 
@@ -122,9 +115,10 @@ void SSEServer::broadcast(JsonVariantConst message, const char *eventType /* = "
 #if SSE_SERVER_KEEPALIVE
 void SSEServer::loop()
 {
-    if (_needKeepAlive)
+    // send keep alive event every 60 seconds
+    if (millis() - _lastKeepAliveMillis >= 60000UL)
     {
-        _needKeepAlive = false;
+        _lastKeepAliveMillis = millis();
         sendKeepAlive();
     }
 }
