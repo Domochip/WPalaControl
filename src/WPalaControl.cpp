@@ -2349,9 +2349,6 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   // Stop UdpServer
   _udpServer.stop();
 
-  // Stop Publish
-  _publishTicker.detach();
-
   // Stop MQTT
   _mqttMan.disconnect();
 
@@ -2440,13 +2437,8 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   if (cmdRes == Palazzetti::CommandResult::OK)
     publishTick(); // if configuration changed, publish immediately
 
-#ifdef ESP8266
-  _publishTicker.attach(_ha.uploadPeriod, [this]()
-                        { this->_needPublish = true; });
-#else
-  _publishTicker.attach<WPalaControl *>(_ha.uploadPeriod, [](WPalaControl *palaControl)
-                                        { palaControl->_needPublish = true; }, this);
-#endif
+  // restart the publish period
+  _lastPublishMillis = millis();
 
   // flag to force publish update (init and reinit) and restart the daily period
   _needPublishUpdate = true;
@@ -2648,6 +2640,13 @@ void WPalaControl::appRun()
 
     if (_needPublishUpdate && mqttPublishUpdate(_mqttMan))
       _needPublishUpdate = false;
+  }
+
+  // request a publish every uploadPeriod seconds
+  if (millis() - _lastPublishMillis >= _ha.uploadPeriod * 1000UL)
+  {
+    _lastPublishMillis = millis();
+    _needPublish = true;
   }
 
   if (_needPublish)

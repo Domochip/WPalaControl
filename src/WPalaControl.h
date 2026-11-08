@@ -73,7 +73,7 @@ private:
   unsigned long _lastAllStatusRefreshMillis = 0;
 
   bool _needPublish = false;
-  Ticker _publishTicker;
+  unsigned long _lastPublishMillis = 0;
   bool _publishedStoveConnected = false;
   bool _needPublishHassDiscovery = false;
   bool _needPublishUpdate = false;
