@@ -10,19 +10,21 @@ Protocol: <span id="haproto"></span><br>
 </span>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content2 ';
+    // Runs as this part's init function (see registerPart in index_template.html):
+    //   root : this part's <div data-part> element, query it with $('#x', root)
+    //   id   : this part's id ('2'), used in API endpoints like '/gs' + id
 
-    function show(id, cond) { $(qsp + "#" + id).style.display = (cond ? '' : 'none'); }
-    function failed() { $(qsp + "#l").innerHTML = '<span class="err">Failed</span>'; }
+    function show(elementId, cond) { $("#" + elementId, root).style.display = (cond ? '' : 'none'); }
+    function failed() { $("#l", root).innerHTML = '<span class="err">Failed</span>'; }
 
     function parseLiveData(response) {
-        if ($(qsp + '#liveData') == undefined) return;
+        if ($('#liveData', root) == undefined) return;
         var liveData = response.SUCCESS === true ? response.DATA : { MSG: response.INFO.MSG };
         for (k in liveData) {
             kForId = (/[^a-zA-Z]/.test(k[0]) ? 'a' : '') + k; //k[0] is not in a-zA-Z then we need to add 'a'
             kForId = kForId.replace(/ /g, '_');
-            if ($(qsp + '#' + kForId) != undefined) {
-                var existingElement = $(qsp + '#' + kForId + 'Value');
+            if ($('#' + kForId, root) != undefined) {
+                var existingElement = $('#' + kForId + 'Value', root);
                 if (existingElement.innerText != liveData[k]) {
                     existingElement.innerText = liveData[k];
                     existingElement.style.fontWeight = "bold";
@@ -35,39 +37,39 @@ Protocol: <span id="haproto"></span><br>
                 var newElement = document.createElement("dd");
                 newElement.id = kForId;
                 newElement.innerHTML = k + ' : <span id="' + kForId + 'Value">' + liveData[k] + '</span>';
-                $(qsp + '#liveData').appendChild(newElement);
+                $('#liveData', root).appendChild(newElement);
             }
         }
-        if ($(qsp + '#lastRefresh') != undefined) {
-            $(qsp + '#lastRefresh').innerText = (new Date()).toLocaleString();
+        if ($('#lastRefresh', root) != undefined) {
+            $('#lastRefresh', root).innerText = (new Date()).toLocaleString();
         }
     }
 
     // update displayed values from a status JSON object (from /gs or an SSE event)
     function applyStatus(status) {
         for (var k in status) {
-            var e = $(qsp + '#' + k);
+            var e = $('#' + k, root);
             if (e != undefined) e.innerHTML = status[k];
         }
     }
 
     // fetch the status and refresh all displayed data
     function refreshStatus() {
-        getJSON("/gs" + qsp[8],
+        getJSON("/gs" + id,
             function (GS) {
                 applyStatus(GS);
-                fadeOut($(qsp + "#l"));
+                fadeOut($("#l", root));
             },
             failed
         );
     }
 
     // get configuration first to know which protocols are configured (0:Disabled, 1:MQTT)
-    getJSON("/gc" + qsp[8],
+    getJSON("/gc" + id,
         function (GC) {
             var haP = GC["haproto"];
             var protoNames = ["Disabled", "MQTT"];
-            $(qsp + "#haproto").innerHTML = protoNames[haP];
+            $("#haproto", root).innerHTML = protoNames[haP];
 
             show("hamqttstatuse", haP == 1);
 
@@ -92,19 +94,27 @@ Protocol: <span id="haproto"></span><br>
         if (!window.EventSource || document.hidden) return;
         if (statusEventSource != undefined && statusEventSource.readyState !== 2) return;
 
-        statusEventSource = new EventSource('/statusEvt' + qsp[8]);
+        statusEventSource = new EventSource('/statusEvt' + id);
         statusEventSource.addEventListener('message', function (e) {
-            console.log('statusEvt' + qsp[8] + ' : ' + e.data);
+            console.log('statusEvt' + id + ' : ' + e.data);
             var msg = JSON.parse(e.data);
             if (!('SUCCESS' in msg)) applyStatus(msg);
             else parseLiveData(msg);
         });
     }
 
-    document.addEventListener('visibilitychange', function () {
+    function onVisibilityChange() {
         if (document.hidden) closeStatusEventSource();
         else connectStatusEventSource();
-    });
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     connectStatusEventSource();
+
+    // cleanup called by unloadPage() when leaving this page
+    return function () {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        closeStatusEventSource();
+    };
 </script>
