@@ -2477,7 +2477,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       {
         String ret(F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Incorrect File Type\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         SERVER_KEEPALIVE_FALSE()
-        server.send(200, F("text/json"), ret);
+        server.send(200, F("application/json"), ret);
         return;
       }
 
@@ -2487,7 +2487,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       if (cmdRes != Palazzetti::CommandResult::OK)
       {
         SERVER_KEEPALIVE_FALSE()
-        server.send(200, F("text/json"), F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
+        server.send(200, F("application/json"), F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         return;
       }
 
@@ -2518,7 +2518,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         SERVER_KEEPALIVE_FALSE()
         server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"PARM.json\""));
         server.setContentLength(measureJson(json));
-        server.send(200, F("text/json"), "");
+        server.send(200, F("application/json"), "");
         { auto client = server.client(); serializeJson(json, client); }
       }
 
@@ -2534,7 +2534,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       {
         String ret(F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Incorrect File Type\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         SERVER_KEEPALIVE_FALSE()
-        server.send(200, F("text/json"), ret);
+        server.send(200, F("application/json"), ret);
         return;
       }
 
@@ -2544,7 +2544,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
       if (cmdRes != Palazzetti::CommandResult::OK)
       {
         SERVER_KEEPALIVE_FALSE()
-        server.send(200, F("text/json"), F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
+        server.send(200, F("application/json"), F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Stove communication failed\",\"RSP\":\"TIMEOUT\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         return;
       }
 
@@ -2575,7 +2575,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         SERVER_KEEPALIVE_FALSE()
         server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.json\""));
         server.setContentLength(measureJson(json));
-        server.send(200, F("text/json"), "");
+        server.send(200, F("application/json"), "");
         { auto client = server.client(); serializeJson(json, client); }
       }
 
@@ -2590,7 +2590,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
     // send response
     SERVER_KEEPALIVE_FALSE()
     server.setContentLength(measureJson(json));
-    server.send(200, F("text/json"), "");
+    server.send(200, F("application/json"), "");
     { auto client = server.client(); serializeJson(json, client); } });
 
   // Handle HTTP POST requests (Body contains a JSON)
@@ -2611,7 +2611,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         // send response
         SERVER_KEEPALIVE_FALSE()
         server.setContentLength(measureJson(json));
-        server.send(200, F("text/json"), "");
+        server.send(200, F("application/json"), "");
         { auto client = server.client(); serializeJson(json, client); } });
 
   // register EventSource
