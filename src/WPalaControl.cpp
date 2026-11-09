@@ -2475,9 +2475,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
 
       if (strFileType != F("CSV") && strFileType != F("JSON"))
       {
-        String ret(F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Incorrect File Type : "));
-        ret += strFileType;
-        ret += F("\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}");
+        String ret(F("{\"INFO\":{\"CMD\":\"BKP PARM\",\"MSG\":\"Incorrect File Type\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         SERVER_KEEPALIVE_FALSE()
         server.send(200, F("text/json"), ret);
         return;
@@ -2534,9 +2532,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
 
       if (strFileType != F("CSV") && strFileType != F("JSON"))
       {
-        String ret(F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Incorrect File Type : "));
-        ret += strFileType;
-        ret += F("\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}");
+        String ret(F("{\"INFO\":{\"CMD\":\"BKP HPAR\",\"MSG\":\"Incorrect File Type\"},\"SUCCESS\":false,\"DATA\":{\"NODATA\":true}}"));
         SERVER_KEEPALIVE_FALSE()
         server.send(200, F("text/json"), ret);
         return;
@@ -2569,7 +2565,7 @@ void WPalaControl::appInitWebServer(WebServer &server)
         server.sendHeader(F("Content-Disposition"), F("attachment; filename=\"HPAR.csv\""));
         server.send(200, F("text/csv"), toReturn);
       }
-      else if (strFileType == F("JSON"))
+      else
       {
         JsonDocument json;
         JsonArray HPAR = json[F("HPAR")].to<JsonArray>();
