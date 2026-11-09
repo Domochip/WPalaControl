@@ -1,21 +1,18 @@
 <h2 class="content-subhead">WPalaControl<span id="l" class="ld">Loading...</span></h2>
-Hardware Version: <span id="hwversion"></span><span id="hwdetection"></span><br>
+Hardware Version: <span data-k="hwversion"></span><span data-k="hwdetection"></span><br>
 <h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
 <dl id="liveData"></dl>
 <h3 class="content-subhead">Home Automation Status</h3>
 Protocol: <span id="haproto"></span><br>
-<span id="hamqttstatuse" style='display:none'>
-    Connection State: <span id="hamqttstatus"></span><br>
-    Last Publish : <span id="hamqttlastpublish"></span><br>
+<span data-show="hamqttstatus">
+    Connection State: <span data-k="hamqttstatus"></span><br>
+    Last Publish : <span data-k="hamqttlastpublish"></span><br>
 </span>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('2'), used in API endpoints like '/gs' + id
-
-    function show(elementId, cond) { $("#" + elementId, root).style.display = (cond ? '' : 'none'); }
-    function failed() { $("#l", root).innerHTML = '<span class="err">Failed</span>'; }
 
     function parseLiveData(response) {
         if ($('#liveData', root) == undefined) return;
@@ -45,37 +42,14 @@ Protocol: <span id="haproto"></span><br>
         }
     }
 
-    // update displayed values from a status JSON object (from /gs or an SSE event)
-    function applyStatus(status) {
-        for (var k in status) {
-            var e = $('#' + k, root);
-            if (e != undefined) e.innerHTML = status[k];
-        }
-    }
+    // status values (/gs2 or SSE event, both send the full status) are displayed with data-k / data-show
+    loadStatus(root, id);
 
-    // fetch the status and refresh all displayed data
-    function refreshStatus() {
-        getJSON("/gs" + id,
-            function (GS) {
-                applyStatus(GS);
-                fadeOut($("#l", root));
-            },
-            failed
-        );
-    }
-
-    // get configuration first to know which protocols are configured (0:Disabled, 1:MQTT)
+    // protocol name comes from the configuration (0:Disabled, 1:MQTT)
     getJSON("/gc" + id,
         function (GC) {
-            var haP = GC["haproto"];
-            var protoNames = ["Disabled", "MQTT"];
-            $("#haproto", root).innerHTML = protoNames[haP];
-
-            show("hamqttstatuse", haP == 1);
-
-            refreshStatus();
-        },
-        failed
+            $("#haproto", root).textContent = ["Disabled", "MQTT"][GC["haproto"]] ?? GC["haproto"];
+        }
     );
 
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
@@ -98,7 +72,7 @@ Protocol: <span id="haproto"></span><br>
         statusEventSource.addEventListener('message', function (e) {
             console.log('statusEvt' + id + ' : ' + e.data);
             var msg = JSON.parse(e.data);
-            if (!('SUCCESS' in msg)) applyStatus(msg);
+            if (!('SUCCESS' in msg)) fillStatus(root, msg);
             else parseLiveData(msg);
         });
     }
