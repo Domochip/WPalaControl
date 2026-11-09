@@ -78,12 +78,14 @@
             else { //scan done
                 const wnl = $("#wnl", root);
                 if (wnl) {
-                    if (WNL.r == 0) wnl.innerHTML = '<option>No Network Found</option>';
+                    if (WNL.r == 0) wnl.replaceChildren(new Option('No Network Found'));
                     else {
-                        wnl.innerHTML = '<option>Choose Your Network</option>';
-                        for (k in WNL.wnl) {
-                            const color = rssiToColor(WNL.wnl[k].RSSI);
-                            wnl.innerHTML += `<option style="color:${color}" value="${WNL.wnl[k].SSID}"${$("#s", root).value == WNL.wnl[k].SSID ? ' selected' : ''}>${WNL.wnl[k].SSID} (${rssiToQuality(WNL.wnl[k].RSSI)}%)</option>`;
+                        wnl.replaceChildren(new Option('Choose Your Network'));
+                        for (const network of WNL.wnl) {
+                            const option = new Option(`${network.SSID} (${rssiToQuality(network.RSSI)}%)`, network.SSID);
+                            option.style.color = rssiToColor(network.RSSI);
+                            option.selected = $("#s", root).value == network.SSID;
+                            wnl.appendChild(option);
                         }
                         wnl.addEventListener('change', function () { $("#s", root).value = wnl.value });
                     }
