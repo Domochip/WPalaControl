@@ -1,6 +1,16 @@
 import os
 import re
 
+# Pages of the web UI: template id -> fragment files, one "part" per file.
+# Files ending with a number get that number as part id ('0', '1', '2'), used in API endpoints;
+# other files get an empty part id.
+PAGES = {
+    'tpl-status': ['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'],
+    'tpl-config': ['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'],
+    'tpl-fw':     ['src/base/data/fw.html'],
+}
+
+# Returns the value of a #define macro from a C/C++ header (quotes removed)
 def extract_macro_value(file_path, macro_name):
     with open(file_path, 'r') as file:
         content = file.read()
@@ -11,41 +21,32 @@ def extract_macro_value(file_path, macro_name):
         else:
             raise ValueError(f"{macro_name} not found in {file_path}")
 
-# HTML fragments use 'qsp' as a scoped CSS selector prefix, substituted at build time:
-# - Numbered index N : qsp -> '#contentN ', qsp[8] -> 'N' (used in API endpoints like '/gsN')
-#                      content is wrapped in <div id="contentN"> to isolate element IDs
-# - Empty index ''   : qsp -> '#content ', no wrapper (fragment loads directly into #content)
-def preprocess_fragment(html, fragment_index):
-    wrapper_id = f'content{fragment_index}'
-    qsp_replacement = f"'#{wrapper_id} '"
+# Reads a fragment file and returns (part_id, markup, script):
+#   - part_id : number at the end of the filename ('status1.html' -> '1'), '' if none
+#   - markup  : the HTML without its <script> blocks
+#   - script  : the content of its <script> blocks
+def read_part(source):
+    match = re.search(r'(\d+)\.html$', os.path.basename(source))
+    part_id = match.group(1) if match else ''
+    with open(source, 'r', encoding='utf-8') as f:
+        html = f.read()
+    script = '\n'.join(re.findall(r'<script>(.*?)</script>', html, flags=re.DOTALL))
+    markup = re.sub(r'<script>.*?</script>', '', html, flags=re.DOTALL).strip()
+    return part_id, markup, script
 
-    # Replace qsp[8] before qsp to avoid double-substitution
-    def replace_qsp(match):
-        content = match.group(1)
-        content = content.replace('qsp[8]', f"'{fragment_index}'")
-        content = content.replace('qsp', qsp_replacement)
-        return f'<script>{content}</script>'
+# Builds one page as HTML: a <template> holding each part's markup in <div data-part="ID">,
+# followed by a <script> registering each part's script as an init function:
+#   registerPart('<templateId>', 'ID', function (root, id) { ...script... });
+def build_page(template_id, sources):
+    print(f'Building {template_id} from {", ".join(os.path.basename(s) for s in sources)}')
+    parts = [read_part(source) for source in sources]
+    template = ''.join(f'<div data-part="{part_id}">\n{markup}\n</div>\n' for part_id, markup, _ in parts)
+    script = ''.join(f"registerPart('{template_id}', '{part_id}', function (root, id) {{\n{js}\n}});\n"
+                     for part_id, _, js in parts if js.strip())
+    return f'<template id="{template_id}">\n{template}</template>\n<script>\n{script}</script>\n'
 
-    html = re.sub(r'<script>(.*?)</script>', replace_qsp, html, flags=re.DOTALL)
-    if fragment_index == '':
-        return html
-    return f'<div id="{wrapper_id}">\n{html}\n</div>\n'
-
-def merge_fragments(sources):
-    print(f'Merging {", ".join(os.path.basename(s) for s in sources)}')
-    merged = ''
-    for source in sources:
-        fragment_index = int(re.search(r'(\d+)\.html$', os.path.basename(source)).group(1))
-        with open(source, 'r', encoding='utf-8') as f:
-            merged += preprocess_fragment(f.read(), fragment_index)
-    return merged
-
-def read_file(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return f.read()
-
-# Reads index_template.html and embeds each page as a <template> element,
-# producing a single self-contained index.html with no runtime HTML fetches.
+# Reads the template file, replaces {{KEY}} placeholders and <!-- PAGES --> with all pages
+# producing a single self-contained index.html
 def build_spa(template_file, pages, output_file, placeholders=None):
     print(f'Building SPA -> {os.path.basename(output_file)}')
     if placeholders is None:
@@ -57,11 +58,8 @@ def build_spa(template_file, pages, output_file, placeholders=None):
     for key, value in placeholders.items():
         html = html.replace(f'{{{{{key}}}}}', value)
 
-    templates_html = ''
-    for template_id, content in pages:
-        templates_html += f'    <template id="{template_id}">\n{content}\n    </template>\n'
-
-    html = html.replace('<!-- TEMPLATES -->', templates_html)
+    pages_html = '\n'.join(build_page(template_id, sources) for template_id, sources in pages.items())
+    html = html.replace('<!-- PAGES -->', pages_html)
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -70,11 +68,7 @@ print('--- pio_pre_build_spa.py start ---')
 
 build_spa(
     'src/base/data/index_template.html',
-    [
-        ('tpl-status', merge_fragments(['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'])),
-        ('tpl-config', merge_fragments(['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'])),
-        ('tpl-fw',     preprocess_fragment(read_file('src/base/data/fw.html'), '')),
-    ],
+    PAGES,
     'src/base/data/index.html',
     placeholders={
         'APP_MODEL': extract_macro_value('./src/Main.h', 'CUSTOM_APP_MODEL'),

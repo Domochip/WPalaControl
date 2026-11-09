@@ -41,32 +41,40 @@
         </div>
     </div>
 
-<!-- TEMPLATES -->
-
     <script>
         function $(selector, el = document) {
             return el.querySelector(selector);
         }
     </script>
     <script>
-        const loadedScripts = new Set();
+        // Page parts: each HTML fragment's markup is wrapped in <div data-part="ID"> inside a <template>,
+        // and its script is registered at build time (pio_pre_build_spa.py) as an init function:
+        //   registerPart(templateId, id, function (root, id) { ... return optionalCleanup; });
+        // Init functions of each page, by template id: { "tpl-status": [{ id: "0", init }, ...], ... }
+        const pageInits = {};
+        let cleanups = [];
 
-        function loadScript(code) {
-            const script = document.createElement('script');
-            const blob = new Blob([code], { type: 'application/javascript' });
-            const url = URL.createObjectURL(blob);
-            script.src = url;
-            script.onload = () => URL.revokeObjectURL(url);
-            document.head.appendChild(script);
-            loadedScripts.add(script);
+        function registerPart(templateId, id, init) {
+            (pageInits[templateId] ||= []).push({ id, init });
         }
 
-        function unloadScripts() {
-            loadedScripts.forEach(script => {
-                if (script.src) { URL.revokeObjectURL(script.src); }
-                document.head.removeChild(script);
-            });
-            loadedScripts.clear();
+        // Loads a page from an embedded <template> element into #content,
+        // then calls each part's init function with its own root element.
+        function loadPage(templateId) {
+            const element = $('#content');
+            element.replaceChildren(document.getElementById(templateId).content.cloneNode(true));
+            for (const { id, init } of pageInits[templateId] || []) {
+                const cleanup = init(element.querySelector(`[data-part="${id}"]`), id);
+                if (typeof cleanup === 'function') cleanups.push(cleanup);
+            }
+        }
+
+        // Unloads the current page: runs cleanup functions returned by its parts (close EventSource, timers...)
+        // then empties #content
+        function unloadPage() {
+            cleanups.forEach(cleanup => cleanup());
+            cleanups = [];
+            $('#content').replaceChildren();
         }
 
         function request(method, url, data, success, fail, timeout, uploadProgress) {
@@ -85,17 +93,6 @@
             if (timeout) xhr.timeout = timeout;
             if (typeof data == "string") xhr.setRequestHeader('Content-type', 'application/json');
             xhr.send(data);
-        }
-
-        // Loads a page from an embedded <template> element into the target element.
-        // Scripts inside the template are executed via loadScript (scripts in innerHTML don't auto-execute).
-        function load(element, templateId) {
-            const tpl = document.getElementById(templateId);
-            element.innerHTML = tpl.innerHTML;
-            const scriptList = element.getElementsByTagName('script');
-            for (const script of scriptList) {
-                loadScript(script.innerHTML);
-            }
         }
 
         function get(url, success, fail) {
@@ -194,11 +191,15 @@
             });
             el.dispatchEvent(evt);
         }
+    </script>
 
+    <!-- Replaced by pio_pre_build_spa.py: each page as a template element followed by its registerPart() script -->
+<!-- PAGES -->
+
+    <script>
         function clearMenuAndContent() {
-            unloadScripts();
+            unloadPage();
             document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
-            $('#content').innerHTML = '';
         }
 
         // Side menu toggle (small screens): hamburger opens/closes it, clicking the page closes it
@@ -223,9 +224,9 @@
             });
         }
 
-        handleMenuClick("#menuStatus", "Status", () => load($('#content'), 'tpl-status'));
-        handleMenuClick("#menuConfig", "Config", () => load($('#content'), 'tpl-config'));
-        handleMenuClick("#menuFirmware", "Firmware", () => load($('#content'), 'tpl-fw'));
+        handleMenuClick("#menuStatus", "Status", () => loadPage('tpl-status'));
+        handleMenuClick("#menuConfig", "Config", () => loadPage('tpl-config'));
+        handleMenuClick("#menuFirmware", "Firmware", () => loadPage('tpl-fw'));
 
         const savedTab = sessionStorage.getItem('activeTab');
         sessionStorage.removeItem('activeTab');

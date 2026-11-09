@@ -52,11 +52,12 @@
 </form>
 
 <script>
-    // QuerySelector Prefix is added by load function to know into what element querySelector needs to look for
-    // var qsp = '#content0 ';
+    // Runs as this part's init function (see registerPart in index_template.html):
+    //   root : this part's <div data-part> element, query it with $('#x', root)
+    //   id   : this part's id ('', single-part page, not used here)
 
     function firmwareValidation() {
-        const fileInput = $(qsp + '#fi');
+        const fileInput = $('#fi', root);
         const model = document.querySelector("meta[name='description']").content;
         if (!fileInput || !model) {
             return false;
@@ -98,20 +99,20 @@
     }
 
     function disableAllButtons() {
-        $(qsp + '#refreshButton').disabled = true;
-        $(qsp + '#updateButton').disabled = true;
-        $(qsp + '#fi').readOnly = true;
-        $(qsp + '#uploadButton').disabled = true;
+        $('#refreshButton', root).disabled = true;
+        $('#updateButton', root).disabled = true;
+        $('#fi', root).readOnly = true;
+        $('#uploadButton', root).disabled = true;
     }
 
     function calculateAllButtonStates() {
-        const refreshButton = $(qsp + '#refreshButton');
+        const refreshButton = $('#refreshButton', root);
         refreshButton.innerHTML = 'Refresh';
         refreshButton.disabled = false;
 
-        const installedVersion = $(qsp + '#installed_version').textContent;
-        const latestVersion = $(qsp + '#latest_version').textContent;
-        const updateButton = $(qsp + '#updateButton');
+        const installedVersion = $('#installed_version', root).textContent;
+        const latestVersion = $('#latest_version', root).textContent;
+        const updateButton = $('#updateButton', root);
         if (compareVersions(latestVersion, installedVersion) > 0) {
             updateButton.disabled = false;
             updateButton.innerHTML = 'Update';
@@ -120,40 +121,40 @@
             updateButton.innerHTML = latestVersion ? 'Up to date' : 'Update';
         }
 
-        const uploadButton = $(qsp + '#uploadButton');
+        const uploadButton = $('#uploadButton', root);
         uploadButton.innerHTML = 'Upload Firmware';
         uploadButton.disabled = false;
-        $(qsp + '#fi').readOnly = false;
+        $('#fi', root).readOnly = false;
     }
 
     function getLatestUpdateInfo() {
 
         disableAllButtons();
 
-        const refreshButton = $(qsp + "#refreshButton");
+        const refreshButton = $("#refreshButton", root);
 
         // Show loading animation
         refreshButton.innerHTML = '<span class="spinner"></span> Refreshing...';
 
         // clear previous values
-        ['#latest_version', '#title', '#release_date', '#release_summary', '#release_url'].forEach(id => {
-            $(qsp + id).innerHTML = '';
+        ['#latest_version', '#title', '#release_date', '#release_summary', '#release_url'].forEach(sel => {
+            $(sel, root).innerHTML = '';
         });
 
         getJSON('/glui',
             (GUI) => {
                 for (k in GUI) {
-                    if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GUI[k];
+                    if ((e = $('#' + k, root)) != undefined) e.innerHTML = GUI[k];
                 }
                 // transform the release url into a clickable link
-                const releaseUrlSpan = $(qsp + '#release_url');
+                const releaseUrlSpan = $('#release_url', root);
                 const url = releaseUrlSpan.innerHTML;
                 if (url) {
                     releaseUrlSpan.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
                 }
 
                 // transform line breaks into <br> tags in the release summary
-                const releaseSummarySpan = $(qsp + '#release_summary');
+                const releaseSummarySpan = $('#release_summary', root);
                 const summary = releaseSummarySpan.innerHTML;
                 if (summary) {
                     releaseSummarySpan.innerHTML = summary.replace(/\r\n/g, '<br>').replace(/\n/g, '<br>');
@@ -162,31 +163,31 @@
                 // Update buttons
                 calculateAllButtonStates();
 
-                fadeOut($(qsp + "#l1"));
-                fadeOut($(qsp + "#l2"));
+                fadeOut($("#l1", root));
+                fadeOut($("#l2", root));
 
             },
             () => {
 
                 calculateAllButtonStates();
-                ['#l1', '#l2'].forEach(id => {
-                    $(qsp + id).innerHTML = '<span class="err">Failed</span>';
+                ['#l1', '#l2'].forEach(sel => {
+                    $(sel, root).innerHTML = '<span class="err">Failed</span>';
                 });
             }
         );
     }
     getLatestUpdateInfo();
-    $(qsp + "#refreshButton").addEventListener('click', () => { getLatestUpdateInfo(); });
+    $("#refreshButton", root).addEventListener('click', () => { getLatestUpdateInfo(); });
 
-    $(qsp + "#updateButton").addEventListener('click', (evt) => {
+    $("#updateButton", root).addEventListener('click', (evt) => {
         evt.preventDefault();
         disableAllButtons();
 
-        $(qsp + '#updateButton').innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
+        $('#updateButton', root).innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
 
         fetch('/update', {
             method: 'POST',
-            body: $(qsp + '#latest_version').textContent
+            body: $('#latest_version', root).textContent
         })
             .then(response => {
                 if (!response.ok) {
@@ -199,11 +200,11 @@
                 function processChunk({ done, value }) {
                     if (done) {
                         if (success) {
-                            $(qsp + '#progress').innerHTML = 'Rebooting...';
-                            $(qsp + '#rUpdate').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+                            $('#progress', root).innerHTML = 'Rebooting...';
+                            $('#rUpdate', root).innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
                             redirectWhenReachable(location.origin, 60000);
                         } else {
-                            $(qsp + '#rUpdate').innerHTML = `<span class="err">Failed</span> (${message})`;
+                            $('#rUpdate', root).innerHTML = `<span class="err">Failed</span> (${message})`;
                             calculateAllButtonStates();
                         }
                         return;
@@ -212,7 +213,7 @@
                     const chunks = chunkAccumulator.split('\n');
                     chunkAccumulator = chunks.pop();
                     chunks.forEach((chunk, index) => {
-                        if (chunk.startsWith('p:')) $(qsp + '#progress').innerHTML = `${parseInt(chunk.substring(2))}%`;
+                        if (chunk.startsWith('p:')) $('#progress', root).innerHTML = `${parseInt(chunk.substring(2))}%`;
                         else if (chunk.startsWith('s:')) success = chunk.substring(2) === 'true';
                         else if (chunk.startsWith('m:')) message = chunk.substring(2);
                     });
@@ -221,36 +222,36 @@
                 reader.read().then(processChunk); // Start reading chunks
             })
             .catch(error => {
-                $(qsp + '#rUpdate').innerHTML = `<span class="err">Failed</span> (${error.message})`;
+                $('#rUpdate', root).innerHTML = `<span class="err">Failed</span> (${error.message})`;
                 calculateAllButtonStates();
             });
     });
 
-    $(qsp + "#f").addEventListener('submit', (evt) => {
+    $("#f", root).addEventListener('submit', (evt) => {
         evt.preventDefault();
         if (!firmwareValidation()) return;
         disableAllButtons();
 
         // Add loading animation to the submit button
-        $(qsp + '#uploadButton').innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
+        $('#uploadButton', root).innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
 
         post('/fw',
-            new FormData($(qsp + '#f')),
+            new FormData($('#f', root)),
             () => {
-                $(qsp + '#progress').innerHTML = 'Rebooting...';
-                $(qsp + '#rUpload').innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+                $('#progress', root).innerHTML = 'Rebooting...';
+                $('#rUpload', root).innerHTML = '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
                 redirectWhenReachable(location.origin, 60000);
             },
             (responseText) => {
-                $(qsp + '#rUpload').innerHTML = `<span class="err">Failed</span> (${responseText})`;
-                $(qsp + '#f').reset();
+                $('#rUpload', root).innerHTML = `<span class="err">Failed</span> (${responseText})`;
+                $('#f', root).reset();
                 calculateAllButtonStates();
             },
             30000,
             function (evt) {
                 if (evt.lengthComputable) {
                     const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                    $(qsp + '#progress').innerHTML = `${percentComplete}%`;
+                    $('#progress', root).innerHTML = `${percentComplete}%`;
                 }
             }
         );

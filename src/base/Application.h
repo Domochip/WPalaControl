@@ -18,7 +18,6 @@ using WebServer = ESP8266WebServer;
 #include <Update.h>
 #endif
 #include <ArduinoJson.h>
-#include <Ticker.h>
 #include "MQTTMan.h"
 
 // Predefined placeholder sent to the web page instead of the real password value

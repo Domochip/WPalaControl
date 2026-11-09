@@ -53,44 +53,46 @@
 <span id='r'></span>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content1 ';
+    // Runs as this part's init function (see registerPart in index_template.html):
+    //   root : this part's <div data-part> element, query it with $('#x', root)
+    //   id   : this part's id ('1'), used in API endpoints like '/gs' + id
 
-    $(qsp + "#staticip").addEventListener('change', function () {
-        if ($(qsp + "#staticip").checked) {
-            $(qsp + "#ip").required = true;
-            $(qsp + "#staticipgroup").style.display = '';
+    $("#staticip", root).addEventListener('change', function () {
+        if ($("#staticip", root).checked) {
+            $("#ip", root).required = true;
+            $("#staticipgroup", root).style.display = '';
         }
         else {
-            $(qsp + "#ip").required = false;
-            $(qsp + "#staticipgroup").style.display = 'none';
+            $("#ip", root).required = false;
+            $("#staticipgroup", root).style.display = 'none';
         }
     });
 
-    $(qsp + "#f").addEventListener('submit', function (event) {
+    $("#f", root).addEventListener('submit', function (event) {
         event.preventDefault();
-        if (!$(qsp + "#staticip").checked) {
-            $(qsp + "#ip").value = '';
-            $(qsp + "#gw").value = '';
-            $(qsp + "#mask").value = '';
-            $(qsp + "#dns1").value = '';
-            $(qsp + "#dns2").value = '';
+        if (!$("#staticip", root).checked) {
+            $("#ip", root).value = '';
+            $("#gw", root).value = '';
+            $("#mask", root).value = '';
+            $("#dns1", root).value = '';
+            $("#dns2", root).value = '';
         }
-        $(qsp + "#r").innerHTML = "Saving Configuration...";
-        post("/sc" + qsp[8],
-            convertFormToJson($(qsp + "#f")),
+        $("#r", root).innerHTML = "Saving Configuration...";
+        post("/sc" + id,
+            convertFormToJson($("#f", root)),
             function () {
-                $(qsp + "#f").style.display = 'none';
+                $("#f", root).style.display = 'none';
 
                 let targetUrl = '';
-                if (!$(qsp + "#s").value) targetUrl = 'http://192.168.4.1';
-                else if ($(qsp + "#staticip").checked && $(qsp + "#ip").value != "0.0.0.0") targetUrl = 'http://' + $(qsp + "#ip").value;
+                if (!$("#s", root).value) targetUrl = 'http://192.168.4.1';
+                else if ($("#staticip", root).checked && $("#ip", root).value != "0.0.0.0") targetUrl = 'http://' + $("#ip", root).value;
                 else { sessionStorage.setItem('activeTab', '#menuConfig'); targetUrl = location.origin; }
 
-                $(qsp + '#r').innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
+                $('#r', root).innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
                 redirectWhenReachable(targetUrl, 30000);
             },
             function () {
-                $(qsp + '#r').innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
+                $('#r', root).innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
             }
         );
     });
@@ -103,16 +105,16 @@
                 setTimeout(getNetworkList, 2000, 0);
             }
             else { //scan done
-                const wnl = $(qsp + "#wnl");
+                const wnl = $("#wnl", root);
                 if (wnl) {
                     if (WNL.r == 0) wnl.innerHTML = '<option>No Network Found</option>';
                     else {
                         wnl.innerHTML = '<option>Choose Your Network</option>';
                         for (k in WNL.wnl) {
                             const color = rssiToColor(WNL.wnl[k].RSSI);
-                            wnl.innerHTML += `<option style="color:${color}" value="${WNL.wnl[k].SSID}"${$(qsp + "#s").value == WNL.wnl[k].SSID ? ' selected' : ''}>${WNL.wnl[k].SSID} (${rssiToQuality(WNL.wnl[k].RSSI)}%)</option>`;
+                            wnl.innerHTML += `<option style="color:${color}" value="${WNL.wnl[k].SSID}"${$("#s", root).value == WNL.wnl[k].SSID ? ' selected' : ''}>${WNL.wnl[k].SSID} (${rssiToQuality(WNL.wnl[k].RSSI)}%)</option>`;
                         }
-                        wnl.addEventListener('change', function () { $(qsp + "#s").value = wnl.value });
+                        wnl.addEventListener('change', function () { $("#s", root).value = wnl.value });
                     }
                 }
             }
@@ -120,28 +122,28 @@
     }
 
 
-    getJSON("/gc" + qsp[8],
+    getJSON("/gc" + id,
         function (GC) {
             for (k in GC) {
-                if ($(qsp + '#' + k)) {
-                    if ($(qsp + '#' + k).type != 'checkbox') $(qsp + '#' + k).value = GC[k];
-                    else $(qsp + '#' + k).checked = GC[k];
+                if ($('#' + k, root)) {
+                    if ($('#' + k, root).type != 'checkbox') $('#' + k, root).value = GC[k];
+                    else $('#' + k, root).checked = GC[k];
 
-                    triggerEvent($(qsp + '#' + k), 'change');
+                    triggerEvent($('#' + k, root), 'change');
                 }
             }
 
-            if ($(qsp + "#ip").value) {
-                $(qsp + "#staticip").checked = true;
-                triggerEvent($(qsp + "#staticip"), 'change');
+            if ($("#ip", root).value) {
+                $("#staticip", root).checked = true;
+                triggerEvent($("#staticip", root), 'change');
             }
 
-            $(qsp + "#f input[type=submit]").disabled = false;
-            fadeOut($(qsp + "#l"));
+            $("#f input[type=submit]", root).disabled = false;
+            fadeOut($("#l", root));
 
             getNetworkList();
         }, function () {
-            $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
+            $("#l", root).innerHTML = '<span class="err">Failed</span>';
         }
     );
 

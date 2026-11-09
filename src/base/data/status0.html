@@ -10,28 +10,30 @@ FreeHeap : <span id="freeheap"></span><br>
 Crash logged : <span id="crashcount"></span><br>
 Crash files :<span id="cbtns">
 &nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
-&nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" onclick="clrCrashes()">Clear</button>
+&nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" id="clrCrashes">Clear</button>
 </span>
 </div>
 
 <script>
-    // qsp is substituted at build time by pio_pre_build_spa.py — var qsp = '#content0 ';
+    // Runs as this part's init function (see registerPart in index_template.html):
+    //   root : this part's <div data-part> element, query it with $('#x', root)
+    //   id   : this part's id ('0'), used in API endpoints like '/gs' + id
 
-    getJSON("/gs" + qsp[8], function (GS) {
+    getJSON("/gs" + id, function (GS) {
         for (k in GS) {
-            if ((e = $(qsp + '#' + k)) != undefined) e.innerHTML = GS[k];
+            if ((e = $('#' + k, root)) != undefined) e.innerHTML = GS[k];
         }
         if (GS.crashcount > 0) {
-            $(qsp + '#cdiv').style.display = '';
+            $('#cdiv', root).style.display = '';
         }
-        fadeOut($(qsp + "#l"));
+        fadeOut($("#l", root));
     }, function () {
-        $(qsp + "#l").innerHTML = '<span class="err">Failed</span>';
+        $("#l", root).innerHTML = '<span class="err">Failed</span>';
     });
 
-    function clrCrashes() {
+    $('#clrCrashes', root).addEventListener('click', function () {
         post('/crashclr', null, function () {
-            $(qsp + '#cdiv').style.display = 'none';
+            $('#cdiv', root).style.display = 'none';
         }, function () { alert('Failed to clear crashes'); });
-    }
+    });
 </script>
