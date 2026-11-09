@@ -1,13 +1,13 @@
 <h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
 
-SN : <span id="sn"></span><br>
-Version : <span id="version"></span><br>
-UpTime : <span id="uptime"></span><br>
-Local Time : <span id="localtime"></span><br>
-FreeHeap : <span id="freeheap"></span><br>
+SN : <span data-k="sn"></span><br>
+Version : <span data-k="version"></span><br>
+UpTime : <span data-k="uptime"></span><br>
+Local Time : <span data-k="localtime"></span><br>
+FreeHeap : <span data-k="freeheap"></span><br>
 
 <div id="cdiv" style="display:none">
-Crash logged : <span id="crashcount"></span><br>
+Crash logged : <span data-k="crashcount"></span><br>
 Crash files :<span id="cbtns">
 &nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
 &nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" id="clrCrashes">Clear</button>
@@ -19,16 +19,10 @@ Crash files :<span id="cbtns">
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('0'), used in API endpoints like '/gs' + id
 
-    getJSON("/gs" + id, function (GS) {
-        for (k in GS) {
-            if ((e = $('#' + k, root)) != undefined) e.innerHTML = GS[k];
-        }
-        if (GS.crashcount > 0) {
-            $('#cdiv', root).style.display = '';
-        }
-        fadeOut($("#l", root));
-    }, function () {
-        $("#l", root).innerHTML = '<span class="err">Failed</span>';
+    loadStatus(root, id, {
+        afterLoad: function (GS) {
+            if (GS.crashcount > 0) $('#cdiv', root).style.display = '';
+        },
     });
 
     $('#clrCrashes', root).addEventListener('click', function () {

@@ -97,47 +97,9 @@
         });
     }
 
-    $("#f", root).addEventListener('submit', function (event) {
-        event.preventDefault();
-        $('#r', root).innerHTML = "Saving Configuration...";
-        post("/sc" + id,
-            convertFormToJson($("#f", root)),
-            function () {
-                $("#f", root).style.display = 'none';
-
-                sessionStorage.setItem('activeTab', '#menuConfig');
-
-                $('#r', root).innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
-                redirectWhenReachable(location.origin, 30000);
-            },
-            function () {
-                $('#r', root).innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
-            }
-        );
-    });
-
-    // Load configuration
-    getJSON("/gc" + id,
-        function (GC) {
-            // Populate timezone dropdown first
-            populateTimezones();
-
-            for (k in GC) {
-                if ($('#' + k, root)) {
-                    if ($('#' + k, root).type != 'checkbox') $('#' + k, root).value = GC[k];
-                    else $('#' + k, root).checked = GC[k];
-
-                    triggerEvent($('#' + k, root), 'change');
-                }
-            }
-
-            $("#f input[type=submit]", root).disabled = false;
-            fadeOut($("#l", root));
-        }, 
-        function () {
-            $("#l", root).innerHTML = '<span class="err">Failed</span>';
-        }
-    );
+    // Timezone options must exist before the configuration is loaded into the form
+    populateTimezones();
+    configForm(root, id);
 
     function postFailed() {
         $('#r', root).innerHTML = '<span class="err">Failed</span>';

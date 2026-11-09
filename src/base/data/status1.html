@@ -1,79 +1,66 @@
 <h2 class="content-subhead">WiFi<span id="l" class="ld">Loading...</span></h2>
-MAC: <span id="mac"></span><br>
-Access Point: <span id="apmode"></span><br>
-<span id="apipe" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP: <span id="apip"></span><br></span>
-Station: <span id="stationmode"></span><br>
-Connection state: <span id="stastate"></span><br>
-<span id="nextretrye" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;Next retry: <span id="nextretry"></span> seconds<br></span>
-<span id="discoreasone" style='display:none'>Last disconnection reason: <span id="discoreason"></span><br></span>
-<span id="stationipe" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP: <span id="stationip"></span><br></span>
-<span id="stationipsourcee" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span id="stationipsource"></span><br></span>
-<span id="bsside" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;BSSID: <span id="bssid"></span><br></span>
-<span id="rssie" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;RSSI: <span id="rssi"></span><br></span>
+MAC: <span data-k="mac"></span><br>
+Access Point: <span data-k="apmode"></span><br>
+<span data-show="apip">&nbsp;&nbsp;&nbsp;&nbsp;IP: <span data-k="apip"></span><br></span>
+Station: <span data-k="stationmode"></span><br>
+Connection state: <span data-k="stastate"></span><br>
+<span id="nextretrye" style='display:none'>&nbsp;&nbsp;&nbsp;&nbsp;Next retry: <span data-k="nextretry"></span> seconds<br></span>
+<span id="discoreasone" style='display:none'>Last disconnection reason: <span data-k="discoreason"></span><br></span>
+<span data-show="stationip">&nbsp;&nbsp;&nbsp;&nbsp;IP: <span data-k="stationip"></span><br></span>
+<span data-show="stationipsource">&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span data-k="stationipsource"></span><br></span>
+<span data-show="bssid">&nbsp;&nbsp;&nbsp;&nbsp;BSSID: <span data-k="bssid"></span><br></span>
+<span data-show="rssi">&nbsp;&nbsp;&nbsp;&nbsp;RSSI: <span data-k="rssi"></span><br></span>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('1'), used in API endpoints like '/gs' + id
 
-    getJSON("/gs" + id,
-        function (GS) {
-            for (k in GS) {
-                if ((e = $('#' + k, root)) != undefined) e.innerHTML = GS[k];
-            }
+    const stationStates = {
+        off: 'Off',
+        connecting: 'Connecting',
+        connected: 'Connected',
+        lost: 'Connection lost',
+        waitretry: 'Waiting to retry'
+    };
 
-            $("#apipe", root).style.display = (GS["apip"] ? '' : 'none');
-            $("#stationipe", root).style.display = (GS["stationip"] ? '' : 'none');
-            $("#stationipsourcee", root).style.display = (GS["stationipsource"] ? '' : 'none');
-            $("#bsside", root).style.display = (GS["bssid"] ? '' : 'none');
-            const stationStates = {
-                off: 'Off',
-                connecting: 'Connecting',
-                connected: 'Connected',
-                lost: 'Connection lost',
-                waitretry: 'Waiting to retry'
-            };
-            $("#stastate", root).textContent = stationStates[GS["stastate"]] || GS["stastate"];
-            const showNextRetry = GS["stastate"] === 'waitretry' && GS["nextretry"] !== undefined;
-            $("#nextretrye", root).style.display = (showNextRetry ? '' : 'none');
-            const disconnectReasons = {
-                0: 'No disconnection',
-                1: 'Unspecified',
-                2: 'Authentication expired',
-                3: 'Authentication leave',
-                4: 'Association expired',
-                8: 'Station left',
-                15: '4-way handshake timeout',
-                16: 'Group key update timeout',
-                200: 'Beacon timeout',
-                201: 'No AP found',
-                202: 'Authentication failed',
-                203: 'Association failed',
-                204: 'Handshake timeout',
-                205: 'Connection failed'
-            };
-            const disconnectReason = Number(GS["discoreason"]);
+    const disconnectReasons = {
+        0: 'No disconnection',
+        1: 'Unspecified',
+        2: 'Authentication expired',
+        3: 'Authentication leave',
+        4: 'Association expired',
+        8: 'Station left',
+        15: '4-way handshake timeout',
+        16: 'Group key update timeout',
+        200: 'Beacon timeout',
+        201: 'No AP found',
+        202: 'Authentication failed',
+        203: 'Association failed',
+        204: 'Handshake timeout',
+        205: 'Connection failed'
+    };
+
+    loadStatus(root, id, {
+        formats: {
+            stastate: v => stationStates[v] || v,
+            discoreason: v => (disconnectReasons[Number(v)] || 'Unknown') + ' (' + Number(v) + ')',
+            rssi: v => v + ' dBm (' + rssiToQuality(v) + '%)',
+        },
+        afterLoad: function (GS) {
+            // rows depending on several values
+            $("#nextretrye", root).style.display =
+                (GS["stastate"] === 'waitretry' && GS["nextretry"] !== undefined ? '' : 'none');
             $("#discoreasone", root).style.display =
-                (GS["stationmode"] === 'on' && disconnectReason !== 0 ? '' : 'none');
-            $("#discoreason", root).textContent =
-                (disconnectReasons[disconnectReason] || 'Unknown') + ' (' + disconnectReason + ')';
-            const showRssi = GS["rssi"] !== undefined;
-            $("#rssie", root).style.display = (showRssi ? '' : 'none');
-            if (showRssi) {
-                const rssiEl = $("#rssi", root);
-                rssiEl.innerHTML = GS["rssi"] + ' dBm (' + rssiToQuality(GS["rssi"]) + '%)';
-                rssiEl.style.color = rssiToColor(GS["rssi"]);
-            }
+                (GS["stationmode"] === 'on' && Number(GS["discoreason"]) !== 0 ? '' : 'none');
+
+            if (GS["rssi"] !== undefined) $('[data-k="rssi"]', root).style.color = rssiToColor(GS["rssi"]);
 
             if (GS["stationmode"] == "on" && GS["apmode"] == "on") {
                 var containerDiv = document.createElement('div');
                 containerDiv.innerHTML = "<div id='connectedToAP' class='banner'>!!! Disconnect devices from Access Point Wifi network to allow reconnection or modify WiFi configuration !!!</div>";
                 $("#main").appendChild(containerDiv.firstChild)
             }
-            fadeOut($("#l", root));
         },
-        function () {
-            $("#l", root).innerHTML = '<span class="err">Failed</span>';
-        }
-    );
+    });
 </script>

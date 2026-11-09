@@ -1,33 +1,33 @@
 <h2>Current Firmware<span id="l1" class="ld">Loading...</span></h2>
 <div class="pure-form pure-form-aligned strong-labels">
     <div class="pure-control-group">
-        <label for="installed_version">Version</label>
-        <span id='installed_version'></span>
+        <label>Version</label>
+        <span data-k="installed_version"></span>
     </div>
 </div>
 
 <h2>Online Update<span id="l2" class="ld">Loading...</span></h2>
 <div class="pure-form pure-form-aligned strong-labels">
     <div class="pure-control-group">
-        <label for="latest_version">Latest Version</label>
-        <span id='latest_version'></span>
+        <label>Latest Version</label>
+        <span data-k="latest_version"></span>
     </div>
     <div class="pure-control-group">
-        <label for="title">Title</label>
-        <span id='title' class="inline-block"></span>
+        <label>Title</label>
+        <span data-k="title" class="inline-block"></span>
     </div>
     <div class="pure-control-group">
-        <label for="release_date">Release Date</label>
-        <span id='release_date'></span>
+        <label>Release Date</label>
+        <span data-k="release_date"></span>
     </div>
     <div class="pure-control-group">
-        <label for="release_summary" class="align-top">Summary</label>
-        <span id='release_summary' class="inline-block"></span>
+        <label class="align-top">Summary</label>
+        <span data-k="release_summary" class="inline-block" style="white-space: pre-line"></span>
     </div>
 
     <div class="pure-control-group">
-        <label for="release_url">URL</label>
-        <span id='release_url'></span>
+        <label>URL</label>
+        <a data-k="release_url" target="_blank"></a>
     </div>
     <div class="pure-controls">
         <button class="pure-button pure-button-primary btn-ok" id="refreshButton">Refresh</button>
@@ -110,8 +110,8 @@
         refreshButton.innerHTML = 'Refresh';
         refreshButton.disabled = false;
 
-        const installedVersion = $('#installed_version', root).textContent;
-        const latestVersion = $('#latest_version', root).textContent;
+        const installedVersion = $('[data-k="installed_version"]', root).textContent;
+        const latestVersion = $('[data-k="latest_version"]', root).textContent;
         const updateButton = $('#updateButton', root);
         if (compareVersions(latestVersion, installedVersion) > 0) {
             updateButton.disabled = false;
@@ -137,28 +137,15 @@
         refreshButton.innerHTML = '<span class="spinner"></span> Refreshing...';
 
         // clear previous values
-        ['#latest_version', '#title', '#release_date', '#release_summary', '#release_url'].forEach(sel => {
-            $(sel, root).innerHTML = '';
-        });
+        fillStatus(root, { latest_version: '', title: '', release_date: '', release_summary: '', release_url: '' });
+        $('[data-k="release_url"]', root).removeAttribute('href');
 
         getJSON('/glui',
             (GUI) => {
-                for (k in GUI) {
-                    if ((e = $('#' + k, root)) != undefined) e.innerHTML = GUI[k];
-                }
-                // transform the release url into a clickable link
-                const releaseUrlSpan = $('#release_url', root);
-                const url = releaseUrlSpan.innerHTML;
-                if (url) {
-                    releaseUrlSpan.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
-                }
-
-                // transform line breaks into <br> tags in the release summary
-                const releaseSummarySpan = $('#release_summary', root);
-                const summary = releaseSummarySpan.innerHTML;
-                if (summary) {
-                    releaseSummarySpan.innerHTML = summary.replace(/\r\n/g, '<br>').replace(/\n/g, '<br>');
-                }
+                // release summary line breaks are kept by its 'white-space: pre-line' style
+                fillStatus(root, GUI);
+                // make the release url a working link
+                if (GUI.release_url) $('[data-k="release_url"]', root).href = GUI.release_url;
 
                 // Update buttons
                 calculateAllButtonStates();
@@ -187,7 +174,7 @@
 
         fetch('/update', {
             method: 'POST',
-            body: $('#latest_version', root).textContent
+            body: $('[data-k="latest_version"]', root).textContent
         })
             .then(response => {
                 if (!response.ok) {

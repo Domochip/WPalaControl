@@ -128,6 +128,105 @@
             return JSON.stringify(object);
         }
 
+        // Fills elements of root from data (status JSON):
+        //   [data-k="key"]    : text set to data.key, or to formats.key(data.key, data) if given;
+        //                       left untouched when data has no such key
+        //   [data-show="key"] : shown only when data.key has a value (not missing, null or '')
+        function fillStatus(root, data, formats = {}) {
+            root.querySelectorAll('[data-k]').forEach(el => {
+                const key = el.dataset.k;
+                if (!(key in data)) return;
+                el.textContent = formats[key] ? formats[key](data[key], data) : data[key];
+            });
+            root.querySelectorAll('[data-show]').forEach(el => {
+                const value = data[el.dataset.show];
+                el.style.display = (value === undefined || value === null || value === '') ? 'none' : '';
+            });
+        }
+
+        // Standard status of a part: loads /gs<id> into root with fillStatus,
+        // then fades out the "Loading..." indicator #l (or shows "Failed").
+        // options (all optional):
+        //   formats         : passed to fillStatus to format some values
+        //   afterLoad(data) : extra display logic once the values are filled
+        function loadStatus(root, id, options = {}) {
+            const loading = $('#l', root);
+            getJSON('/gs' + id,
+                data => {
+                    data ??= {}; // an empty JsonDocument is sent as 'null'
+                    fillStatus(root, data, options.formats);
+                    options.afterLoad?.(data);
+                    fadeOut(loading);
+                },
+                () => {
+                    loading.innerHTML = '<span class="err">Failed</span>';
+                }
+            );
+        }
+
+        // Fills form controls from data, matching each key to a control's name:
+        // checkboxes get 'checked', other controls get 'value', then 'change' is fired
+        // so dependent UI (e.g. show/hide groups) updates.
+        function fillForm(form, data) {
+            for (const [key, value] of Object.entries(data)) {
+                const el = form.elements[key];
+                if (!el) continue;
+                if (el instanceof RadioNodeList) {
+                    el.value = value;
+                    el.forEach(radio => triggerEvent(radio, 'change'));
+                    continue;
+                }
+                if (el.type === 'checkbox') el.checked = !!value;
+                else el.value = value;
+                triggerEvent(el, 'change');
+            }
+        }
+
+        // Standard config form of a part, using these elements of root:
+        //   #l : "Loading..." indicator, #f : the form, #r : result message
+        // Loads /gc<id> into the form and enables its submit button; on submit, posts the form
+        // as JSON to /sc<id>, then waits for the device to restart and redirects.
+        // options (all optional):
+        //   afterLoad(form, data) : extra setup once the form is filled
+        //   beforeSubmit(form)    : adjust values just before posting
+        //   redirectUrl(form)     : where to go once the device is back (default: this page, Config tab)
+        function configForm(root, id, options = {}) {
+            const form = $('#f', root);
+            const result = $('#r', root);
+            const loading = $('#l', root);
+
+            form.addEventListener('submit', evt => {
+                evt.preventDefault();
+                options.beforeSubmit?.(form);
+                result.innerHTML = 'Saving Configuration...';
+                post('/sc' + id, convertFormToJson(form),
+                    () => {
+                        form.style.display = 'none';
+                        const url = options.redirectUrl?.(form) || location.origin;
+                        if (url === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
+                        result.innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
+                        redirectWhenReachable(url, 30000);
+                    },
+                    () => {
+                        result.innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
+                    }
+                );
+            });
+
+            getJSON('/gc' + id,
+                data => {
+                    data ??= {}; // an empty JsonDocument is sent as 'null'
+                    fillForm(form, data);
+                    options.afterLoad?.(form, data);
+                    $('input[type=submit]', form).disabled = false;
+                    fadeOut(loading);
+                },
+                () => {
+                    loading.innerHTML = '<span class="err">Failed</span>';
+                }
+            );
+        }
+
         function rssiToQuality(rssi) {
             return Math.min(Math.max(2 * (rssi + 100), 0), 100);
         }
