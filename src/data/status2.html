@@ -47,11 +47,17 @@ Protocol: <span id="haproto"></span><br>
     getJSON("/gc" + id,
         function (GC) {
             $("#haproto", root).textContent = ["Disabled", "MQTT"][GC["haproto"]] ?? GC["haproto"];
+        },
+        function () {
+            showError($("#haproto", root));
         }
     );
 
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
-        parseLiveData
+        parseLiveData,
+        function () {
+            showError($("#lastRefresh", root));
+        }
     );
 
     var statusEventSource;
