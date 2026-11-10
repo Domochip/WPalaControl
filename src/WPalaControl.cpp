@@ -2330,7 +2330,7 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 void WPalaControl::fillStatusJSON(JsonVariant json)
 {
   json[F("hwversion")] = _detectedHwVersion == HwVersion::V1 ? F("V1.x") : (_detectedHwVersion == HwVersion::V2 ? F("V2.x") : F("Unknown"));
-  json[F("hwdetection")] = _hwDetection == HwDetection::AutoDetect ? F(" (Auto-Detected)") : F(" (Forced)");
+  json[F("hwdetection")] = _hwDetection == HwDetection::AutoDetect ? F("Auto-Detected") : F("Forced");
 
   // Home automation connection status
   if (_ha.protocol == HaProtocol::Mqtt)
