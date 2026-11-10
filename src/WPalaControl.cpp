@@ -1209,7 +1209,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
+    char buf[10];
     dtostrf(val, 1, 2, buf);
     obj[key] = serialized(buf);
   };
@@ -1674,7 +1674,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
-    char buf[8];
+    char buf[10];
     dtostrf(val, 1, 2, buf);
     obj[key] = serialized(buf);
   };
