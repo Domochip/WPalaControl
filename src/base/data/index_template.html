@@ -38,6 +38,9 @@
             </div>
 
             <div class="content" id="content"></div>
+
+            <!-- Outside #content so it stays visible on every page; shown/hidden by the Status page (status1.html) -->
+            <div id="connectedToAP" class="banner" style="display:none">!!! Disconnect devices from Access Point Wifi network to allow reconnection or modify WiFi configuration !!!</div>
         </div>
     </div>
 
@@ -45,8 +48,7 @@
         function $(selector, el = document) {
             return el.querySelector(selector);
         }
-    </script>
-    <script>
+
         // Page parts: each HTML fragment's markup is wrapped in <div data-part="ID"> inside a <template>,
         // and its script is registered at build time (pio_pre_build_spa.py) as an init function:
         //   registerPart(templateId, id, function (root, id) { ... return optionalCleanup; });
@@ -95,10 +97,6 @@
             xhr.send(data);
         }
 
-        function get(url, success, fail) {
-            request("GET", url, null, success, fail);
-        }
-
         function getJSON(url, success, fail) {
             request("GET", url, null, function (response) {
                 success(JSON.parse(response));
@@ -109,10 +107,9 @@
             request("POST", url, data, success, fail, timeout, uploadProgress);
         }
 
-        function convertFormToJson(form) {
+        function formToJson(form) {
             const object = {};
             new FormData(form).forEach((value, key) => {
-                // Reflect.has in favor of: object.hasOwnProperty(key)
                 if (!Reflect.has(object, key)) {
                     object[key] = value;
                     return;
@@ -159,7 +156,7 @@
                     fadeOut(loading);
                 },
                 () => {
-                    loading.innerHTML = '<span class="err">Failed</span>';
+                    showError(loading);
                 }
             );
         }
@@ -194,21 +191,25 @@
             const form = $('#f', root);
             const result = $('#r', root);
             const loading = $('#l', root);
+            const submit = $('input[type=submit]', form);
 
             form.addEventListener('submit', evt => {
                 evt.preventDefault();
+                // submit is disabled until the config is loaded and while saving: ignore extra submits
+                if (submit.disabled) return;
+                submit.disabled = true;
                 options.beforeSubmit?.(form);
                 result.innerHTML = 'Saving Configuration...';
-                post('/sc' + id, convertFormToJson(form),
+                post('/sc' + id, formToJson(form),
                     () => {
                         form.style.display = 'none';
                         const url = options.redirectUrl?.(form) || location.origin;
                         if (url === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
-                        result.innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>Waiting for device... <span id="cd">0</span>s';
-                        redirectWhenReachable(url, 30000);
+                        waitForDevice(result, url, 30000, '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>');
                     },
                     () => {
                         result.innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
+                        submit.disabled = false;
                     }
                 );
             });
@@ -218,11 +219,11 @@
                     data ??= {}; // an empty JsonDocument is sent as 'null'
                     fillForm(form, data);
                     options.afterLoad?.(form, data);
-                    $('input[type=submit]', form).disabled = false;
+                    submit.disabled = false;
                     fadeOut(loading);
                 },
                 () => {
-                    loading.innerHTML = '<span class="err">Failed</span>';
+                    showError(loading);
                 }
             );
         }
@@ -243,8 +244,6 @@
             const start = Date.now();
 
             function tick() {
-                if (!el) return; // Check if el is null or undefined
-
                 const elapsed = Date.now() - start;
                 el.style.opacity = Math.max(1 - elapsed / duration, 0);
 
@@ -261,6 +260,7 @@
         // Waits 2s then polls HEAD / every 2s until the device responds, then redirects to url.
         // The initial 2s delay lets the device start rebooting before polling begins.
         // Uses no-cors to allow cross-origin probes. Updates id="cd" with elapsed seconds.
+        // Each probe is aborted after 1.5s, so probes to a device still down don't pile up.
         // Redirects after maxMs regardless.
         function redirectWhenReachable(url, maxMs) {
             const start = Date.now();
@@ -276,19 +276,28 @@
                         location.assign(url);
                         return;
                     }
-                    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+                    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
                         .then(() => { clearInterval(displayTimer); clearInterval(pollTimer); location.assign(url); })
                         .catch(() => {});
                 }, 2000);
             }, 2000);
         }
 
-        function triggerEvent(el, evtName) {
-            var evt = new Event(evtName, {
-                bubbles: true,
-                cancelable: true
-            });
-            el.dispatchEvent(evt);
+        // Shows "Waiting for device... Ns" in el (after an optional message, trusted HTML),
+        // then redirects to url once the device answers, or after maxMs
+        function waitForDevice(el, url, maxMs, message = '') {
+            el.innerHTML = message + '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+            redirectWhenReachable(url, maxMs);
+        }
+
+        // Shows a red "Failed" in el, followed by "(detail)" as plain text when a detail is given
+        function showError(el, detail) {
+            el.innerHTML = '<span class="err">Failed</span>';
+            if (detail) el.append(` (${detail})`);
+        }
+
+        function triggerEvent(el, eventName) {
+            el.dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true }));
         }
     </script>
 
@@ -296,11 +305,6 @@
 <!-- PAGES -->
 
     <script>
-        function clearMenuAndContent() {
-            unloadPage();
-            document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
-        }
-
         // Side menu toggle (small screens): hamburger opens/closes it, clicking the page closes it
         function toggleMenu(evt) {
             evt.preventDefault();
@@ -315,7 +319,8 @@
             const menuElement = $(menuId);
             menuElement.addEventListener("click", (evt) => {
                 evt.preventDefault();
-                clearMenuAndContent();
+                unloadPage();
+                document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
                 $('#layout').classList.remove('active');
                 menuElement.classList.add("pure-menu-selected");
                 $("#mainHeader").textContent = headerText;

@@ -3,7 +3,7 @@
     <fieldset>
         <div class="pure-control-group">
             <label for="s">SSID</label>
-            <input type='text' id='s' name='s' maxlength='32' list="wnl">
+            <input type='text' id='s' name='s' maxlength='32'>
             <select id="wnl">
                 <option>Searching...</option>
             </select>
@@ -20,10 +20,10 @@
             <label for="staticip">Static IP</label>
             <input id='staticip' name='staticip' type="checkbox">
         </div>
-        <div id='staticipgroup' style='display:none'>
+        <fieldset id='staticipgroup' disabled style='display:none; padding:0'>
             <div class="pure-control-group">
                 <label for="ip">IP</label>
-                <input type='text' id='ip' name='ip' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
+                <input type='text' id='ip' name='ip' required pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
                 <span class="pure-form-message-inline">*</span>
             </div>
             <div class="pure-control-group">
@@ -44,7 +44,7 @@
                 <input type='text' id='dns2' name='dns2'
                     pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
             </div>
-        </div>
+        </fieldset>
         <div class="pure-controls">
             <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
         </div>
@@ -58,58 +58,52 @@
     //   id   : this part's id ('1'), used in API endpoints like '/gs' + id
 
     $("#staticip", root).addEventListener('change', function () {
-        if ($("#staticip", root).checked) {
-            $("#ip", root).required = true;
-            $("#staticipgroup", root).style.display = '';
-        }
-        else {
-            $("#ip", root).required = false;
-            $("#staticipgroup", root).style.display = 'none';
-        }
+        $("#staticipgroup", root).disabled = !this.checked;
+        $("#staticipgroup", root).style.display = this.checked ? '' : 'none';
     });
 
-    var getNetworkList = function () {
+    // scan polling stops when the page is left (see the cleanup function at the end)
+    let scanTimer;
+    let stopped = false;
 
-        getJSON("/wnl", function (WNL) {
-            if (WNL.r == -2 || WNL.r == -1) { //if scan not started or is in progress
-                //try again in a couple of seconds
-                setTimeout(getNetworkList, 2000, 0);
+    function loadNetworkList() {
+        getJSON("/wnl", function (scan) {
+            if (stopped) return;
+            if (scan.r == -2 || scan.r == -1) { //if scan not started or is in progress
+                //try again in a second
+                scanTimer = setTimeout(loadNetworkList, 1000);
+                return;
             }
-            else { //scan done
-                const wnl = $("#wnl", root);
-                if (wnl) {
-                    if (WNL.r == 0) wnl.replaceChildren(new Option('No Network Found'));
-                    else {
-                        wnl.replaceChildren(new Option('Choose Your Network'));
-                        for (const network of WNL.wnl) {
-                            const option = new Option(`${network.SSID} (${rssiToQuality(network.RSSI)}%)`, network.SSID);
-                            option.style.color = rssiToColor(network.RSSI);
-                            option.selected = $("#s", root).value == network.SSID;
-                            wnl.appendChild(option);
-                        }
-                        wnl.addEventListener('change', function () { $("#s", root).value = wnl.value });
-                    }
-                }
+            //scan done
+            // one entry per SSID (mesh/repeaters share a name): keep the strongest, best signal first
+            // hidden networks (empty SSID) are skipped
+            const strongest = new Map();
+            for (const network of scan.wnl) {
+                if (!network.SSID) continue;
+                const known = strongest.get(network.SSID);
+                if (!known || network.RSSI > known.RSSI) strongest.set(network.SSID, network);
             }
+            const networks = [...strongest.values()].sort((a, b) => b.RSSI - a.RSSI);
+
+            const wnl = $("#wnl", root);
+            if (networks.length == 0) {
+                wnl.replaceChildren(new Option('No Network Found'));
+                return;
+            }
+            wnl.replaceChildren(new Option('Choose Your Network'));
+            for (const network of networks) {
+                const option = new Option(`${network.SSID} (${rssiToQuality(network.RSSI)}%)`, network.SSID);
+                option.style.color = rssiToColor(network.RSSI);
+                option.selected = $("#s", root).value == network.SSID;
+                wnl.appendChild(option);
+            }
+            wnl.addEventListener('change', function () { $("#s", root).value = wnl.value });
         });
     }
 
 
     configForm(root, id, {
-        afterLoad: function (form) {
-            // a configured IP means static IP is in use
-            if (form.ip.value) {
-                form.staticip.checked = true;
-                triggerEvent(form.staticip, 'change');
-            }
-            getNetworkList();
-        },
-        beforeSubmit: function (form) {
-            // static IP settings are only kept when static IP is checked
-            if (!form.staticip.checked) {
-                ['ip', 'mask', 'gw', 'dns1', 'dns2'].forEach(name => form[name].value = '');
-            }
-        },
+        afterLoad: loadNetworkList,
         redirectUrl: function (form) {
             // no SSID: device restarts as an access point
             if (!form.s.value) return 'http://192.168.4.1';
@@ -119,4 +113,9 @@
         },
     });
 
+    // Called when leaving the page: stop polling the WiFi scan
+    return function () {
+        stopped = true;
+        clearTimeout(scanTimer);
+    };
 </script>

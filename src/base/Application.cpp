@@ -337,11 +337,21 @@ void Application::fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage /* 
 
   // Skip fetching update info if device is in AP mode (no internet connectivity)
   if (WiFi.getMode() & WIFI_AP)
+  {
+    // for the web page only: explain why there is no update info (MQTT payload stays unchanged)
+    if (forWebPage)
+      json[F("error")] = F("Not available in Access Point mode (no internet access)");
     return;
+  }
 
   char version[10], title[64], releaseDate[11], summary[256];
 
-  if (getLatestUpdateInfo(version, title, releaseDate, summary))
+  if (!getLatestUpdateInfo(version, title, releaseDate, summary))
+  {
+    if (forWebPage)
+      json[F("error")] = F("Unable to get latest release information from GitHub");
+  }
+  else
   {
     json[F("latest_version")] = version;
     json[F("title")] = title;

@@ -42,15 +42,20 @@ void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 };
 void Core::fillStatusJSON(JsonVariant json)
 {
-  unsigned long minutes = millis() / 60000;
+  // 64-bit time since boot: millis() is 32-bit and wraps after ~49.7 days
+#ifdef ESP8266
+  uint32_t minutes = micros64() / 60000000ULL;
+#else
+  uint32_t minutes = esp_timer_get_time() / 60000000ULL;
+#endif
 
   json[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
   json[F("model")] = CUSTOM_APP_MODEL;
   json[F("sn")] = getSerialNumber();
   json[F("baseversion")] = BASE_VERSION;
   json[F("version")] = VERSION;
-  char uptime[12];
-  snprintf_P(uptime, sizeof(uptime), PSTR("%dd%dh%dm"), (uint8_t)(minutes / 1440), (uint8_t)(minutes / 60 % 24), (uint8_t)(minutes % 60));
+  char uptime[20];
+  snprintf_P(uptime, sizeof(uptime), PSTR("%ud%uh%um"), (unsigned)(minutes / 1440), (unsigned)(minutes / 60 % 24), (unsigned)(minutes % 60));
   json[F("uptime")] = uptime;
   
   char localtimeBuf[24];

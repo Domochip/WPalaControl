@@ -6,12 +6,12 @@ UpTime : <span data-k="uptime"></span><br>
 Local Time : <span data-k="localtime"></span><br>
 FreeHeap : <span data-k="freeheap"></span><br>
 
-<div id="cdiv" style="display:none">
+<div id="crashes" style="display:none">
 Crash logged : <span data-k="crashcount"></span><br>
-Crash files :<span id="cbtns">
+Crash files :
 &nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
 &nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" id="clrCrashes">Clear</button>
-</span>
+&nbsp;<span id="clrResult"></span>
 </div>
 
 <script>
@@ -20,14 +20,17 @@ Crash files :<span id="cbtns">
     //   id   : this part's id ('0'), used in API endpoints like '/gs' + id
 
     loadStatus(root, id, {
-        afterLoad: function (GS) {
-            if (GS.crashcount > 0) $('#cdiv', root).style.display = '';
+        afterLoad: function (status) {
+            if (status.crashcount > 0) $('#crashes', root).style.display = '';
         },
     });
 
     $('#clrCrashes', root).addEventListener('click', function () {
+        $('#clrResult', root).textContent = '';
         post('/crashclr', null, function () {
-            $('#cdiv', root).style.display = 'none';
-        }, function () { alert('Failed to clear crashes'); });
+            $('#crashes', root).style.display = 'none';
+        }, function () {
+            showError($('#clrResult', root));
+        });
     });
 </script>

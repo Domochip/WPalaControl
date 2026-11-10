@@ -59,6 +59,7 @@ private:
   void setConfigDefaultValues();
   bool parseConfigJSON(JsonVariant json, bool fromWebPage = false);
   void fillConfigJSON(JsonVariant json, bool forSaveFile = false);
+  void validateConfig();
   void fillStatusJSON(JsonVariant json);
   bool appInit(bool reInit = false);
   void appInitWebServer(WebServer &server);

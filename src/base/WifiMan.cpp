@@ -217,7 +217,20 @@ bool WifiMan::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
   parseIPField(json[F("mask")], mask);
   parseIPField(json[F("dns1")], dns1);
   parseIPField(json[F("dns2")], dns2);
+
+  // staticip : when false, DHCP is used
+  JsonVariant staticip = json[F("staticip")];
+  if (!staticip.isNull() && !staticip.as<bool>())
+    ip = 0;
+
   return true;
+}
+
+void WifiMan::validateConfig()
+{
+  // no IP means DHCP: gateway, mask and DNS are meaningless, don't keep stale values
+  if (!ip)
+    gw = mask = dns1 = dns2 = 0;
 }
 
 void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
@@ -233,6 +246,10 @@ void WifiMan::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
   json[F("mask")] = ipToCString(mask);
   json[F("dns1")] = ipToCString(dns1);
   json[F("dns2")] = ipToCString(dns2);
+
+  // for the web page checkbox only
+  if (!forSaveFile)
+    json[F("staticip")] = (ip != 0);
 }
 
 void WifiMan::fillStatusJSON(JsonVariant json)
