@@ -70,7 +70,7 @@ If not, go to 👉 <http://wpalacontrol.local> 👈
 
 ### Status
 
-Provides useful informations about the module and the stove.  
+Provides useful information about the module and the stove.  
 **The stove SN appears then followed, 1 minute later, by refreshed stove information**  
 <img src="img/status.png" alt="status screenshot" width="400" style="vertical-align: top;"><img src="img/status2.png" alt="status2 screenshot"  width="400">
 
@@ -85,7 +85,7 @@ Provides useful informations about the module and the stove.
 
 #### WiFi
 
-- **ssid & password**: IDs of your Wifi Network  
+- **ssid & password**: credentials of your Wi-Fi network  
 - **hostname**: name of ESP on the network  
 - **IP, GW, NetMask, DNS1&2**: Fixed IP configuration  
 
@@ -95,7 +95,7 @@ Provides useful informations about the module and the stove.
 
 - **Type**: enable/disable MQTT communication  
 - **Upload Period**: set the refresh interval of stove information (in seconds)  
-- **Hostname, Port, Username, Password**: MQTT server details (username and password are - optional)  
+- **Hostname, Port, Username, Password**: MQTT server details (username and password are optional)  
 - **Base Topic**: prefix for WPalaControl topic structure  
 - **MQTT Type**: defines MQTT topics and data structure:  
   - **Generic**: publish raw values under the base topic (e.g. "{baseTopic}/T1" = "*20.00*")
@@ -105,7 +105,7 @@ Provides useful informations about the module and the stove.
 
 ### Firmware
 
-Aallows you to flash a new firmware version directly from GitHub releases or using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
+Allows you to flash a new firmware version directly from GitHub releases or using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
 ![firmware screenshot](img/firmware.png)  
 Ensure the module has Internet access and/or DNS configured if IP address is static
 
@@ -162,7 +162,7 @@ Module connection status is published to `%BaseTopic%/connected`:
 - `SET+PWRU`: increase power by 1 unit
 - `SET+PWRD`: decrease power by 1 unit
 - `SET+SETP+20`: set Set Point (desired temperature)
-- `SET+STPF+19.8`: set Set Point with a 0.2° precision (depend of your stove model)✨
+- `SET+STPF+19.8`: set Set Point with 0.2°C precision (depends on your stove model)✨
 - `SET+STPU`: increase Set Point by 1 unit
 - `SET+STPD`: decrease Set Point by 1 unit
 - `SET+RFAN+7`: set Room Fan value (0-5;6=Max;7=Auto)
@@ -192,7 +192,7 @@ MQTT infos published every "Upload Period":
 
 - `STATUS`, `LSTATUS`, `FSTATUS`: status of the stove
 - `T1`, `T2`, `T3`, `T4`, `T5`: temperature of the stove
-- `F1V`, `F2V`, `F2L`, `F2LF`, `F3L`, `F4L`: fan values (meaning depend of your stove model)
+- `F1V`, `F2V`, `F2L`, `F2LF`, `F3L`, `F4L`: fan values (meaning depends on your stove model)
 - `IGN`: ignition counter
 - `IGNERRORS`: ignition error counter
 - `POWERTIME`: total heating time (hour:minute)
