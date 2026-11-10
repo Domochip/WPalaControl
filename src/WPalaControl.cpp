@@ -1411,6 +1411,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else if (cmdParams[0] > 0xFF) // hidden parameter number is uint8_t
+      info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
     {
@@ -1479,6 +1481,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
     if (cmdParamNumber != 1)
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
+    else if (cmdParams[0] > 0xFF) // parameter number is uint8_t
+      info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[0];
 
     if (info["MSG"].isNull())
     {
@@ -1679,14 +1683,30 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     obj[key] = serialized(buf);
   };
 
-  // Helper to check if the number of parameters is correct for the command, if not set error message in info and return false
-  auto requireParams = [&](byte expected) -> bool
+  // Helper to check that a parameter is not above maxValue, if not set error message in info and return false
+  auto paramInRange = [&](uint8_t index, uint16_t maxValue) -> bool
+  {
+    if (cmdParams[index] > maxValue)
+    {
+      info["MSG"] = String(F("Incorrect Parameter Value : ")) + cmdParams[index];
+      return false;
+    }
+    return true;
+  };
+
+  // Helper to check if the number of parameters is correct for the command and that none is above maxValue,
+  // if not set error message in info and return false
+  // maxValue defaults to 0xFF: most library functions take uint8_t, a bigger value would be silently truncated
+  auto requireParams = [&](byte expected, uint16_t maxValue = 0xFF) -> bool
   {
     if (cmdParamNumber != expected)
     {
       info["MSG"] = String(F("Incorrect Parameter Number : ")) + cmdParamNumber;
       return false;
     }
+    for (uint8_t i = 0; i < expected; i++)
+      if (!paramInRange(i, maxValue))
+        return false;
     return true;
   };
 
@@ -1895,7 +1915,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
     cmdProcessed = true;
     palaCategory = F("HPAR");
 
-    if (requireParams(2))
+    // hidden parameter number is uint8_t, its value is uint16_t
+    if (requireParams(2, 0xFFFF) && paramInRange(0, 0xFF))
     {
       cmdSuccess = _Pala.setHiddenParameter(cmdParams[0], cmdParams[1]);
 
