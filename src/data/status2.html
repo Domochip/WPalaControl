@@ -1,5 +1,5 @@
 <h2 class="content-subhead">WPalaControl<span id="l" class="ld">Loading...</span></h2>
-Hardware Version: <span data-k="hwversion"></span><span data-k="hwdetection"></span><br>
+Hardware Version: <span data-k="hwversion"></span> <span data-k="hwdetection"></span><br>
 <h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
 <dl id="liveData"></dl>
 <h3 class="content-subhead">Home Automation Status</h3>
@@ -40,8 +40,14 @@ Protocol: <span id="haproto"></span><br>
         $('#lastRefresh', root).textContent = (new Date()).toLocaleString();
     }
 
+    // formatting of raw status values, used for /gs2 and SSE events
+    const statusFormats = {
+        // 0:AutoDetect, 1:ForcedV1, 2:ForcedV2
+        hwdetection: v => (Number(v) === 0 ? '(Auto-Detected)' : '(Forced)'),
+    };
+
     // status values (/gs2 or SSE event, both send the full status) are displayed with data-k / data-show
-    loadStatus(root, id);
+    loadStatus(root, id, { formats: statusFormats });
 
     // protocol name comes from the configuration (0:Disabled, 1:MQTT)
     getJSON("/gc" + id,
@@ -76,7 +82,7 @@ Protocol: <span id="haproto"></span><br>
         statusEventSource.addEventListener('message', function (e) {
             console.log('statusEvt' + id + ' : ' + e.data);
             const msg = JSON.parse(e.data);
-            if (!('SUCCESS' in msg)) fillStatus(root, msg);
+            if (!('SUCCESS' in msg)) fillStatus(root, msg, statusFormats);
             else parseLiveData(msg);
         });
     }
