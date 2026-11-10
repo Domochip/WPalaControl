@@ -320,7 +320,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // prepare Stove device JSON
   deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://wpalacontrol.local\","
+                          "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
                           "\"name\":\"Stove\""
                           "}"));
   json[F("identifiers")][0] = uniqueIdPrefixStove;
@@ -1552,9 +1552,9 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["WADR"] = (WiFi.getMode() & WIFI_STA) ? WifiMan::ipToCString(WiFi.localIP()) : WifiMan::ipToCString(WiFi.softAPIP());
       data["WGW"] = WifiMan::ipToCString(WiFi.gatewayIP());
       data["WENC"] = F("psk2");
-      data["WPWR"] = String(WiFi.RSSI()) + F(" dBm"); // need conversion to dBm?
+      data["WPWR"] = String(WiFi.RSSI()) + F(" dBm");
       data["WSSID"] = WiFi.SSID();
-      data["WPR"] = (true) ? F("dhcp") : F("static");
+      data["WPR"] = F("dhcp"); // always reported as dhcp
       data["WMSK"] = WifiMan::ipToCString(WiFi.subnetMask());
       data["WBCST"] = WifiMan::ipToCString(WiFi.broadcastIP());
       data["WCH"] = String(WiFi.channel());
