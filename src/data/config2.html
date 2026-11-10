@@ -11,7 +11,7 @@
             </select>
         </div>
 
-        <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip">?</span></h3>
+        <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip" data-tip="haidiv">?</span></h3>
         <div class="infotipdiv" id="haidiv" name="haidiv" style="display:none;">
             HTTP GET request can be send to this device.<br>
             Please refer to <a href="https://github.com/Domochip/WPalaControl">documentation</a> for list of
@@ -57,7 +57,7 @@
                 <div class="pure-control-group">
                     <label for="hamgbt">Base Topic</label>
                     <input type='text' id='hamgbt' name='hamgbt' maxlength='64'>
-                    <span id="hamgbti" name="hamgbti" class="infotip">?</span>
+                    <span id="hamgbti" name="hamgbti" class="infotip" data-tip="hamgbtidiv">?</span>
                 </div>
                 <div class="pure-control-group" id="hamgbtidiv" name="hamgbtidiv" style="display:none;">
                     <label></label>
@@ -77,9 +77,9 @@
                         <option value="1">Generic JSON</option>
                         <option value="2">Generic Categorized</option>
                     </select>
-                    <span id="hamtype0i" name="hamtype0i" class="infotip">?</span>
-                    <span id="hamtype1i" name="hamtype1i" class="infotip" style="display:none;">?</span>
-                    <span id="hamtype2i" name="hamtype2i" class="infotip" style="display:none;">?</span>
+                    <span id="hamtype0i" name="hamtype0i" class="infotip" data-tip="hamtype0div">?</span>
+                    <span id="hamtype1i" name="hamtype1i" class="infotip" data-tip="hamtype1div" style="display:none;">?</span>
+                    <span id="hamtype2i" name="hamtype2i" class="infotip" data-tip="hamtype2div" style="display:none;">?</span>
                 </div>
                 <div class="pure-control-group" id="hamtype0div" name="hamtype0div" style="display:none;">
                     <label></label>
@@ -124,8 +124,12 @@
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('2'), used in API endpoints like '/gc' + id
 
-    $("#hai", root).addEventListener('click', function () {
-        $("#haidiv", root).style.display = ($("#haidiv", root).style.display == '' ? 'none' : '');
+    // each "?" info tip toggles the help block named by its data-tip attribute
+    root.querySelectorAll('.infotip[data-tip]').forEach(tip => {
+        tip.addEventListener('click', function () {
+            const help = $('#' + tip.dataset.tip, root);
+            help.style.display = (help.style.display == '' ? 'none' : '');
+        });
     });
 
     $("#haproto", root).addEventListener('change', function () {
@@ -140,42 +144,13 @@
         }
     });
 
+    // only the info tip of the selected MQTT type is shown; help of other types is closed
     $("#hamtype", root).addEventListener('change', function () {
-        switch ($("#hamtype", root).value) {
-            case "0":
-                $("#hamtype0i", root).style.display = '';
-                $("#hamtype1i", root).style.display = 'none';
-                $("#hamtype1div", root).style.display = 'none';
-                $("#hamtype2i", root).style.display = 'none';
-                $("#hamtype2div", root).style.display = 'none';
-                break;
-            case "1":
-                $("#hamtype0i", root).style.display = 'none';
-                $("#hamtype0div", root).style.display = 'none';
-                $("#hamtype1i", root).style.display = '';
-                $("#hamtype2i", root).style.display = 'none';
-                $("#hamtype2div", root).style.display = 'none';
-                break;
-            case "2":
-                $("#hamtype0i", root).style.display = 'none';
-                $("#hamtype0div", root).style.display = 'none';
-                $("#hamtype1i", root).style.display = 'none';
-                $("#hamtype1div", root).style.display = 'none';
-                $("#hamtype2i", root).style.display = '';
-                break;
+        for (const type of ['0', '1', '2']) {
+            const selected = (this.value === type);
+            $('#hamtype' + type + 'i', root).style.display = (selected ? '' : 'none');
+            if (!selected) $('#hamtype' + type + 'div', root).style.display = 'none';
         }
-    });
-    $("#hamtype0i", root).addEventListener('click', function () {
-        $("#hamtype0div", root).style.display = ($("#hamtype0div", root).style.display == '' ? 'none' : '');
-    });
-    $("#hamtype1i", root).addEventListener('click', function () {
-        $("#hamtype1div", root).style.display = ($("#hamtype1div", root).style.display == '' ? 'none' : '');
-    });
-    $("#hamtype2i", root).addEventListener('click', function () {
-        $("#hamtype2div", root).style.display = ($("#hamtype2div", root).style.display == '' ? 'none' : '');
-    });
-    $("#hamgbti", root).addEventListener('click', function () {
-        $("#hamgbtidiv", root).style.display = ($("#hamgbtidiv", root).style.display == '' ? 'none' : '');
     });
 
     configForm(root, id);
