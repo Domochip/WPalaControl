@@ -14,32 +14,30 @@ Protocol: <span id="haproto"></span><br>
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('2'), used in API endpoints like '/gs' + id
 
+    // Displays stove values (from GET SERN or an SSE event) in #liveData:
+    // one <dd> per value, a value is shown in bold when it changed since the last update
     function parseLiveData(response) {
-        if ($('#liveData', root) == undefined) return;
-        var liveData = response.SUCCESS === true ? response.DATA : { MSG: response.INFO.MSG };
-        for (k in liveData) {
-            kForId = (/[^a-zA-Z]/.test(k[0]) ? 'a' : '') + k; //k[0] is not in a-zA-Z then we need to add 'a'
-            kForId = kForId.replace(/ /g, '_');
-            if ($('#' + kForId, root) != undefined) {
-                var existingElement = $('#' + kForId + 'Value', root);
-                if (existingElement.innerText != liveData[k]) {
-                    existingElement.innerText = liveData[k];
-                    existingElement.style.fontWeight = "bold";
-                }
-                else {
-                    existingElement.style.fontWeight = "normal";
-                }
+        const liveData = response.SUCCESS === true ? response.DATA : { MSG: response.INFO.MSG };
+        for (const [key, value] of Object.entries(liveData)) {
+            // element id must start with a letter and contain no space
+            const keyForId = (/[^a-zA-Z]/.test(key[0]) ? 'a' : '') + key.replace(/ /g, '_');
+            const text = String(value);
+            let valueElement = $('#' + keyForId + 'Value', root);
+            if (valueElement) {
+                valueElement.style.fontWeight = (valueElement.textContent != text ? 'bold' : 'normal');
+                valueElement.textContent = text;
             }
             else {
-                var newElement = document.createElement("dd");
-                newElement.id = kForId;
-                newElement.innerHTML = k + ' : <span id="' + kForId + 'Value">' + liveData[k] + '</span>';
-                $('#liveData', root).appendChild(newElement);
+                valueElement = document.createElement('span');
+                valueElement.id = keyForId + 'Value';
+                valueElement.textContent = text;
+                const row = document.createElement('dd');
+                row.id = keyForId;
+                row.append(key + ' : ', valueElement);
+                $('#liveData', root).appendChild(row);
             }
         }
-        if ($('#lastRefresh', root) != undefined) {
-            $('#lastRefresh', root).innerText = (new Date()).toLocaleString();
-        }
+        $('#lastRefresh', root).textContent = (new Date()).toLocaleString();
     }
 
     // status values (/gs2 or SSE event, both send the full status) are displayed with data-k / data-show
@@ -71,7 +69,7 @@ Protocol: <span id="haproto"></span><br>
         statusEventSource = new EventSource('/statusEvt' + id);
         statusEventSource.addEventListener('message', function (e) {
             console.log('statusEvt' + id + ' : ' + e.data);
-            var msg = JSON.parse(e.data);
+            const msg = JSON.parse(e.data);
             if (!('SUCCESS' in msg)) fillStatus(root, msg);
             else parseLiveData(msg);
         });
