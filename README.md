@@ -70,8 +70,15 @@ If not, go to 👉 <http://wpalacontrol.local> 👈
 
 ### Status
 
-Provides useful information about the module and the stove.  
-**The stove SN appears then followed, 1 minute later, by refreshed stove information**  
+Provides useful information about the module and the stove:
+
+- **System**: module serial number, firmware version, uptime, local time (NTP) and free memory. Logged crashes are listed if any
+- **WiFi**: MAC address, Access Point status (and IP), Station status with connection state, IP, IP source (DHCP or Static IP), BSSID and signal strength (RSSI)
+- **WPalaControl**:
+  - **Hardware Version**: detected (or forced) hardware version of the module
+  - **Stove infos**: the stove SN appears first, then all stove values are refreshed live every "Upload Period" (values that changed are shown in bold)
+  - **Home Automation Status**: protocol, MQTT connection state and result of the last publish
+
 <img src="img/status.png" alt="status screenshot" width="400" style="vertical-align: top;"><img src="img/status2.png" alt="status2 screenshot"  width="400">
 
 ### Config
