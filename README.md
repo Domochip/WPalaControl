@@ -134,79 +134,86 @@ Module connection status is published to `%BaseTopic%/connected`:
 - 2: module and stove connected
 
 ### Command List
-  
-- `GET+STDT`: get static data
-- `GET+ALLS`: get all status data
-- `GET+STAT`: get status of the stove⏲️
-- `GET+TMPS`: get temperatures of the stove⏲️
-- `GET+FAND`: get Fan values⏲️
-- `GET+SETP`: get current Set Point (desired temperature)⏲️
-- `GET+POWR`: get current power (1-5)⏲️
-- `GET+CUNT`: get some counters
-- `GET+CNTR`: get some counters (same as GET+CUNT)⏲️
-- `GET+DPRS`: get delta pressure data⏲️
-- `GET+TIME`: get stove clock data⏲️
-- `GET+IOPT`: get IO ports status
-- `GET+SERN`: get stove Serial Number
-- `GET+MDVE`: get stove model and fw version
-- `GET+CHRD`: get chrono data
-- `GET+PARM+92`: get parameter (ex : 92=pellet type (1-3))
-- `GET+HPAR+57`: get hidden parameter (ex : 57=% of pellet to feed for pellet type 3)
-- `BKP+PARM+CSV`: get all parameters in a CSV file (HTTP only) ✨
-- `BKP+PARM+JSON`: get all parameters in a JSON file (HTTP only) ✨
-- `BKP+HPAR+CSV`: get all hidden parameters in a CSV file (HTTP only) ✨
-- `BKP+HPAR+JSON`: get all hidden parameters in a JSON file (HTTP only) ✨
-- `CMD+ON`: turn stove ON
-- `CMD+OFF`: turn stove OFF
-- `SET+POWR+3`: set power (1-5)
-- `SET+PWRU`: increase power by 1 unit
-- `SET+PWRD`: decrease power by 1 unit
-- `SET+SETP+20`: set Set Point (desired temperature)
-- `SET+STPF+19.8`: set Set Point with 0.2°C precision (depends on your stove model)✨
-- `SET+STPU`: increase Set Point by 1 unit
-- `SET+STPD`: decrease Set Point by 1 unit
-- `SET+RFAN+7`: set Room Fan value (0-5;6=Max;7=Auto)
-- `SET+FN2U`: increase Room Fan by 1 unit
-- `SET+FN2D`: decrease Room Fan by 1 unit
-- `SET+FN3L+0`: set Room Fan 3 value (0-5)
-- `SET+FN4L+0`: set Room Fan 4 value (0-5)
-- `SET+SLNT+0`: set Silent mode value (0-1)
-- `SET+TIME+2023-12-28+19:42:00`: set stove Date and Time (2000-2099) (1-12) (1-31) (0-23) (0-59) (0-59)
-- `SET+CSST+0`: set Chrono Status value (0-1)
-- `SET+CSTH+2+18`: set Chrono Program Start Hour (1-6) (0-23)
-- `SET+CSTM+2+30`: set Chrono Program Start Minute (1-6) (0-59)
-- `SET+CSPH+2+22`: set Chrono Program Stop Hour (1-6) (0-23)
-- `SET+CSPM+2+45`: set Chrono Program Stop Minute (1-6) (0-59)
-- `SET+CSET+2+19`: set Chrono Program Set Point (1-6) (desired temperature)
-- `SET+CDAY+7+3+6`: set Chrono Program for week day (Day-Mem-Prog) (1-7) (1-3) (1-6)
-- `SET+CPRD+1+19+18+30+22+45`: set Chrono Program data (Prog-Temp-StartH-StartM-StopH-StopM) (1-6) (temperature) (0-23) (0-59) (0-23) (0-59)
-- `SET+PARM+92+2`: set parameter 92 to value 2 (ex : 92=pellet type (1-3))
-- `SET+HPAR+57+95`: set hidden parameter 57 to value 95 (ex : 57=% of pellet to feed for pellet type 3)
 
-⏲️: Published automatically  
-✨: WPalaControl specific commands
+⏲️: Published automatically every "Upload Period" (MQTT)  
+✨: WPalaControl specific command
 
-### Description
+| Command | Description | Values | Notes |
+| ------- | ----------- | ------ | :---: |
+| `GET+STDT` | Get static data | | |
+| `GET+ALLS` | Get all status data | | |
+| `GET+STAT` | Get stove status | | ⏲️ |
+| `GET+TMPS` | Get stove temperatures | | ⏲️ |
+| `GET+FAND` | Get fan values | | ⏲️ |
+| `GET+SETP` | Get current Set Point (desired temperature) | | ⏲️ |
+| `GET+POWR` | Get current power | 1-5 | ⏲️ |
+| `GET+CUNT` | Get counters | | |
+| `GET+CNTR` | Get counters (same as `GET+CUNT`) | | ⏲️ |
+| `GET+DPRS` | Get delta pressure data | | ⏲️ |
+| `GET+TIME` | Get stove clock data | | ⏲️ |
+| `GET+IOPT` | Get IO ports status | | |
+| `GET+SERN` | Get stove Serial Number | | |
+| `GET+MDVE` | Get stove model and firmware version | | |
+| `GET+CHRD` | Get chrono data | | |
+| `GET+PARM+92` | Get parameter (e.g. 92 = pellet type) | parameter number | |
+| `GET+HPAR+57` | Get hidden parameter (e.g. 57 = % of pellet to feed for pellet type 3) | parameter number | |
+| `BKP+PARM+CSV` | Get all parameters in a CSV file (HTTP only) | | ✨ |
+| `BKP+PARM+JSON` | Get all parameters in a JSON file (HTTP only) | | ✨ |
+| `BKP+HPAR+CSV` | Get all hidden parameters in a CSV file (HTTP only) | | ✨ |
+| `BKP+HPAR+JSON` | Get all hidden parameters in a JSON file (HTTP only) | | ✨ |
+| `CMD+ON` | Turn stove ON | | |
+| `CMD+OFF` | Turn stove OFF | | |
+| `SET+POWR+3` | Set power | 1-5 | |
+| `SET+PWRU` | Increase power by 1 unit | | |
+| `SET+PWRD` | Decrease power by 1 unit | | |
+| `SET+SETP+20` | Set Set Point (desired temperature) | temperature | |
+| `SET+STPF+19.8` | Set Set Point with 0.2°C precision (depends on your stove model) | temperature | ✨ |
+| `SET+STPU` | Increase Set Point by 1 unit | | |
+| `SET+STPD` | Decrease Set Point by 1 unit | | |
+| `SET+RFAN+7` | Set Room Fan value | 0-5; 6=Max; 7=Auto | |
+| `SET+FN2U` | Increase Room Fan by 1 unit | | |
+| `SET+FN2D` | Decrease Room Fan by 1 unit | | |
+| `SET+FN3L+0` | Set Room Fan 3 value | 0-5 | |
+| `SET+FN4L+0` | Set Room Fan 4 value | 0-5 | |
+| `SET+SLNT+0` | Set Silent mode | 0-1 | |
+| `SET+TIME+2023-12-28+19:42:00` | Set stove date and time | year 2000-2099, month 1-12, day 1-31, hour 0-23, min 0-59, sec 0-59 | |
+| `SET+CSST+0` | Set Chrono status | 0-1 | |
+| `SET+CSTH+2+18` | Set Chrono Program start hour | prog 1-6, hour 0-23 | |
+| `SET+CSTM+2+30` | Set Chrono Program start minute | prog 1-6, min 0-59 | |
+| `SET+CSPH+2+22` | Set Chrono Program stop hour | prog 1-6, hour 0-23 | |
+| `SET+CSPM+2+45` | Set Chrono Program stop minute | prog 1-6, min 0-59 | |
+| `SET+CSET+2+19` | Set Chrono Program Set Point | prog 1-6, temperature | |
+| `SET+CDAY+7+3+6` | Set Chrono Program for a week day (Day-Mem-Prog) | day 1-7, mem 1-3, prog 1-6 | |
+| `SET+CPRD+1+19+18+30+22+45` | Set Chrono Program data (Prog-Temp-StartH-StartM-StopH-StopM) | prog 1-6, temperature, 0-23, 0-59, 0-23, 0-59 | |
+| `SET+PARM+92+2` | Set parameter 92 to value 2 (pellet type) | parameter number, value (e.g. 1-3 for 92) | |
+| `SET+HPAR+57+95` | Set hidden parameter 57 to value 95 (% of pellet to feed for pellet type 3) | parameter number, value | |
 
-MQTT infos published every "Upload Period":
+### Published MQTT values
 
-- `STATUS`, `LSTATUS`, `FSTATUS`: status of the stove
-- `T1`, `T2`, `T3`, `T4`, `T5`: temperature of the stove
-- `F1V`, `F2V`, `F2L`, `F2LF`, `F3L`, `F4L`: fan values (meaning depends on your stove model)
-- `IGN`: ignition counter
-- `IGNERRORS`: ignition error counter
-- `POWERTIME`: total heating time (hour:minute)
-- `HEATTIME`: ??? (hour:minute)
-- `SERVICETIME`: heating time since last maintenance (hour:minute)
-- `ONTIME`: time from last power ON (hour:minute)
-- `OVERTMPERRORS`: overtemperature error counter
-- `PQT`: wood pellet consumption
-- `STOVE_DATETIME`: date of the stove
-- `STOVE_WDAY`: week day of the stove
-- `SETP`: current Set Point (desired temperature)
-- `SECO`: ECO Mode Restart Temperature Threshold (PAR50: 6 -> 0.6°C)
-- `BECO`: ECO Mode Active
-- `PWR`: current power (1-5)
-- `FDR`: feeder
-- `DP_TARGET`: delta pressure target
-- `DP_PRESS`: actual delta pressure
+Values published automatically every "Upload Period":
+
+| Key | Meaning | Unit |
+| --- | ------- | ---- |
+| `STATUS`, `LSTATUS`, `FSTATUS` | Stove status | |
+| `T1`, `T2`, `T3`, `T4`, `T5` | Stove temperatures | °C |
+| `F1V`, `F2V`, `F2L`, `F2LF` | Fan values (meaning depends on your stove model) | |
+| `F1RPM` | Fan 1 speed | rpm |
+| `F3L`, `F4L` | Fan 3 / Fan 4 levels (if supported by the stove) | 0-5 |
+| `F3S`, `F4S` | Fan 3 / Fan 4 values (if supported by the stove) | |
+| `IGN` | Ignition counter | |
+| `IGNERRORS` | Ignition error counter | |
+| `POWERTIME` | Total heating time | hour:minute |
+| `HEATTIME` | Unknown meaning | hour:minute |
+| `SERVICETIME` | Heating time since last maintenance | hour:minute |
+| `ONTIME` | Time since last power ON | hour:minute |
+| `OVERTMPERRORS` | Overtemperature error counter | |
+| `PQT` | Wood pellet consumption | kg |
+| `STOVE_DATETIME` | Stove date and time | |
+| `STOVE_WDAY` | Stove week day | |
+| `SETP` | Current Set Point (desired temperature) | °C |
+| `SECO` | ECO Mode restart temperature threshold (PAR50: 6 -> 0.6°C) | °C |
+| `BECO` | ECO Mode active | |
+| `PWR` | Current power | 1-5 |
+| `FDR` | Feeder | |
+| `DP_TARGET` | Delta pressure target | mPa |
+| `DP_PRESS` | Actual delta pressure | mPa |
