@@ -116,9 +116,21 @@ Leave the SSID empty to keep the module in AP mode (reachable at <http://192.168
 
 ### Firmware
 
-Allows you to flash a new firmware version directly from GitHub releases or using `WPalaControl.*.bin` or `WirelessPalaControl.*.bin` file:  
-![firmware screenshot](img/firmware.png)  
-Ensure the module has Internet access and/or DNS configured if IP address is static
+![firmware screenshot](img/firmware.png)
+
+- **Current Firmware**: version installed on the module
+- **Online Update**: shows the latest release published on [GitHub](https://github.com/Domochip/WPalaControl/releases) (version, title, date, summary and link)
+  - **Refresh**: check GitHub again for the latest release
+  - **Update**: download and install the latest release directly from GitHub (enabled only if a newer version is available)
+- **Manual Update**: upload a firmware file downloaded from the [releases page](https://github.com/Domochip/WPalaControl/releases)
+  - Expected file name: `WPalaControl.x.y.z.bin`
+  - Older `WirelessPalaControl.*.bin` files are also accepted
+
+⚠️ Do not power off the module during the update. It reboots automatically when the update is done.
+
+ℹ️ Online Update requires Internet access from the module (not available in AP mode): if you use a static IP, make sure Gateway and DNS are set.
+
+🏠 With MQTT and Home Assistant Discovery enabled, a firmware **Update** entity is also available in Home Assistant (update availability is checked once a day).
 
 ## Use it
 
