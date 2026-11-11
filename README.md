@@ -80,14 +80,18 @@ Provides useful information about the module and the stove.
 
 #### System
 
+- **NTP Timezone**: your timezone, used for the module local time (default: Europe/Paris)
 - **Reboot**: restart the module
-- **Reboot in Rescue Mode**: restart the module with default configuration
+- **Reboot in Rescue Mode**: restart the module without loading the stored configuration (it is not erased). The module starts its own Wi-Fi network (AP mode) and is reachable at <http://192.168.4.1>
 
 #### WiFi
 
-- **ssid & password**: credentials of your Wi-Fi network  
-- **hostname**: name of ESP on the network  
-- **IP, GW, NetMask, DNS1&2**: Fixed IP configuration  
+- **SSID & Password**: credentials of your Wi-Fi network. Nearby networks are listed in the dropdown next to the SSID field (strongest signal first)
+- **Hostname**: name of the module on the network
+- **Static IP**: check to use a fixed IP configuration instead of DHCP
+  - **IP, NetMask, Gateway, DNS 1 & 2**: fixed IP configuration (IP is required)
+
+Leave the SSID empty to keep the module in AP mode (reachable at <http://192.168.4.1>).
 
 ![configMQTT screenshot](img/configMQTT.png)
 
