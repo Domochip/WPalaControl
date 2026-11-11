@@ -1,76 +1,111 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Domochip/WPalaControl)
-![Home Assistant](https://img.shields.io/badge/home_assistant-2024.11-blue.svg?logo=homeassistant)
+![Home Assistant](https://img.shields.io/badge/home_assistant-2024.11+-blue.svg?logo=homeassistant)
 
 # WPalaControl
 
-**WPalaControl** is a device designed to control and monitor Fumis-based stoves using a D1 Mini.  
-It allows you to power on/off, adjust the set point, change fan speeds, and retrieve status, alarms, and temperature data from your stove.  
+**WPalaControl** is a Wi-Fi adapter (based on a D1 Mini) to control and monitor stoves using a **Fumis controller** (Palazzetti, Jotul, Godin, ...).
 
-It supports native HTTP requests which makes it fully compatible with all existing Palazzetti/Fumis home automation plugins/apps.  
+- 🔥 Power on/off, set point, power level, fans, silent mode, chrono programs, parameters
+- 📊 Status, alarms, temperatures, counters, pellet consumption, delta pressure
+- 🔌 Native HTTP API compatible with existing Palazzetti/Fumis apps and plugins
+- 📡 MQTT with Home Assistant auto-discovery
+- ⬆️ Online firmware update from GitHub (also as a Home Assistant Update entity)
 
-It also integrates with MQTT to monitor/control your stove in a much more efficient way.  
+## Contents
 
-## Stove Compatibility
+- [WPalaControl](#wpalacontrol)
+  - [Contents](#contents)
+  - [Quick start](#quick-start)
+  - [Stove compatibility](#stove-compatibility)
+  - [Home Automation compatibility](#home-automation-compatibility)
+  - [Get your adapter](#get-your-adapter)
+  - [Connect it to the stove](#connect-it-to-the-stove)
+  - [First boot](#first-boot)
+  - [Web interface](#web-interface)
+    - [Status](#status)
+    - [Config](#config)
+      - [System](#system)
+      - [WiFi](#wifi)
+      - [PalaControl](#palacontrol)
+      - [PalaControl - Home Automation](#palacontrol---home-automation)
+    - [Firmware](#firmware)
+  - [Use it](#use-it)
+    - [HTTP](#http)
+    - [MQTT](#mqtt)
+  - [Command list](#command-list)
+  - [Published MQTT values](#published-mqtt-values)
+  - [Troubleshooting](#troubleshooting)
 
-WPalaControl is compatible with stoves using the Fumis Controller, which is used by many manufacturers, including:  
-  
+## Quick start
+
+1. Check that your stove has a [Fumis controller](#stove-compatibility)
+2. Plug the module into the stove with the provided cable (or the [right one](#connect-it-to-the-stove) if you built it yourself)
+3. Connect to the `WPalaControl` Wi-Fi network (password: `password`)
+4. In **Config**, enter your Wi-Fi credentials and save
+5. Open <http://wpalacontrol.local>, then configure MQTT / Home Assistant if needed
+
+## Stove compatibility
+
+WPalaControl works with stoves using the **Fumis controller**, used by many manufacturers:
+
 Palazzetti / Jotul / TurboFonte / Godin / Fonte Flamme / Invicta / Casatelli / Alpis / Faizen / HETA / ...
 
-To determine if your stove is compatible with WPalaControl, look for the following Control Panel or Motherboard:  
-![Fumis Controller](img/fumis2.png)![Fumis Controller](img/fumis.png)
+To check if your stove is compatible, look for one of these control panels or motherboards:
+
+![Fumis control panel](img/fumis2.png)![Fumis motherboard](img/fumis.png)
 
 ## Home Automation compatibility
 
-| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) <br> Most options and fans control | ![hacard](img/hacard.png) |
-| ------------- | ------------- | ------------- |
-| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br> (2024.11 minimum) <br> Basic implementation for now | ![hacard-pala-integ](img/hacard-pala-integ.png) |
+| | Integration | Preview |
+| --- | --- | --- |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo Home Assistant" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (auto-discovery)<br>Most options and fan controls | ![Home Assistant MQTT card](img/hacard.png) |
+| <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo Home Assistant" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br>(Home Assistant 2024.11 minimum)<br>Basic implementation for now | ![Home Assistant Palazzetti card](img/hacard-pala-integ.png) |
 | <img src="https://raw.githubusercontent.com/jeedom/core/master/core/img/logo-jeedom-petit-nom-couleur-256x256.png" alt="Logo Jeedom" height="128"> | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
 
-## Make/Get your adapter
+## Get your adapter
 
-![complete Module](./img/complete-module.jpg)
+![Complete module](img/complete-module.jpg)
 
-🔧 If you want to build it yourself, you can find all details here : [BUILD](BUILD.md) 🔧  
+- 🛍️ **Ready to use**: I produce small batches, available here:
+  [![Lectronz product](img/lectronz-medium.png)](https://lectronz.com/products/wpalacontrol)
+- 🔧 **Build it yourself**: schematic, PCB, box and firmware are described in [BUILD](BUILD.md)
 
-🛍️🚀 Otherwise, I'm producing some small batches and offering it ready-to-use here :  
-[![Lectronz product](./img/lectronz-medium.png)](https://lectronz.com/products/wpalacontrol)  
+## Connect it to the stove
 
-## Connect
+- ✅ If your stove has an accessible RJ12 connector, simply plug the cable in.
+- 🔍 If not, you need an additional cable and a splitter: see [Splitter Cabling](SPLITTERCABLING.md).
 
-⚠️ **Before connecting, please check that you are using the correct cable**  
-For Hardware V1.x: please use a **Crossed** cable  
-For Hardware V2.x: please use a **Straight** cable  
-_(Hardware version is written on the box and on the PCB)_
+If you bought your WPalaControl ready to use, the right cable is provided: simply use it.
 
-![WPalaControl rj11](img/rj11-pinout.png)
+> [!WARNING]
+> If you built it yourself (or use another cable), use the correct cable for your hardware version (written on the PCB):
+>
+> - Hardware **V1.x**: **crossed** cable
+> - Hardware **V2.x**: **straight** cable
 
-✅If your stove has an accessible RJ12 connector, simply connect the cable.  
+![WPalaControl RJ12 pinout](img/rj11-pinout.png)
 
-🔍If not, you'll need an additional cable and a splitter.  
-➡️ More details can be found in the [Splitter Cabling documentation](SPLITTERCABLING.md)
+## First boot
 
-## First Boot
+On first boot, the module creates its own Wi-Fi network (AP mode):
 
-During the first Boot, the WPalaControl creates its own Wi-Fi network (AP mode)  
+| Firmware | SSID | Password |
+| --- | --- | --- |
+| 3.2.0 and higher | `WPalaControl` | `password` |
+| 3.1.x and lower | `WirelessPalaControlXXXX` | `PasswordPalaControl` |
 
-Firmware version **3.2.0 and higher**:  
+You should be redirected to the module page automatically. If not, go to <http://192.168.4.1>.
 
-- Network SSID : `WPalaControl`
-- Password : `password`
+Once the module is connected to your Wi-Fi network, it is reachable at 👉 <http://wpalacontrol.local> 👈
 
-Version **3.1.x and lower**:  
+> [!NOTE]
+> The access point is only started when the module is not connected to your Wi-Fi network (first boot, wrong settings, network down).
 
-- Network SSID : `WirelessPalaControlXXXX`
-- Password : `PasswordPalaControl`
-
-You should be automatically redirected to the module page.  
-If not, go to 👉 <http://wpalacontrol.local> 👈
-
-## Configuration pages
+## Web interface
 
 ### Status
 
-Provides useful information about the module and the stove:
+<img src="img/status.png" alt="Status page, top" width="400" style="vertical-align: top;"><img src="img/status2.png" alt="Status page, stove values" width="400">
 
 - **System**: module serial number, firmware version, uptime, local time (NTP) and free memory. Logged crashes are listed if any
 - **WiFi**: MAC address, Access Point status (and IP), Station status with connection state, IP, IP source (DHCP or Static IP), BSSID and signal strength (RSSI)
@@ -79,11 +114,9 @@ Provides useful information about the module and the stove:
   - **Stove infos**: the stove SN appears first, then all stove values are refreshed live every "Upload Period" (values that changed are shown in bold)
   - **Home Automation Status**: protocol, MQTT connection state and result of the last publish
 
-<img src="img/status.png" alt="status screenshot" width="400" style="vertical-align: top;"><img src="img/status2.png" alt="status2 screenshot"  width="400">
-
 ### Config
 
-![config screenshot](img/config.png)
+![Config page: System and WiFi](img/config.png)
 
 #### System
 
@@ -100,7 +133,7 @@ Provides useful information about the module and the stove:
 
 Leave the SSID empty to keep the module in AP mode (reachable at <http://192.168.4.1>).
 
-![configMQTT screenshot](img/configMQTT.png)
+![Config page: PalaControl](img/configMQTT.png)
 
 #### PalaControl
 
@@ -110,60 +143,78 @@ Leave the SSID empty to keep the module in AP mode (reachable at <http://192.168
 
 #### PalaControl - Home Automation
 
-- **Type**: enable/disable MQTT communication  
-- **Upload Period**: set the refresh interval of stove information (in seconds)  
-- **Hostname, Port, Username, Password**: MQTT server details (username and password are optional)  
-- **Base Topic**: prefix for WPalaControl topic structure  
-- **MQTT Type**: defines MQTT topics and data structure:  
-  - **Generic**: publish raw values under the base topic (e.g. "{baseTopic}/T1" = "*20.00*")
-  - **Generic JSON**: publish values JSON to "category" topic under base topic (e.g. "{baseTopic}/TMPS" = "*{"INFO":{"CMD":"GET TMPS","RSP":"OK......*")
-  - **Generic Categorized**: publish raw values to "category" topic under base topic (e.g. "{baseTopic}/TMPS/T1" = "*20.00*")
-- **Home Assistant Discovery**: Enable/disable Home Assistant auto-discovery
+- **Type**: enable/disable MQTT communication
+- **Upload Period**: refresh interval of stove information (15 to 300 seconds)
+- **Hostname, Port, Username, Password**: MQTT broker details (username and password are optional)
+- **Base Topic**: prefix of all WPalaControl topics
+- **MQTT Type**: defines MQTT topics and data structure:
+  - **Generic**: raw values under the base topic (e.g. `{baseTopic}/T1` = `20.00`)
+  - **Generic JSON**: a JSON per category (e.g. `{baseTopic}/TMPS` = `{"INFO":{"CMD":"GET TMPS","RSP":"OK"},...}`)
+  - **Generic Categorized**: raw values under a category topic (e.g. `{baseTopic}/TMPS/T1` = `20.00`)
+- **Home Assistant Discovery**: enable/disable Home Assistant auto-discovery
   - **0.2° SetPoint step**: Set Point is adjusted in Home Assistant by 0.2°C steps (using `SET+STPF`) instead of 1°C steps (using `SET+SETP`). Only shown if Home Assistant Discovery is enabled and the stove supports it (air stoves)
 
 ### Firmware
 
-![firmware screenshot](img/firmware.png)
+![Firmware page](img/firmware.png)
 
 - **Current Firmware**: version installed on the module
-- **Online Update**: shows the latest release published on [GitHub](https://github.com/Domochip/WPalaControl/releases) (version, title, date, summary and link)
+- **Online Update**: latest release published on [GitHub](https://github.com/Domochip/WPalaControl/releases) (version, title, date, summary and link)
   - **Refresh**: check GitHub again for the latest release
-  - **Update**: download and install the latest release directly from GitHub (enabled only if a newer version is available)
+  - **Update**: download and install the latest release (enabled only if a newer version is available)
 - **Manual Update**: upload a firmware file downloaded from the [releases page](https://github.com/Domochip/WPalaControl/releases)
   - Expected file name: `WPalaControl.x.y.z.bin`
   - Older `WirelessPalaControl.*.bin` files are also accepted
 
-⚠️ Do not power off the module during the update. It reboots automatically when the update is done.
+> [!CAUTION]
+> Do not power off the module during the update. It reboots automatically when the update is done.
 
-ℹ️ Online Update requires Internet access from the module (not available in AP mode): if you use a static IP, make sure Gateway and DNS are set.
-
-🏠 With MQTT and Home Assistant Discovery enabled, a firmware **Update** entity is also available in Home Assistant (update availability is checked once a day).
+- ℹ️ Online Update requires Internet access from the module (not available in AP mode). If you configured a static IP, make sure Gateway and DNS are set (not needed with DHCP).
+- 🏠 With MQTT and Home Assistant Discovery enabled, a firmware **Update** entity is also available in Home Assistant (checked once a day).
 
 ## Use it
 
+Commands are the same for HTTP and MQTT: see the [Command list](#command-list).
+
 ### HTTP
 
-Natively, HTTP GET request can be sent directly to the module.  
+Send an HTTP GET request to the module:
 
-```
+```text
 http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd={command}
+```
+
+Example: `http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd=GET+TMPS` returns:
+
+```json
+{"INFO":{"CMD":"GET TMPS","RSP":"OK"},"DATA":{"T1":20.6,"T2":21,"T3":18,"T4":0,"T5":0},"SUCCESS":true}
 ```
 
 ### MQTT
 
-Send commands via MQTT to `%BaseTopic%/cmd` topic once MQTT is configured.  
-Execution result is:
+Once MQTT is configured, send commands to the `{baseTopic}/cmd` topic:
+
+```bash
+mosquitto_pub -h <broker> -t "WPalaControl/cmd" -m "SET+SETP+21"
+```
+
+The result is:
 
 - published following the configured MQTT Type
-- published on `%BaseTopic%/result` in JSON format
+- published on `{baseTopic}/result` in JSON format
 
-Module connection status is published to `%BaseTopic%/connected`:
+Other topics published by the module:
 
-- 0: not connected
-- 1: connected but no communication with the stove
-- 2: module and stove connected
+| Topic | Content |
+| --- | --- |
+| `{baseTopic}/connected` | `0`: not connected / `1`: connected but no communication with the stove / `2`: module and stove connected |
+| `{baseTopic}/Core` | Module status in JSON (manufacturer, model, sn, version, uptime, localtime, freeheap), refreshed every "Upload Period" |
+| `{baseTopic}/WiFi` | Wi-Fi status in JSON (apmode, stationmode, stationip, bssid, rssi, ...), refreshed every "Upload Period" |
+| `{baseTopic}/App` | WPalaControl status in JSON (hwversion, hwdetection, MQTT status, last publish result, ...), refreshed every "Upload Period" |
+| `{baseTopic}/update` | Latest available firmware update information |
+| `{baseTopic}/update/install` | Command topic to trigger a firmware update (used by Home Assistant) |
 
-### Command List
+## Command list
 
 ⏲️: Published automatically every "Upload Period" (MQTT)  
 ✨: WPalaControl specific command
@@ -218,7 +269,7 @@ Module connection status is published to `%BaseTopic%/connected`:
 | `SET+PARM+92+2` | Set parameter 92 to value 2 (pellet type) | parameter number, value (e.g. 1-3 for 92) | |
 | `SET+HPAR+57+95` | Set hidden parameter 57 to value 95 (% of pellet to feed for pellet type 3) | parameter number, value | |
 
-### Published MQTT values
+## Published MQTT values
 
 Values published automatically every "Upload Period":
 
@@ -247,3 +298,13 @@ Values published automatically every "Upload Period":
 | `FDR` | Feeder | |
 | `DP_TARGET` | Delta pressure target | mPa |
 | `DP_PRESS` | Actual delta pressure | mPa |
+
+## Troubleshooting
+
+| Problem | What to check |
+| --- | --- |
+| Stove SN never appears on the Status page | Use the provided cable. If you built it yourself, check the cable type: **crossed** for hardware V1.x, **straight** for V2.x. Check also the **Hardware detection** setting |
+| `wpalacontrol.local` does not open | Some devices (e.g. Android, some Windows setups) don't support mDNS: use the module IP address (shown in your router) |
+| Wrong Wi-Fi settings, module unreachable | If it can't connect, the module starts its own access point: connect to it and go to <http://192.168.4.1>. You can also use **Reboot in Rescue Mode** |
+| Online Update fails | The module needs Internet access. If you configured a static IP, make sure Gateway and DNS are set (not needed with DHCP) |
+| Nothing published on MQTT | **Status** page → **Home Automation Status** shows the connection state and the last publish result |
