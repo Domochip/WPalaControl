@@ -24,7 +24,7 @@ To determine if your stove is compatible with WPalaControl, look for the followi
 | <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [MQTT Integration](https://www.home-assistant.io/integrations/mqtt/) (autodiscovery) <br> Most options and fans control | ![hacard](img/hacard.png) |
 | ------------- | ------------- | ------------- |
 | <img src="https://www.home-assistant.io/images/home-assistant-logo-vertical.svg" alt="Logo HASS" height="128"> | [Palazzetti Integration](https://www.home-assistant.io/integrations/palazzetti)<br> (2024.11 minimum) <br> Basic implementation for now | ![hacard-pala-integ](img/hacard-pala-integ.png) |
-| ![Logo Jeedom](https://www.jeedom.com/_next/image?url=%2Fassets%2Fimg%2Flogo.png&w=256&q=75) | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
+| <img src="https://raw.githubusercontent.com/jeedom/core/master/core/img/logo-jeedom-petit-nom-couleur-256x256.png" alt="Logo Jeedom" height="128"> | [Palazzetti plugin](https://www.jeedom.com/market/index.php?v=d&p=market_display&id=3104) | ![Jeedom widget](https://domotechdiscord.github.io/Docs/Palazzetti/images/widget_1.png) |
 
 ## Make/Get your adapter
 
