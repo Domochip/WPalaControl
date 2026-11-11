@@ -91,6 +91,12 @@ Provides useful information about the module and the stove.
 
 ![configMQTT screenshot](img/configMQTT.png)
 
+#### PalaControl
+
+- **Hardware detection**: hardware version of the module
+  - **Auto** (default): version is detected automatically at boot
+  - **V1.X** / **V2.X**: force the hardware version if auto-detection fails
+
 #### PalaControl - Home Automation
 
 - **Type**: enable/disable MQTT communication  
@@ -102,6 +108,7 @@ Provides useful information about the module and the stove.
   - **Generic JSON**: publish values JSON to "category" topic under base topic (e.g. "{baseTopic}/TMPS" = "*{"INFO":{"CMD":"GET TMPS","RSP":"OK......*")
   - **Generic Categorized**: publish raw values to "category" topic under base topic (e.g. "{baseTopic}/TMPS/T1" = "*20.00*")
 - **Home Assistant Discovery**: Enable/disable Home Assistant auto-discovery
+  - **0.2° SetPoint step**: Set Point is adjusted in Home Assistant by 0.2°C steps (using `SET+STPF`) instead of 1°C steps (using `SET+SETP`). Only shown if Home Assistant Discovery is enabled and the stove supports it (air stoves)
 
 ### Firmware
 
