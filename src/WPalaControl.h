@@ -49,6 +49,7 @@ private:
     } generic;
     bool hassDiscoveryEnabled;
     char hassDiscoveryPrefix[32 + 1];
+    bool hassFineSetPoint;
   };
 
   struct HomeAutomation

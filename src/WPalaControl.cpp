@@ -428,7 +428,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   // calculate flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
   bool hasSetPoint = (allStatusData.SETP != 0);
-  bool hasFineSetPoint = (staticData.FLUID == 0);
+  bool hasFineSetPoint = (_ha.mqtt.hassFineSetPoint && staticData.FLUID == 0);
   bool hasPower = (staticData.STOVETYPE != 8);
   bool hasOnOff = (staticData.STOVETYPE != 7 && staticData.STOVETYPE != 8);
   bool hasRoomFan = (staticData.FAN2TYPE > 1);
@@ -2308,6 +2308,7 @@ void WPalaControl::setConfigDefaultValues()
   strcpy_P(_ha.mqtt.generic.baseTopic, PSTR("$model$"));
   _ha.mqtt.hassDiscoveryEnabled = true;
   strcpy_P(_ha.mqtt.hassDiscoveryPrefix, PSTR("homeassistant"));
+  _ha.mqtt.hassFineSetPoint = false;
 }
 
 //------------------------------------------
@@ -2329,6 +2330,7 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   parseField(json[F("hamgbt")], _ha.mqtt.generic.baseTopic);
   parseField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
   parseField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix);
+  parseField(json[F("hamhassfsp")], _ha.mqtt.hassFineSetPoint);
 
   return true;
 }
@@ -2363,6 +2365,14 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 
   json[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
   json[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
+  json[F("hamhassfsp")] = _ha.mqtt.hassFineSetPoint;
+
+  // web page only: tell if the stove supports 0.2° setpoint (FLUID == 0)
+  if (!forSaveFile)
+  {
+    Palazzetti::StaticData staticData;
+    json[F("hamhassfspcap")] = (_Pala.isInitialized() && _Pala.getStaticData(staticData) == Palazzetti::CommandResult::OK && staticData.FLUID == 0);
+  }
 }
 
 //------------------------------------------

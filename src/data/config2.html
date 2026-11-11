@@ -109,6 +109,10 @@
                     <label for="hamhassde">Home Assistant Discovery</label>
                     <input id='hamhassde' name='hamhassde' type="checkbox">
                 </div>
+                <div class="pure-control-group" id='hamhassfspdiv' style='display:none'>
+                    <label for="hamhassfsp">0.2° SetPoint step</label>
+                    <input id='hamhassfsp' name='hamhassfsp' type="checkbox">
+                </div>
             </div>
         </div>
 
@@ -153,5 +157,17 @@
         }
     });
 
-    configForm(root, id);
+    // 0.2° SetPoint step checkbox is shown only if the stove supports it and HA Discovery is enabled
+    let fineSetPointCapable = false;
+    function updateFineSetPointVisibility() {
+        $("#hamhassfspdiv", root).style.display = (fineSetPointCapable && $("#hamhassde", root).checked) ? '' : 'none';
+    }
+    $("#hamhassde", root).addEventListener('change', updateFineSetPointVisibility);
+
+    configForm(root, id, {
+        afterLoad: (form, data) => {
+            fineSetPointCapable = !!data.hamhassfspcap;
+            updateFineSetPointVisibility();
+        }
+    });
 </script>
