@@ -428,6 +428,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   // calculate flags (https://github.com/palazzetti/palazzetti-sdk-asset-parser-python/blob/main/palazzetti_sdk_asset_parser/data/asset_parser.json)
   bool hasSetPoint = (allStatusData.SETP != 0);
+  bool hasFineSetPoint = (staticData.FLUID == 0);
   bool hasPower = (staticData.STOVETYPE != 8);
   bool hasOnOff = (staticData.STOVETYPE != 7 && staticData.STOVETYPE != 8);
   bool hasRoomFan = (staticData.FAN2TYPE > 1);
@@ -512,7 +513,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"payload_off\":\"CMD+OFF\","
                           "\"payload_on\":\"CMD+ON\","
                           "\"power_command_topic\":\"~/cmd\","
-                          "\"temperature_command_template\":\"SET+SETP+{{ value|int }}\","
                           "\"temperature_command_topic\":\"~/cmd\","
                           "\"temperature_unit\":\"C\""
                           "}"));
@@ -537,6 +537,15 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   // Adjust max_temp for stove with air temperature setPoint, goal is to center the range around 19°C (Does someone really wants its room at 51°C ...)
   json[F("max_temp")] = (isHydroType && (staticData.UICONFIG == 1 || staticData.UICONFIG == 3 || staticData.UICONFIG == 4)) ? staticData.SPLMAX : staticData.SPLMIN + 2 * (19 - staticData.SPLMIN);
   json[F("min_temp")] = staticData.SPLMIN;
+
+  if (hasFineSetPoint)
+  {
+    json[F("precision")] = 0.1;
+    json[F("temp_step")] = 0.2;
+    json[F("temperature_command_template")] = F("SET+STPF+{{ '%.1f' | format(value | float) }}");
+  }
+  else
+    json[F("temperature_command_template")] = F("SET+SETP+{{ value|int }}");
 
   setTemplateField(F("mode_state_template"), F("STATUS"), F("{{ iif(({v} | int(0)) > 0, 'heat', 'off') }}"));
 
@@ -777,7 +786,6 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
     // prepare payload for Stove setpoint number
     deserializeJson(json, F("{"
-                            "\"command_template\":\"SET+SETP+{{ value }}\","
                             "\"command_topic\":\"~/cmd\","
                             "\"default_entity_id\":\"number.stove_setp\","
                             "\"device_class\":\"temperature\","
@@ -788,6 +796,13 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                             "}"));
     json[F("min")] = staticData.SPLMIN;
     json[F("max")] = staticData.SPLMAX;
+    if (hasFineSetPoint)
+    {
+      json[F("step")] = 0.2;
+      json[F("command_template")] = F("SET+STPF+{{ '%.1f' | format(value | float) }}");
+    }
+    else
+      json[F("command_template")] = F("SET+SETP+{{ value|int }}");
     json[F("state_topic")] = getStateTopic(F("SETP"), F("SETP"));
     setValueTemplate(F("SETP"));
 
