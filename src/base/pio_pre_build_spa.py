@@ -1,12 +1,14 @@
 import os
 import re
 
-# Pages of the web UI: template id -> fragment files, one "part" per file.
+# Screens of the web UI: template id -> fragment files, one "part" per file (see the screens in index_template.html).
 # Files ending with a number get that number as part id ('0', '1', '2'), used in API endpoints;
 # other files get an empty part id.
 PAGES = {
     'tpl-status': ['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'],
-    'tpl-config': ['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'],
+    'tpl-wifi':   ['src/base/data/config1.html'],
+    'tpl-system': ['src/base/data/config0.html'],
+    'tpl-app':    ['src/data/config2.html'],
     'tpl-fw':     ['src/base/data/fw.html'],
 }
 

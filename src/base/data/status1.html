@@ -1,27 +1,34 @@
-<h2 class="content-subhead">WiFi<span id="l" class="ld">Loading...</span></h2>
-MAC: <span data-k="mac"></span><br>
-Access Point: <span data-k="apmode"></span><br>
-<span data-show="apip">&nbsp;&nbsp;&nbsp;&nbsp;IP: <span data-k="apip"></span><br></span>
-Station: <span data-k="stationmode"></span><br>
-Connection state: <span data-k="stastate"></span><br>
-<span data-show="nextretry">&nbsp;&nbsp;&nbsp;&nbsp;Next retry: <span data-k="nextretry"></span> seconds<br></span>
-<span id="discoreasone" style='display:none'>Last disconnection reason: <span data-k="discoreason"></span><br></span>
-<span data-show="stationip">&nbsp;&nbsp;&nbsp;&nbsp;IP: <span data-k="stationip"></span><br></span>
-<span data-show="stationipsource">&nbsp;&nbsp;&nbsp;&nbsp;IP Source: <span data-k="stationipsource"></span><br></span>
-<span data-show="bssid">&nbsp;&nbsp;&nbsp;&nbsp;BSSID: <span data-k="bssid"></span><br></span>
-<span data-show="rssi">&nbsp;&nbsp;&nbsp;&nbsp;RSSI: <span data-k="rssi"></span><br></span>
+<!-- Status screen blocks are placed by type, whatever the part they come from (see #content.status in base.css) -->
+<div class="w first">
+    <svg class="ring" viewBox="0 0 54 54"><circle class="tr" cx="27" cy="27" r="23"/><circle class="pr" id="signalRing" cx="27" cy="27" r="23"/></svg>
+    <div><div class="n" id="quality">-</div><div class="l">WiFi signal <span data-k="rssi"></span></div></div>
+</div>
+
+<div class="group dev first">
+    <div class="gh">Network<span id="l" class="ld">Loading...</span><span class="end pill" id="state"><span class="dot"></span><span data-k="stastate"></span></span></div>
+    <div class="list">
+        <div class="row" data-show="ssid"><span class="lbl">Network</span><span class="val"><span data-k="ssid"></span><span id="bars"></span></span></div>
+        <div class="row" data-show="stationip"><span class="lbl">IP address</span><span class="val"><span data-k="stationip"></span><span class="pill" data-k="stationipsource"></span></span></div>
+        <div class="row" data-show="nextretry"><span class="lbl">Next retry</span><span class="val"><span data-k="nextretry"></span> s</span></div>
+        <div class="row"><span class="lbl">MAC address</span><span class="val" data-k="mac"></span></div>
+        <div class="row" data-show="bssid"><span class="lbl">BSSID</span><span class="val" data-k="bssid"></span></div>
+        <div class="row"><span class="lbl">Access point</span><span class="val"><span class="pill" id="apmode" data-k="apmode"></span></span></div>
+        <div class="row" id="discoreason" hidden><span class="lbl">Last disconnect</span><span class="val" data-k="discoreason"></span></div>
+    </div>
+</div>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('1'), used in API endpoints like '/gs' + id
 
+    // state -> [label, pill color]
     const stationStates = {
-        off: 'Off',
-        connecting: 'Connecting',
-        connected: 'Connected',
-        lost: 'Connection lost',
-        waitretry: 'Waiting to retry'
+        off: ['Off', ''],
+        connecting: ['Connecting', 'warn'],
+        connected: ['Connected', 'ok'],
+        lost: ['Connection lost', 'err'],
+        waitretry: ['Waiting to retry', 'warn']
     };
 
     const disconnectReasons = {
@@ -43,19 +50,33 @@ Connection state: <span data-k="stastate"></span><br>
 
     loadStatus(root, id, {
         formats: {
-            stastate: v => stationStates[v] || v,
+            stastate: v => (stationStates[v] || [v])[0],
             discoreason: v => (disconnectReasons[Number(v)] || 'Unknown') + ' (' + Number(v) + ')',
-            rssi: v => v + ' dBm (' + rssiToQuality(v) + '%)',
+            rssi: v => '· ' + v + ' dBm',
+            apmode: (v, status) => v === 'on' ? 'On · ' + status.apip : 'Off',
         },
         afterLoad: function (status) {
-            $("#discoreasone", root).style.display =
-                (status["stationmode"] === 'on' && Number(status["discoreason"]) !== 0 ? '' : 'none');
+            $('#state', root).className = 'end pill ' + (stationStates[status.stastate] || ['', ''])[1];
+            $('#apmode', root).className = 'pill' + (status.apmode === 'on' ? ' warn' : '');
 
-            if (status["rssi"] !== undefined) $('[data-k="rssi"]', root).style.color = rssiToColor(status["rssi"]);
+            $('#discoreason', root).hidden = !(status.stationmode === 'on' && Number(status.discoreason) !== 0);
 
-            // page-wide banner (in index_template.html): stays visible on other pages
-            $("#connectedToAP").style.display =
-                (status["stationmode"] == "on" && status["apmode"] == "on" ? '' : 'none');
+            // signal ring and bars: quality %, green / orange / red
+            if (status.rssi !== undefined) {
+                const quality = rssiToQuality(status.rssi);
+                $('#quality', root).textContent = quality + '%';
+                $('#signalRing', root).style.strokeDasharray = `${(144.5 * quality / 100).toFixed(1)} 144.5`;
+                $('#signalRing', root).style.stroke = quality > 50 ? 'var(--ok)' : quality > 25 ? 'var(--warn)' : 'var(--err)';
+                $('#bars', root).replaceChildren(signalBars(status.rssi));
+            } else {
+                $('#quality', root).textContent = 'No signal';
+            }
+
+            setIdentity(status);
+
+            // banner of the list pane (in index_template.html): stays visible on other screens
+            $('#apName').textContent = status.apssid || "module's";
+            $('#connectedToAP').hidden = !(status.stationmode == 'on' && status.apmode == 'on');
         },
     });
 </script>

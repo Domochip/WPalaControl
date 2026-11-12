@@ -1,17 +1,34 @@
-<h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
+<!-- Status screen blocks are placed by type, whatever the part they come from (see #content.status in base.css) -->
+<div class="alert" id="crashes" hidden>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></span>
+    <span class="lbl"><b data-k="crashcount"></b><small>Since last clear: the crash files hold the stack traces</small></span>
+    <a href="/crashdl" class="pill-btn">Download</a>
+    <button class="pill-btn red" id="clrCrashes">Clear</button>
+</div>
 
-SN : <span data-k="sn"></span><br>
-Version : <span data-k="version"></span><br>
-UpTime : <span data-k="uptime"></span><br>
-Local Time : <span data-k="localtime"></span><br>
-FreeHeap : <span data-k="freeheap"></span><br>
+<div class="w">
+    <!-- ring when the heap size is known (ESP32), icon otherwise -->
+    <svg class="ring" id="heapRing" viewBox="0 0 54 54" hidden><circle class="tr" cx="27" cy="27" r="23"/><circle class="pr" cx="27" cy="27" r="23" stroke="var(--ok)"/></svg>
+    <span class="glyph" id="heapGlyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
+    <div><div class="n"><span data-k="freeheap">-</span><small id="heapTotal">KB</small></div><div class="l">Free heap</div></div>
+</div>
+<div class="w">
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="5"/></svg></span>
+    <div><div class="n" data-k="uptime">-</div><div class="l">Uptime</div></div>
+</div>
+<div class="w">
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+    <div><div class="n" id="time">-</div><div class="l">Local time</div></div>
+</div>
 
-<div id="crashes" style="display:none">
-Crash logged : <span data-k="crashcount"></span><br>
-Crash files :
-&nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
-&nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" id="clrCrashes">Clear</button>
-&nbsp;<span id="clrResult"></span>
+<div class="group dev">
+    <div class="gh">Device<span id="l" class="ld">Loading...</span></div>
+    <div class="list">
+        <div class="row"><span class="lbl">Serial number</span><span class="val" data-k="sn"></span></div>
+        <div class="row"><span class="lbl">Firmware</span><span class="val" data-k="version"></span></div>
+        <div class="row" data-show="timezone"><span class="lbl">Timezone</span><span class="val" data-k="timezone"></span></div>
+        <div class="row"><span class="lbl">Free stack</span><span class="val" data-k="freestack"></span></div>
+    </div>
 </div>
 
 <script>
@@ -20,17 +37,38 @@ Crash files :
     //   id   : this part's id ('0'), used in API endpoints like '/gs' + id
 
     loadStatus(root, id, {
+        formats: {
+            // seconds since boot -> "12d 4h", "4h 07m", "7m" (shortDuration in index_template.html), full value as tooltip
+            uptime: shortDuration,
+            crashcount: v => v + (v > 1 ? ' crashes' : ' crash') + ' logged',
+            freeheap: v => (v / 1024).toFixed(1),
+            freestack: v => v + ' bytes',
+        },
         afterLoad: function (status) {
-            if (status.crashcount > 0) $('#crashes', root).style.display = '';
+            $('#crashes', root).hidden = !(status.crashcount > 0);
+            $('[data-k="uptime"]', root).title = longDuration(status.uptime);
+
+            // tile: hours and minutes ("2026-11-11 22:51:03 CET" -> "22:51"), full value as tooltip
+            const time = /\d\d:\d\d/.exec(status.localtime);
+            $('#time', root).textContent = time ? time[0] : 'Not synced';
+            $('#time', root).title = status.localtime;
+
+            // heap ring: only when the firmware knows the heap size (ESP32)
+            if (status.heapsize) {
+                $('#heapRing', root).hidden = false;
+                $('#heapGlyph', root).hidden = true;
+                $('#heapRing .pr', root).style.strokeDasharray = `${(144.5 * status.freeheap / status.heapsize).toFixed(1)} 144.5`;
+                $('#heapRing', root).parentElement.title = `${Math.round(status.freeheap / 1024)} KB free of ${Math.round(status.heapsize / 1024)} KB`;
+            }
         },
     });
 
     $('#clrCrashes', root).addEventListener('click', function () {
-        $('#clrResult', root).textContent = '';
         post('/crashclr', null, function () {
-            $('#crashes', root).style.display = 'none';
+            $('#crashes', root).hidden = true;
+            toast('Crash logs cleared');
         }, function () {
-            showError($('#clrResult', root));
+            toast('Failed to clear crash logs', true);
         });
     });
 </script>

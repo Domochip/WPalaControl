@@ -7,42 +7,125 @@
     <meta name="description" content="{{APP_MODEL}}">
     <title>Domochip {{APP_MODEL}}</title>
 
-    <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
+    <!-- favicon: the logo, set by the script at the bottom (data: here so browsers don't request /favicon.ico) -->
+    <link rel="icon" id="favicon" href="data:,">
     <link rel="stylesheet" href="base.css">
+    <script>
+        // theme chosen with the Auto / Light / Dark buttons (see below), applied before rendering to avoid a flash
+        try { document.documentElement.dataset.theme = localStorage.getItem('theme') || ''; } catch (e) { }
+    </script>
 </head>
 
 <body>
-    <div id="layout">
-        <!-- Menu toggle -->
-        <a href="#menu" id="menuLink" class="menu-link">
-            <!-- Hamburger icon -->
-            <span></span>
-        </a>
+    <div class="app">
+        <!-- ===== list pane: device summary and the list of screens ===== -->
+        <div class="pane root" id="rootPane">
+            <div class="bar"><span></span><span class="t">{{APP_MODEL}}</span><span></span></div>
 
-        <div id="menu">
-            <div class="pure-menu">
-                <div class="pure-menu-heading">Domochip</div>
-                <div class="pure-menu-heading" id="menuModel">{{APP_MODEL}}</div>
-
-                <ul class="pure-menu-list">
-                    <li class="pure-menu-item" id="menuStatus"><a href="" class="pure-menu-link">Status</a></li>
-                    <li class="pure-menu-item" id="menuConfig"><a href="" class="pure-menu-link">Config</a></li>
-                    <li class="pure-menu-item" id="menuFirmware"><a href="" class="pure-menu-link">Firmware</a></li>
-                </ul>
+            <div class="device">
+                <!-- Domochip logo, also used as favicon and on the Firmware screen -->
+                <div class="appicon" id="logo"><svg role="img" aria-label="Domochip" xmlns="http://www.w3.org/2000/svg" viewBox="211 200 640 640"><defs><linearGradient id="dclogo-bg" x2="1" y2="1"><stop offset="0" stop-color="#2f6fed"/><stop offset="1" stop-color="#7a5af8"/></linearGradient></defs><rect x="211" y="200" width="640" height="640" rx="80" fill="url(#dclogo-bg)"/><g fill="none" stroke="#f4f4ee"><path stroke-width="32" d="M314 405V254h231a269 269 0 0 1 0 538H314V640"/><path stroke-width="28" d="M575 330a198 198 0 0 1 0 386"/><rect stroke-width="32" x="461" y="448" width="136" height="148" rx="14"/><path stroke-width="16" d="M256 440h66M256 492h66M256 545h66M256 598h66M378 322v83M378 718v-78"/></g><g fill="#f4f4ee"><circle cx="386" cy="322" r="22"/><circle cx="494" cy="322" r="25"/><circle cx="386" cy="718" r="22"/><circle cx="494" cy="718" r="25"/><circle cx="252" cy="440" r="16"/><circle cx="252" cy="492" r="16"/><circle cx="252" cy="545" r="16"/><circle cx="252" cy="598" r="16"/><circle cx="748" cy="252" r="18"/><path d="M420 380h20v20h-20zM390 432h20v20h-20zM390 485h20v20h-20zM390 537h20v20h-20zM390 590h20v20h-20zM420 642h20v20h-20z"/></g><path fill="#f4f4ee" fill-opacity=".5" d="M465 380h20v20h-20zM508 380h20v20h-20zM550 380h20v20h-20zM590 380h20v20h-20zM465 642h20v20h-20zM508 642h20v20h-20zM550 642h20v20h-20zM590 642h20v20h-20zM345 432h20v20h-20zM345 485h20v20h-20zM345 537h20v20h-20zM345 590h20v20h-20zM640 490h20v20h-20zM640 542h20v20h-20z"/></svg></div>
+                <h2>{{APP_MODEL}}</h2>
+                <div class="sub" id="host">Domochip</div>
+                <div class="state"><i class="dot" id="stateDot"></i><span id="stateText">Connecting...</span></div>
             </div>
+
+            <!-- shown by the Status screen (status1.html) while station and access point are both on -->
+            <div class="alert warn" id="connectedToAP" hidden>
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></span>
+                <span class="lbl">Access point still active<small>Disconnect devices from the <b id="apName"></b> network so the module can reconnect to your WiFi.</small></span>
+                <button class="pill-btn" onclick="$('#connectedToAP').hidden = true">Dismiss</button>
+            </div>
+
+            <div class="group">
+                <div class="list">
+                    <button class="row ic" data-go="status"><span class="ico b-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span><span class="lbl">Status</span><span class="val" id="vStatus"></span><span class="chev">›</span></button>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="list">
+                    <button class="row ic" data-go="wifi"><span class="ico b-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg></span><span class="lbl">WiFi</span><span class="val" id="vWifi"></span><span class="chev">›</span></button>
+                    <button class="row ic" data-go="system"><span class="ico b-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="lbl">Date &amp; time</span><span class="val" id="vSystem"></span><span class="chev">›</span></button>
+                    <button class="row ic" data-go="app" id="appRow"><span class="ico b-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/></svg></span><span class="lbl">Application</span><span class="chev">›</span></button>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="list">
+                    <button class="row ic" data-go="firmware"><span class="ico b-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span><span class="lbl">Firmware</span><span class="val" id="vFirmware"></span><span class="chev">›</span></button>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="list">
+                    <button class="row ic" id="rebootBtn"><span class="ico b-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></span><span class="lbl">Restart</span></button>
+                    <button class="row ic danger" id="rescueBtn"><span class="ico b-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><span class="lbl">Rescue mode</span></button>
+                </div>
+                <div class="gf">
+                    Rescue mode restarts once with default settings, to recover a module you can't reach anymore (wrong WiFi settings, faulty configuration):
+                    <ul>
+                        <li>the module opens its own WiFi network <b class="rescueSsid"></b> (default access point password) and answers at 192.168.4.1;</li>
+                        <li>saved settings are not erased: the next normal restart brings them back, unless you save new ones in rescue mode.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="theme-pick" id="themePick"><button data-t="">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
         </div>
 
-        <div id="main">
-            <div class="header">
-                <h1 id="mainHeader"></h1>
+        <!-- ===== screen pane: the open screen (a page of parts, see pio_pre_build_spa.py) ===== -->
+        <div class="pane detail" id="detailPane">
+            <div class="bar">
+                <button class="back" id="back">‹ {{APP_MODEL}}</button>
+                <span class="t" id="barTitle"></span>
+                <span></span>
             </div>
+            <div class="screen" id="content"></div>
 
-            <div class="content" id="content"></div>
-
-            <!-- Outside #content so it stays visible on every page; shown/hidden by the Status page (status1.html) -->
-            <div id="connectedToAP" class="banner" style="display:none">!!! Disconnect devices from Access Point Wifi network to allow reconnection or modify WiFi configuration !!!</div>
+            <!-- shown once a setting of the screen is changed, see updateSaveBar() -->
+            <div class="savebar" id="savebar" hidden>
+                <div class="info"><b id="sbTitle"></b><span id="sbText"></span></div>
+                <button class="revert" id="revertBtn">Revert</button>
+                <button class="save" id="saveBtn"><span class="spin"></span><span id="saveTxt">Save</span></button>
+            </div>
         </div>
     </div>
+
+    <div class="overlay" id="overlay" hidden>
+        <div class="ov-card">
+            <span class="spin"></span>
+            <h3 id="ovTitle"></h3>
+            <p id="ovText"></p>
+            <div class="secs">Waiting for device... <span id="cd">0</span>s</div>
+        </div>
+    </div>
+
+    <!-- confirmation dialog, see confirmDialog() -->
+    <dialog class="dialog" id="dialog">
+        <div class="body">
+            <h3 id="dlgTitle"></h3>
+            <div id="dlgBody"></div>
+        </div>
+        <div class="dlg-actions">
+            <button id="dlgCancel">Cancel</button>
+            <button id="dlgOk"></button>
+        </div>
+    </dialog>
+
+    <!-- option picker of a select with a long list, see openPicker() -->
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="grab"></div>
+        <div class="hd"><button id="sheetCancel">Cancel</button><b id="sheetTitle"></b><span></span></div>
+        <div class="search" id="sheetSearch" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="sheetSearchIn" placeholder="Search" autocomplete="off">
+        </div>
+        <div class="sbody" id="sheetBody"></div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
 
     <script>
         function $(selector, el = document) {
@@ -60,23 +143,32 @@
             (pageInits[templateId] ||= []).push({ id, init });
         }
 
-        // Loads a page from an embedded <template> element into #content,
+        // Loads a screen from an embedded <template> element into element,
         // then calls each part's init function with its own root element.
-        function loadPage(templateId) {
-            const element = $('#content');
+        // Empty parts are hidden; parts with none of the layout blocks (written for an older UI) are shown as one block.
+        function loadPage(templateId, element) {
             element.replaceChildren(document.getElementById(templateId).content.cloneNode(true));
+            element.querySelectorAll('[data-part]').forEach(part => {
+                if (!part.firstElementChild) part.hidden = true;
+                else if (!part.querySelector('.group, .card, .list, .w, .alert, .upd')) part.classList.add('legacy');
+            });
             for (const { id, init } of pageInits[templateId] || []) {
                 const cleanup = init(element.querySelector(`[data-part="${id}"]`), id);
                 if (typeof cleanup === 'function') cleanups.push(cleanup);
             }
+            element.querySelectorAll('.row select').forEach(enhanceSelect);
         }
 
-        // Unloads the current page: runs cleanup functions returned by its parts (close EventSource, timers...)
+        // Unloads the current screen: runs cleanup functions returned by its parts (close EventSource, timers...)
         // then empties #content
         function unloadPage() {
             cleanups.forEach(cleanup => cleanup());
             cleanups = [];
+            configForms = [];
+            $('#savebar').hidden = true;
+            closePicker();
             $('#content').replaceChildren();
+            $('#content').className = 'screen';
         }
 
         function request(method, url, data, success, fail, timeout, uploadProgress) {
@@ -119,8 +211,10 @@
                 }
                 object[key].push(value);
             });
+            // unchecked checkboxes are sent as 0; disabled ones (also inside a disabled fieldset) are not sent at all,
+            // like other disabled controls, so the firmware keeps their current value
             form.querySelectorAll('input[type=checkbox]').forEach(cb => {
-                object[cb.name] = cb.checked ? 1 : 0;
+                if (!cb.matches(':disabled')) object[cb.name] = cb.checked ? 1 : 0;
             });
             return JSON.stringify(object);
         }
@@ -179,47 +273,49 @@
             }
         }
 
+        // Config forms of the open screen: { id, form, options, loaded, dirty }
+        let configForms = [];
+
         // Standard config form of a part, using these elements of root:
-        //   #l : "Loading..." indicator, #f : the form, #r : result message
-        // Loads /gc<id> into the form and enables its submit button; on submit, posts the form
-        // as JSON to /sc<id>, then waits for the device to restart and redirects.
+        //   #l : "Loading..." indicator, #f : the form
+        // Loads /gc<id> into the form. Once the user changes a value, its row gets a dot and the save bar appears
+        // at the bottom of the screen: Save posts every changed form of the screen as JSON to /sc<id> (see saveSettings).
+        // The form's own submit button, if any, is hidden: the save bar replaces it.
         // options (all optional):
         //   afterLoad(form, data) : extra setup once the form is filled
         //   beforeSubmit(form)    : adjust values just before posting
-        //   redirectUrl(form)     : where to go once the device is back (default: this page, Config tab)
+        //   redirectUrl(form)     : give it when applying this config makes the device reconnect (WiFi):
+        //                           the page then waits for the device at the returned URL (default: this page)
         function configForm(root, id, options = {}) {
             const form = $('#f', root);
-            const result = $('#r', root);
             const loading = $('#l', root);
-            const submit = $('input[type=submit]', form);
+            const entry = { id, form, options, loaded: false, dirty: false, changed: new Set() };
+            configForms.push(entry);
 
+            form.querySelectorAll('[type=submit]').forEach(btn => btn.hidden = true);
             form.addEventListener('submit', evt => {
                 evt.preventDefault();
-                // submit is disabled until the config is loaded and while saving: ignore extra submits
-                if (submit.disabled) return;
-                submit.disabled = true;
-                options.beforeSubmit?.(form);
-                result.innerHTML = 'Saving Configuration...';
-                post('/sc' + id, formToJson(form),
-                    () => {
-                        form.style.display = 'none';
-                        const url = options.redirectUrl?.(form) || location.origin;
-                        if (url === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
-                        waitForDevice(result, url, 30000, '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>');
-                    },
-                    () => {
-                        result.innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
-                        submit.disabled = false;
-                    }
-                );
+                saveSettings();
             });
+
+            // values set while loading (fillForm, afterLoad) are not user changes
+            const markDirty = evt => {
+                if (!entry.loaded) return;
+                entry.dirty = true;
+                const row = evt.target.closest('.row');
+                row?.classList.add('changed');
+                entry.changed.add(fieldLabel(evt.target));
+                updateSaveBar();
+            };
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
 
             getJSON('/gc' + id,
                 data => {
                     data ??= {}; // an empty JsonDocument is sent as 'null'
                     fillForm(form, data);
                     options.afterLoad?.(form, data);
-                    submit.disabled = false;
+                    entry.loaded = true;
                     fadeOut(loading);
                 },
                 () => {
@@ -228,12 +324,225 @@
             );
         }
 
+        // Saves every changed config form, one after the other (the device handles one request at a time).
+        // Forms whose config makes the device reconnect (redirectUrl option) are saved last,
+        // then the page waits for the device to come back.
+        let saving = false;
+        function saveSettings() {
+            const pending = configForms.filter(entry => entry.dirty);
+            if (saving || !pending.length) return;
+            if (!checkValidity(pending.map(entry => entry.form))) return;
+            pending.sort((a, b) => !!a.options.redirectUrl - !!b.options.redirectUrl);
+
+            saving = true;
+            $('#saveBtn').disabled = $('#revertBtn').disabled = true;
+            $('#savebar').classList.add('busy');
+            let reconnectUrl = null;
+
+            const done = () => {
+                saving = false;
+                $('#saveBtn').disabled = $('#revertBtn').disabled = false;
+                $('#savebar').classList.remove('busy');
+            };
+            const saveNext = () => {
+                const entry = pending.shift();
+                if (!entry) {
+                    done();
+                    if (reconnectUrl) {
+                        // back on the same screen once the device answers again here
+                        if (reconnectUrl === location.origin) sessionStorage.setItem('screen', currentScreen);
+                        waitForDevice(reconnectUrl, 30000, 'Applying settings', 'The device is reconnecting to WiFi...');
+                    } else {
+                        showSaved();
+                        refreshSummary();
+                    }
+                    return;
+                }
+                entry.options.beforeSubmit?.(entry.form);
+                post('/sc' + entry.id, formToJson(entry.form),
+                    () => {
+                        entry.dirty = false;
+                        entry.changed.clear();
+                        if (entry.options.redirectUrl) reconnectUrl = entry.options.redirectUrl(entry.form) || location.origin;
+                        saveNext();
+                    },
+                    response => {
+                        done();
+                        toast('Configuration error' + (response ? ': ' + response : ''), true);
+                    }
+                );
+            };
+            saveNext();
+        }
+
+        // Name of a changed field for the save bar: its row label (without the small help), else its name
+        function fieldLabel(field) {
+            const label = (field.id && document.querySelector(`label[for="${field.id}"]`)) || field.closest('.row')?.querySelector('.k, .lbl');
+            return (label?.firstChild?.textContent || field.name || '').trim();
+        }
+
+        // Save bar: number and names of the changed settings; "Save & reconnect" when saving makes the device reconnect
+        function updateSaveBar() {
+            const dirty = configForms.filter(entry => entry.dirty);
+            if (!dirty.length) {
+                $('#savebar').hidden = true;
+                return;
+            }
+            const names = [...new Set(dirty.flatMap(entry => [...entry.changed]))];
+            $('#sbTitle').textContent = names.length === 1 ? '1 unsaved change' : `${names.length} unsaved changes`;
+            $('#sbText').textContent = names.join(', ');
+            $('#saveTxt').textContent = dirty.some(entry => entry.options.redirectUrl) ? 'Save & reconnect' : 'Save';
+            $('#savebar').classList.remove('done');
+            $('#savebar').hidden = false;
+        }
+
+        // Save bar after a save: green "Saved and applied", then hidden
+        function showSaved() {
+            document.querySelectorAll('#content .row.changed').forEach(row => row.classList.remove('changed'));
+            $('#sbTitle').textContent = 'Saved and applied';
+            $('#sbText').textContent = '';
+            $('#saveTxt').textContent = '✓';
+            $('#savebar').classList.add('done');
+            setTimeout(() => {
+                if (!configForms.some(entry => entry.dirty)) $('#savebar').hidden = true;
+            }, 1500);
+        }
+
+        // -- Option controls: a <select> in a .row is shown as -------------------------
+        //   segmented buttons : up to 3 short options (or data-ui="seg" on the select)
+        //   a picker          : longer lists (or data-ui="picker"), opened from the row; an option's data-help is shown under it
+        // data-ui="native" keeps the browser list. The hidden select keeps the value: forms are read and filled as before.
+        function enhanceSelect(select) {
+            const row = select.closest('.row');
+            if (!row || select.dataset.ui === 'native' || select.dataset.enhanced) return;
+            select.dataset.enhanced = '1';
+            const options = [...select.options];
+            const segmented = select.dataset.ui ? select.dataset.ui === 'seg' : options.length <= 3 && options.every(o => o.text.length <= 12);
+            select.hidden = true;
+
+            if (segmented) {
+                row.querySelector('.chev')?.remove();
+                const seg = document.createElement('div');
+                seg.className = 'seg';
+                seg.style.setProperty('--n', options.length);
+                seg.innerHTML = '<span class="thumb"></span>';
+                for (const option of options) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = option.text;
+                    button.addEventListener('click', () => {
+                        if (select.value === option.value) return;
+                        select.value = option.value;
+                        triggerEvent(select, 'change');
+                    });
+                    seg.append(button);
+                }
+                if (options.length > 2) row.classList.add('stack'); // label above, buttons full width
+                row.append(seg);
+                const sync = () => {
+                    seg.style.setProperty('--i', Math.max(select.selectedIndex, 0));
+                    seg.querySelectorAll('button').forEach((button, i) => button.classList.toggle('on', i === select.selectedIndex));
+                };
+                select.addEventListener('change', sync);
+                sync();
+                return;
+            }
+
+            const value = document.createElement('span');
+            value.className = 'val';
+            select.after(value);
+            row.classList.add('pick');
+            row.tabIndex = 0;
+            row.setAttribute('role', 'button');
+            const sync = () => value.textContent = select.selectedOptions[0]?.text || '';
+            select.addEventListener('change', sync);
+            sync();
+            const open = () => { if (!select.matches(':disabled')) openPicker(select, fieldLabel(select)); };
+            row.addEventListener('click', open);
+            row.addEventListener('keydown', evt => {
+                if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); open(); }
+            });
+        }
+
+        // Picker sheet of a select: options with a check on the current one,
+        // grouped when most read "Group/Name" (time zones: "Europe/Paris" under Europe), with a search field for long lists
+        let pickerSelect = null;
+        function openPicker(select, title) {
+            pickerSelect = select;
+            const options = [...select.options];
+            $('#sheetTitle').textContent = title;
+            $('#sheetSearch').hidden = options.length <= 10;
+            $('#sheetSearchIn').value = '';
+            renderPicker('');
+            $('#scrim').classList.add('show');
+            $('#sheet').classList.add('show');
+            if (!$('#sheetSearch').hidden && !isPhone()) $('#sheetSearchIn').focus();
+            else $('#sheetBody .on')?.focus();
+            $('#sheetBody .on')?.scrollIntoView({ block: 'center' });
+        }
+
+        function renderPicker(filter) {
+            const select = pickerSelect;
+            const body = $('#sheetBody');
+            body.replaceChildren();
+            const grouped = [...select.options].filter(o => o.text.includes('/')).length > select.options.length / 2;
+            let group = null, list = null;
+            for (const option of select.options) {
+                if (filter && !option.text.toLowerCase().includes(filter.toLowerCase())) continue;
+                const name = grouped && option.text.includes('/') ? option.text.split('/')[0] : '';
+                if (!list || name !== group) {
+                    group = name;
+                    if (name) body.append(Object.assign(document.createElement('div'), { className: 'gh', textContent: name }));
+                    else if (grouped) body.append(Object.assign(document.createElement('div'), { className: 'gh', innerHTML: '&nbsp;' }));
+                    list = Object.assign(document.createElement('div'), { className: 'list' });
+                    body.append(list);
+                }
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'row opt' + (option.value === select.value ? ' on' : '');
+                button.innerHTML = '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg><span class="lbl"></span>';
+                $('.lbl', button).textContent = name ? option.text.split('/').slice(1).join('/').replace(/_/g, ' ') : option.text;
+                if (option.dataset.help) $('.lbl', button).append(Object.assign(document.createElement('small'), { textContent: option.dataset.help }));
+                button.addEventListener('click', () => {
+                    if (select.value !== option.value) {
+                        select.value = option.value;
+                        triggerEvent(select, 'change');
+                    }
+                    closePicker();
+                });
+                list.append(button);
+            }
+            if (!body.firstChild) body.innerHTML = '<div class="gf">No match</div>';
+        }
+
+        function closePicker() {
+            $('#scrim').classList.remove('show');
+            $('#sheet').classList.remove('show');
+            pickerSelect = null;
+        }
+
+        $('#sheetSearchIn').addEventListener('input', evt => renderPicker(evt.target.value));
+        $('#sheetCancel').addEventListener('click', closePicker);
+        $('#scrim').addEventListener('click', closePicker);
+        document.addEventListener('keydown', evt => { if (evt.key === 'Escape' && pickerSelect) closePicker(); });
+
+        const isPhone = () => matchMedia('(max-width: 760px)').matches;
+
         function rssiToQuality(rssi) {
             return Math.min(Math.max(2 * (rssi + 100), 0), 100);
         }
 
         function rssiToColor(rssi) {
             return `hsl(${rssiToQuality(rssi) * 1.2}, 100%, 45%)`;
+        }
+
+        // Signal bars element (.bars in base.css) for a RSSI
+        function signalBars(rssi) {
+            const bars = document.createElement('span');
+            bars.className = 'bars';
+            bars.dataset.l = Math.ceil(rssiToQuality(rssi) / 25) || 1;
+            bars.innerHTML = '<i></i><i></i><i></i><i></i>';
+            return bars;
         }
 
         function fadeOut(el) {
@@ -283,10 +592,12 @@
             }, 2000);
         }
 
-        // Shows "Waiting for device... Ns" in el (after an optional message, trusted HTML),
+        // Shows the full-page "Waiting for device... Ns" overlay with a title and a text,
         // then redirects to url once the device answers, or after maxMs
-        function waitForDevice(el, url, maxMs, message = '') {
-            el.innerHTML = message + '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+        function waitForDevice(url, maxMs, title, text = '') {
+            $('#ovTitle').textContent = title;
+            $('#ovText').textContent = text;
+            $('#overlay').hidden = false;
             redirectWhenReachable(url, maxMs);
         }
 
@@ -296,8 +607,150 @@
             if (detail) el.append(` (${detail})`);
         }
 
+        // Shows a short message at the bottom of the window (red when isError)
+        function toast(message, isError) {
+            const el = document.createElement('div');
+            el.className = 'toast' + (isError ? ' err' : '');
+            el.textContent = message;
+            $('#toasts').append(el);
+            setTimeout(() => el.remove(), isError ? 6000 : 3000);
+        }
+
         function triggerEvent(el, eventName) {
             el.dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true }));
+        }
+
+        // Returns true when every field of forms is valid. Otherwise brings the first invalid field into view,
+        // shows the browser message on it and a toast naming it (the field may be in a part scrolled out of view).
+        function checkValidity(forms) {
+            for (const form of forms) {
+                const field = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+                if (!field) continue;
+                const label = (field.id && form.querySelector(`label[for="${field.id}"]`)?.textContent.trim()) || field.name;
+                field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => field.reportValidity(), 400); // once scrolled, so the message shows next to it
+                toast(`${label}: ${field.validationMessage}`, true);
+                return false;
+            }
+            return true;
+        }
+
+        // Modal confirmation dialog. options:
+        //   title, confirmLabel : texts
+        //   body                : a DOM node (build untrusted text with textContent), or plain text
+        //   danger              : red confirm button
+        // Returns a Promise resolved with true when confirmed, false when cancelled (Cancel, Esc)
+        function confirmDialog({ title, body, confirmLabel = 'Confirm', danger = false }) {
+            const dialog = $('#dialog');
+            $('#dlgTitle').textContent = title;
+            $('#dlgBody').replaceChildren(body instanceof Node ? body : document.createTextNode(body || ''));
+            $('#dlgOk').textContent = confirmLabel;
+            $('#dlgOk').className = danger ? 'red' : '';
+            dialog.showModal();
+            $('#dlgOk').focus();
+            // answered by the buttons or Esc (handlers replaced on each call, so they never pile up)
+            return new Promise(resolve => {
+                const answer = confirmed => evt => {
+                    evt.preventDefault();
+                    dialog.close();
+                    resolve(confirmed);
+                };
+                $('#dlgOk').onclick = answer(true);
+                $('#dlgCancel').onclick = answer(false);
+                dialog.oncancel = answer(false);
+            });
+        }
+
+        // Builds an element from trusted HTML (fixed markup), to fill its parts with textContent afterwards
+        function html(markup) {
+            const template = document.createElement('template');
+            template.innerHTML = markup.trim();
+            return template.content.firstElementChild;
+        }
+
+        // Password fields: the .eye button of a row (or the button of a .pw block) shows / hides its input
+        document.addEventListener('click', evt => {
+            const button = evt.target.closest('.row .eye, .pw button');
+            if (!button) return;
+            const input = button.closest('.row, .pw').querySelector('input');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        // -- Live data helpers (status parts) --------------------------------------
+
+        // Shows values as rows in grid (a .live-grid element): one row per key, created on first sight,
+        // a value flashes when it changes
+        function updateTiles(grid, values) {
+            for (const [key, value] of Object.entries(values)) {
+                let tile = [...grid.children].find(el => el.dataset.key === key);
+                if (!tile) {
+                    tile = document.createElement('div');
+                    tile.className = 'row';
+                    tile.dataset.key = key;
+                    tile.innerHTML = '<span class="lbl"></span><span class="val"></span>';
+                    tile.firstChild.textContent = key;
+                    grid.append(tile);
+                }
+                const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                if (tile.lastChild.textContent !== text) {
+                    tile.lastChild.textContent = text;
+                    tile.classList.add('flash');
+                    requestAnimationFrame(() => requestAnimationFrame(() => tile.classList.remove('flash')));
+                }
+            }
+        }
+
+        // "updated just now" / "updated 12s ago" in el, refreshed every second.
+        // Returns { touch() : call on each update, stop() : call when leaving the page }
+        function ageLabel(el) {
+            let last = 0;
+            const show = () => {
+                if (!last) return;
+                const seconds = Math.floor((Date.now() - last) / 1000);
+                el.textContent = seconds < 2 ? 'updated just now' : `updated ${seconds}s ago`;
+            };
+            const timer = setInterval(show, 1000);
+            return {
+                touch() { last = Date.now(); show(); },
+                stop() { clearInterval(timer); },
+            };
+        }
+
+        // Live / Paused pill: <span class="pill"><span class="dot"></span><span>Waiting</span></span>
+        function setLiveState(pill, isLive) {
+            pill.lastElementChild.textContent = isLive ? 'Live' : 'Paused';
+            pill.classList.toggle('ok', isLive);
+            pill.classList.toggle('live', isLive);
+        }
+
+        // Receives the server-sent events of part id (/statusEvt<id>) as parsed JSON, while the browser tab is visible.
+        // livePill (optional) shows the connection state. Returns the cleanup function to return from the part.
+        function connectEvents(id, onMessage, livePill) {
+            let source;
+            const setState = isLive => { if (livePill) setLiveState(livePill, isLive); };
+            const close = () => {
+                if (source && source.readyState !== EventSource.CLOSED) source.close();
+                setState(false);
+            };
+            const connect = () => {
+                if (!window.EventSource || document.hidden) return;
+                if (source && source.readyState !== EventSource.CLOSED) return;
+                source = new EventSource('/statusEvt' + id);
+                source.addEventListener('open', () => setState(true));
+                source.addEventListener('error', () => setState(false));
+                source.addEventListener('message', evt => {
+                    setState(true);
+                    onMessage(JSON.parse(evt.data));
+                });
+            };
+            const onVisibilityChange = () => document.hidden ? close() : connect();
+
+            document.addEventListener('visibilitychange', onVisibilityChange);
+            connect();
+            return () => {
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+                close();
+            };
         }
     </script>
 
@@ -305,36 +758,222 @@
 <!-- PAGES -->
 
     <script>
-        // Side menu toggle (small screens): hamburger opens/closes it, clicking the page closes it
-        function toggleMenu(evt) {
-            evt.preventDefault();
-            $('#layout').classList.toggle('active');
-        }
-        $('#menuLink').addEventListener('click', toggleMenu);
-        $('#main').addEventListener('click', (evt) => {
-            if ($('#layout').classList.contains('active')) toggleMenu(evt);
-        });
+        const model = document.querySelector("meta[name='description']").content;
 
-        function handleMenuClick(menuId, headerText, loadFn) {
-            const menuElement = $(menuId);
-            menuElement.addEventListener("click", (evt) => {
-                evt.preventDefault();
-                unloadPage();
-                document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
-                $('#layout').classList.remove('active');
-                menuElement.classList.add("pure-menu-selected");
-                $("#mainHeader").textContent = headerText;
-                loadFn();
+        // The logo doubles as favicon
+        $('#favicon').href = 'data:image/svg+xml,' + encodeURIComponent($('#logo').innerHTML);
+        $('#host').textContent = location.host;
+        document.querySelectorAll('.rescueSsid').forEach(el => el.textContent = model); // access point SSID (DEFAULT_AP_SSID)
+
+        // A copy of the logo for another place of the page (its gradient gets its own id:
+        // a gradient defined in a hidden element, like the list pane on phones, is not drawn)
+        let logoCopies = 0;
+        function logoIcon() {
+            const icon = document.createElement('div');
+            icon.className = 'appicon';
+            icon.innerHTML = $('#logo').innerHTML.replaceAll('dclogo-bg', 'dclogo-bg' + (++logoCopies));
+            return icon;
+        }
+
+        // List pane subtitle: "hostname · IP" from the WiFi status (/gs1)
+        function setIdentity(wifiStatus) {
+            const ip = wifiStatus.stationip || wifiStatus.apip;
+            $('#host').textContent = [wifiStatus.hostname, ip].filter(Boolean).join(' · ') || location.host;
+        }
+
+        // "42s", "7m", "4h 07m", "12d 4h 07m" from seconds
+        function longDuration(seconds) {
+            if (typeof seconds !== 'number') return seconds ?? ''; // older firmware: already formatted text
+            const d = Math.floor(seconds / 86400), h = Math.floor(seconds / 3600) % 24, m = Math.floor(seconds / 60) % 60;
+            const mm = String(m).padStart(2, '0') + 'm';
+            if (d) return `${d}d ${h}h ${mm}`;
+            if (h) return `${h}h ${mm}`;
+            return seconds < 60 ? seconds + 's' : m + 'm';
+        }
+
+        // "12d 4h", "4h 07m", "7m" from seconds
+        function shortDuration(seconds) {
+            if (typeof seconds !== 'number') return seconds ?? ''; // older firmware: already formatted text
+            const d = Math.floor(seconds / 86400), h = Math.floor(seconds / 3600) % 24, m = Math.floor(seconds / 60) % 60;
+            if (d) return `${d}d ${h}h`;
+            if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+            return `${m}m`;
+        }
+
+        // List pane values: connection state, crashes, network, timezone, firmware version.
+        // Loaded at start and after each save.
+        function refreshSummary() {
+            getJSON('/gs0', core => {
+                core ??= {};
+                $('#vFirmware').textContent = core.version || '';
+                $('#vSystem').textContent = core.timezone || '';
+                const crashes = core.crashcount > 0;
+                $('#vStatus').innerHTML = crashes ? '<span class="pill err"></span>' : '';
+                if (crashes) $('#vStatus .pill').textContent = core.crashcount + (core.crashcount > 1 ? ' crashes' : ' crash');
+                if (core.uptime !== undefined) $('#stateText').dataset.uptime = shortDuration(core.uptime);
+                showState();
+            });
+            getJSON('/gs1', wifi => {
+                wifi ??= {};
+                setIdentity(wifi);
+                $('#vWifi').textContent = wifi.ssid || (wifi.apmode === 'on' ? 'Not connected' : 'Not set');
+                $('#stateText').dataset.state = wifi.stastate === 'connected' ? 'online' : wifi.apmode === 'on' ? 'ap' : (wifi.stastate || '');
+                showState();
             });
         }
 
-        handleMenuClick("#menuStatus", "Status", () => loadPage('tpl-status'));
-        handleMenuClick("#menuConfig", "Config", () => loadPage('tpl-config'));
-        handleMenuClick("#menuFirmware", "Firmware", () => loadPage('tpl-fw'));
+        function showState() {
+            const { state, uptime } = $('#stateText').dataset;
+            const [dot, text] = {
+                online: ['ok', 'Online'],
+                ap: ['warn', 'Access point mode'],
+                connecting: ['warn', 'Connecting'],
+                lost: ['err', 'Connection lost'],
+                waitretry: ['warn', 'Waiting to retry'],
+            }[state] || ['', 'Online'];
+            $('#stateDot').className = 'dot ' + dot;
+            $('#stateText').textContent = text + (uptime ? ' · up ' + uptime : '');
+        }
 
-        const savedTab = sessionStorage.getItem('activeTab');
-        sessionStorage.removeItem('activeTab');
-        triggerEvent($(savedTab) || $('#menuStatus'), 'click');
+        // Theme: Auto follows the OS, Light / Dark force it (remembered by this browser, applied in <head>)
+        function showTheme() {
+            document.querySelectorAll('#themePick button').forEach(b => b.classList.toggle('on', b.dataset.t === (document.documentElement.dataset.theme || '')));
+        }
+        document.querySelectorAll('#themePick button').forEach(button => button.addEventListener('click', () => {
+            document.documentElement.dataset.theme = button.dataset.t;
+            try { localStorage.setItem('theme', button.dataset.t); } catch (e) { }
+            showTheme();
+        }));
+        showTheme();
+
+        // -- Screens ------------------------------------------------------------------
+        // Each screen shows one page (a template of parts built by pio_pre_build_spa.py)
+        const screens = {
+            status: { title: 'Status', tpl: 'tpl-status' },
+            wifi: { title: 'WiFi', tpl: 'tpl-wifi' },
+            system: { title: 'Date & time', tpl: 'tpl-system' },
+            app: { title: 'Application', tpl: 'tpl-app' },
+            firmware: { title: 'Firmware', tpl: 'tpl-fw' },
+        };
+        let currentScreen = null;
+
+        // Application row: only when the application has its own settings,
+        // named by the data-title attribute of its first element (e.g. <form id="f" data-title="Stove">)
+        const appTemplate = document.getElementById('tpl-app');
+        const appFirst = appTemplate?.content.querySelector('[data-part] > *');
+        $('#appRow').hidden = !appFirst;
+        if (appFirst?.dataset.title) {
+            screens.app.title = appFirst.dataset.title;
+            $('#appRow .lbl').textContent = appFirst.dataset.title;
+        }
+
+        // Leaving a screen with unsaved changes
+        function confirmDiscard() {
+            const body = html('<div>Changes in <b></b> have not been saved and will be lost.</div>');
+            $('b', body).textContent = screens[currentScreen]?.title || 'Settings';
+            return confirmDialog({ title: 'Discard unsaved changes?', body, confirmLabel: 'Discard', danger: true });
+        }
+        const hasChanges = () => configForms.some(entry => entry.dirty);
+
+        async function openScreen(name) {
+            if (!screens[name]) return;
+            if (name !== currentScreen && hasChanges() && !await confirmDiscard()) return;
+            unloadPage();
+            currentScreen = name;
+            document.querySelectorAll('[data-go]').forEach(row => row.classList.toggle('sel', row.dataset.go === name));
+
+            const content = $('#content');
+            const title = document.createElement('h1');
+            title.className = 'big';
+            title.textContent = screens[name].title;
+            const body = document.createElement('div');
+            body.className = 'screen-body';
+            content.append(title, body);
+            if (name === 'status') content.classList.add('status');
+            loadPage(screens[name].tpl, body);
+
+            $('#barTitle').textContent = screens[name].title;
+            document.body.classList.add('pushed');
+            $('#detailPane').scrollTop = 0;
+            scrollTo(0, 0);
+            void content.offsetWidth; // replay the slide-in
+            content.classList.add('in');
+        }
+
+        // Phones: back to the list (the screen is closed: no live data or polling left running)
+        $('#back').addEventListener('click', async () => {
+            if (hasChanges() && !await confirmDiscard()) return;
+            unloadPage();
+            currentScreen = null;
+            document.body.classList.remove('pushed');
+            scrollTo(0, 0);
+        });
+
+        document.querySelectorAll('[data-go]').forEach(row => row.addEventListener('click', () => openScreen(row.dataset.go)));
+        $('#saveBtn').addEventListener('click', saveSettings);
+        // Revert: the screen is loaded again with the saved values
+        $('#revertBtn').addEventListener('click', () => {
+            configForms.forEach(entry => entry.dirty = false);
+            openScreen(currentScreen);
+        });
+
+        // Large title -> small title in the nav bar once scrolled (panes scroll on large screens, the window on phones)
+        for (const pane of document.querySelectorAll('.pane')) {
+            const bar = $('.bar', pane);
+            const onScroll = () => bar.classList.toggle('scrolled', (isPhone() ? scrollY : pane.scrollTop) > 40);
+            pane.addEventListener('scroll', onScroll);
+            addEventListener('scroll', onScroll);
+        }
+
+        // -- Restart / rescue mode ----------------------------------------------------
+        function reboot(url, title, text, targetUrl) {
+            $('#rebootBtn').disabled = $('#rescueBtn').disabled = true;
+            post(url, null, function () {
+                if (targetUrl === location.origin && currentScreen) sessionStorage.setItem('screen', currentScreen);
+                waitForDevice(targetUrl, 30000, title, text);
+            }, function () {
+                toast('Reboot request failed', true);
+                $('#rebootBtn').disabled = $('#rescueBtn').disabled = false;
+            });
+        }
+
+        $('#rebootBtn').addEventListener('click', async () => {
+            if (!await confirmDialog({ title: `Restart ${model}?`, body: 'The module reboots and is back in a few seconds. Settings are kept.', confirmLabel: 'Restart' })) return;
+            reboot('/rbt', 'Restarting', 'The device is rebooting...', location.origin);
+        });
+
+        $('#rescueBtn').addEventListener('click', async () => {
+            const body = html(`<div style="display:grid;gap:12px">
+                <div>The module restarts once with default settings and leaves your network.</div>
+                <ol class="warn-box">
+                    <li>Connect your phone or computer to the WiFi network <b></b> (default access point password).</li>
+                    <li>Open <b>192.168.4.1</b>: this page goes there by itself once you are connected.</li>
+                    <li>Fix the settings, or restart the module to get the saved settings back.</li>
+                </ol>
+            </div>`);
+            $('.warn-box b', body).textContent = model;
+            if (!await confirmDialog({ title: 'Restart in rescue mode?', body, confirmLabel: 'Rescue', danger: true })) return;
+            reboot('/rbt?rescue=true', 'Rescue mode', `Connect to the ${model} WiFi network: this page will then open 192.168.4.1.`, 'http://192.168.4.1');
+        });
+
+        // -- Start ----------------------------------------------------------------------
+        // Back after a save or a restart: same screen as before.
+        // Otherwise: WiFi when the module runs its access point (nothing configured, rescue mode, WiFi unreachable...);
+        // else Status next to the list on large screens, the list alone on phones.
+        refreshSummary();
+        const savedScreen = sessionStorage.getItem('screen');
+        sessionStorage.removeItem('screen');
+        if (screens[savedScreen]) {
+            openScreen(savedScreen);
+        } else {
+            getJSON('/gs1',
+                wifi => {
+                    if (wifi?.apmode === 'on') openScreen('wifi');
+                    else if (!isPhone()) openScreen('status');
+                },
+                () => { if (!isPhone()) openScreen('status'); }
+            );
+        }
     </script>
 </body>
 

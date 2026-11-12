@@ -5,7 +5,6 @@
 #include "Version.h" //for BASE_VERSION define
 
 #include "data/index.html.gz.h"
-#include "data/pure-min.css.gz.h"
 #include "data/base.css.gz.h"
 
 const char *Core::getSerialNumber()
@@ -44,9 +43,9 @@ void Core::fillStatusJSON(JsonVariant json)
 {
   // 64-bit time since boot: millis() is 32-bit and wraps after ~49.7 days
 #ifdef ESP8266
-  uint32_t minutes = micros64() / 60000000ULL;
+  uint32_t uptime = micros64() / 1000000ULL;
 #else
-  uint32_t minutes = esp_timer_get_time() / 60000000ULL;
+  uint32_t uptime = esp_timer_get_time() / 1000000ULL;
 #endif
 
   json[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
@@ -54,9 +53,7 @@ void Core::fillStatusJSON(JsonVariant json)
   json[F("sn")] = getSerialNumber();
   json[F("baseversion")] = BASE_VERSION;
   json[F("version")] = VERSION;
-  char uptime[20];
-  snprintf_P(uptime, sizeof(uptime), PSTR("%ud%uh%um"), (unsigned)(minutes / 1440), (unsigned)(minutes / 60 % 24), (unsigned)(minutes % 60));
-  json[F("uptime")] = uptime;
+  json[F("uptime")] = uptime; // seconds since boot, formatted by the web page
   
   char localtimeBuf[24];
   if (TimeManager::getLocalTime(localtimeBuf, sizeof(localtimeBuf)) > 0) {
@@ -66,6 +63,14 @@ void Core::fillStatusJSON(JsonVariant json)
   }
   
   json[F("freeheap")] = ESP.getFreeHeap();
+
+  // timezone display name (config format: "DisplayName|POSIX_TZ_STRING")
+  char tzName[sizeof(ntpTimezone)];
+  strlcpy(tzName, ntpTimezone, sizeof(tzName));
+  char *pipe = strchr(tzName, '|');
+  if (pipe)
+    *pipe = '\0';
+  json[F("timezone")] = tzName;
 #ifdef ESP8266
   json[F("freestack")] = ESP.getFreeContStack();
   json[F("flashsize")] = ESP.getFlashChipRealSize();
@@ -75,6 +80,7 @@ void Core::fillStatusJSON(JsonVariant json)
 #else
   json[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
   json[F("crashcount")] = 0;
+  json[F("heapsize")] = ESP.getHeapSize();
 #endif
 }
 bool Core::appInit(bool reInit /* = false */)
@@ -121,15 +127,6 @@ void Core::appInitWebServer(WebServer &server)
             });
 
   // Ressources URLs
-  server.on(F("/pure-min.css"), HTTP_GET,
-            [&server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/css"), puremincssgz, sizeof(puremincssgz));
-            });
-
   server.on(F("/base.css"), HTTP_GET,
             [&server]()
             {

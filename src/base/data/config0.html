@@ -1,34 +1,11 @@
-<h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
-
-<form class="pure-form pure-form-aligned" id='f'>
-    <fieldset>
-        <div class="pure-control-group">
-            <label for="tz">NTP Timezone</label>
-            <select id='tz' name='tz'>
-            </select>
-            <span class="pure-form-message-inline">Select your timezone</span>
+<form id="f">
+    <div class="group">
+        <div class="gh">Clock<span id="l" class="ld">Loading...</span></div>
+        <div class="list">
+            <div class="row"><label class="lbl" for="tz">Time zone</label><select class="in" id="tz" name="tz"></select><span class="chev">›</span></div>
         </div>
-        <div class="pure-controls">
-            <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
-        </div>
-    </fieldset>
-</form>
-<span id='r'></span>
-
-<form class="pure-form pure-form-aligned" id='rebootForm'>
-    <fieldset>
-        <div class="pure-controls">
-            <input type='submit' id='subRbt' value='Reboot' class="pure-button pure-button-primary btn-warn">
-        </div>
-    </fieldset>
-</form>
-<form class="pure-form pure-form-aligned" id='rescueForm'>
-    <fieldset>
-        <div class="pure-controls">
-            <input type='submit' id='subRbtRsc' value='Reboot in Rescue Mode'
-                class="pure-button pure-button-primary btn-err">
-        </div>
-    </fieldset>
+        <div class="gf">Local time is synchronised over the internet (NTP) once WiFi is connected.</div>
+    </div>
 </form>
 
 <script>
@@ -81,10 +58,10 @@
             'Pacific/Honolulu|HST10',
             'UTC|UTC0',
         ];
-        
+
         const select = $('#tz', root);
         const defaultValue = 'Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3';
-        
+
         TIMEZONE_DATA.forEach(tz => {
             const [displayName, posixString] = tz.split('|');
             const option = document.createElement('option');
@@ -100,30 +77,4 @@
     // Timezone options must exist before the configuration is loaded into the form
     populateTimezones();
     configForm(root, id);
-
-    function rebootFailed() {
-        showError($('#r', root));
-        $('#rebootForm', root).reset();
-        $('#rescueForm', root).reset();
-        $('#subRbt', root).disabled = false;
-        $('#subRbtRsc', root).disabled = false;
-    }
-
-    function reboot(event, url, successMessage, targetUrl) {
-        event.preventDefault();
-        $('#subRbt', root).disabled = true;
-        $('#subRbtRsc', root).disabled = true;
-
-        post(url, null, function () {
-            waitForDevice($('#r', root), targetUrl, 30000, `<h3><span class="ok">Done</span> ${successMessage}</h3>`);
-        }, rebootFailed);
-    }
-
-    $("#rebootForm", root).addEventListener('submit', function (evt) {
-        reboot(evt, '/rbt', 'System will reboot shortly.', location.origin);
-    });
-
-    $("#rescueForm", root).addEventListener('submit', function (evt) {
-        reboot(evt, '/rbt?rescue=true', 'System will reboot shortly in RESCUE MODE. You\'ll need to connect to module WiFi.', 'http://192.168.4.1');
-    });
 </script>

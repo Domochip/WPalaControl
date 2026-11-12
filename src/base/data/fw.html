@@ -1,62 +1,49 @@
-<h2>Current Firmware<span id="loadingCurrent" class="ld">Loading...</span></h2>
-<div class="pure-form pure-form-aligned strong-labels">
-    <div class="pure-control-group">
-        <label>Version</label>
-        <span data-k="installed_version"></span>
+<div class="upd">
+    <div class="top" id="top">
+        <!-- the logo is added in front by the script -->
+        <div><h3 id="headline">Checking for updates...</h3><div class="meta" id="meta"></div></div>
     </div>
-</div>
-
-<h2>Online Update<span id="loadingOnline" class="ld">Loading...</span></h2>
-<div class="pure-form pure-form-aligned strong-labels">
+    <span hidden data-k="installed_version"></span><span hidden data-k="latest_version"></span>
     <!-- reason sent by the firmware when no update info is available -->
-    <div class="pure-control-group" data-show="error" style="display:none">
-        <label>Unavailable</label>
-        <span data-k="error" class="err"></span>
+    <div class="notes" data-show="error" style="display:none">
+        <span class="err">Online update unavailable:</span> <span data-k="error"></span>
     </div>
     <!-- release details: shown only when update info is available (latest_version is sent) -->
-    <div data-show="latest_version" style="display:none">
-    <div class="pure-control-group">
-        <label>Latest Version</label>
-        <span data-k="latest_version"></span>
+    <div class="notes" data-show="latest_version" style="display:none">
+        <h4 data-k="title"></h4>
+        <div class="sum" id="summary"></div>
+        <a class="more" data-k="release_url" target="_blank">Release notes on GitHub</a>
     </div>
-    <div class="pure-control-group">
-        <label>Title</label>
-        <span data-k="title" class="inline-block"></span>
+    <button class="cta" id="updateButton" disabled hidden>Install update</button>
+    <!-- online update progress (each update path has its own bar) -->
+    <div class="progress" id="onlineProgress" hidden>
+        <div class="track"><i></i></div>
+        <div class="txt-row"><span class="txt"></span><span class="pct">0%</span></div>
     </div>
-    <div class="pure-control-group">
-        <label>Release Date</label>
-        <span data-k="release_date"></span>
-    </div>
-    <div class="pure-control-group">
-        <label class="align-top">Summary</label>
-        <span data-k="release_summary" class="inline-block" style="white-space: pre-line"></span>
-    </div>
-
-    <div class="pure-control-group">
-        <label>URL</label>
-        <a data-k="release_url" target="_blank"></a>
-    </div>
-    </div>
-    <div class="pure-controls">
-        <button class="pure-button pure-button-primary btn-ok" id="refreshButton">Refresh</button>
-        <button class="pure-button pure-button-primary btn-warn" id="updateButton"
-            disabled>Update</button>
-        &nbsp;&nbsp;<span id='updateResult'></span>
-    </div>
+    <button class="link-btn" id="refreshButton">Check again</button>
 </div>
 
-<h2>Manual Update</h2>
-<form class="pure-form pure-form-aligned strong-labels" id="f">
-    <fieldset>
-        <div class="pure-control-group">
-            <label for="firmwareFile">Firmware File</label>
-            <input type='file' name='fi' id='firmwareFile' accept='.bin' required>
+<form id="f">
+    <!-- the whole group accepts a dropped file -->
+    <div class="group" id="drop">
+        <div class="gh">Manual update</div>
+        <div class="list">
+            <label class="row blue" id="pickRow">
+                <input type="file" name="fi" id="firmwareFile" accept=".bin" hidden>
+                <span class="lbl">Install from a file...</span>
+            </label>
+            <div class="row" id="fileChip" hidden>
+                <span class="lbl"><span id="fileName"></span><small id="fileMeta"></small></span>
+                <button type="submit" id="uploadButton" class="pill-btn">Flash</button>
+            </div>
+            <!-- manual upload progress -->
+            <div class="progress" id="uploadProgress" hidden>
+                <div class="track"><i></i></div>
+                <div class="txt-row"><span class="txt"></span><span class="pct">0%</span></div>
+            </div>
         </div>
-        <div class="pure-controls">
-            <button type='submit' id='uploadButton' class="pure-button pure-button-primary">Upload Firmware</button>
-            &nbsp;&nbsp;<span id='uploadResult'></span>
-        </div>
-    </fieldset>
+        <div class="gf">Or drop the file here. Expected: a .bin built for this module, named <span class="mono" id="expectedName"></span>. The module restarts when done; settings are kept.</div>
+    </div>
 </form>
 
 <script>
@@ -64,15 +51,11 @@
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('', single-part page, not used here)
 
-    function isValidFirmwareFile() {
-        const fileInput = $('#firmwareFile', root);
-        const model = document.querySelector("meta[name='description']").content;
-        if (!fileInput || !model) {
-            return false;
-        }
+    const model = document.querySelector("meta[name='description']").content;
+    $('#expectedName', root).textContent = model + '.x.y.z.bin';
+    $('#top', root).prepend(logoIcon());
 
-        const fileName = fileInput.value.split(/(\\|\/)/g).pop();
-
+    function isValidFirmwareFile(file) {
         // Define the patterns for the filename
         const esp32Pattern = '(\\.esp32)?';
         const versionPattern = '(\\.\\d+\\.\\d+\\.\\d+)?';
@@ -86,11 +69,7 @@
         }
 
         // Check if the filename matches either pattern
-        if (!filenamePattern1.test(fileName) && (!filenamePattern2 || !filenamePattern2.test(fileName))) {
-            alert(`You didn't select a valid Firmware file for ${model} (${model}.1.2.3.bin expected)`);
-            return false;
-        }
-        return confirm("Please do not power off the device during the update process.");
+        return filenamePattern1.test(file.name) || (filenamePattern2 && filenamePattern2.test(file.name));
     }
 
     // Compares two "x.y.z" versions: returns -1 if a < b, 1 if a > b, 0 if equal
@@ -107,83 +86,166 @@
         return 0;
     }
 
+    // Asks confirmation before flashing, in a dialog summarizing the change:
+    //   target  : version to install ('' when unknown, e.g. a file without version in its name)
+    //   details : [[label, value], ...] shown under the versions (values set as plain text)
+    // Returns a Promise of true when confirmed
+    function confirmFlash(title, target, details, confirmLabel) {
+        const installed = $('[data-k="installed_version"]', root).textContent;
+        const body = html(`<div>
+            <div class="vchange"><span class="from"></span><span>&rarr;</span><span class="to"></span><span class="pill"></span></div>
+            <dl class="kv"></dl>
+            <ul class="warn-box">
+                <li>Keep the module powered on until it restarts: an interrupted flash may need a cable to recover.</li>
+                <li>Keep this page open: it reloads by itself once the module is back (about a minute).</li>
+                <li>Settings are kept.</li>
+            </ul>
+        </div>`);
+        body.style.cssText = 'display:grid;gap:14px';
+        $('.from', body).textContent = installed || 'current';
+        $('.to', body).textContent = target || '?';
+
+        // upgrade / reinstall / downgrade, compared with the installed version
+        const pill = $('.pill', body);
+        if (target && installed) {
+            const order = compareVersions(target, installed);
+            pill.textContent = order > 0 ? 'Upgrade' : order < 0 ? 'Downgrade' : 'Reinstall';
+            pill.classList.add(order > 0 ? 'ok' : order < 0 ? 'warn' : 'off');
+        } else {
+            pill.textContent = 'Unknown version';
+            pill.classList.add('warn');
+        }
+
+        for (const [label, value] of details) {
+            const row = html('<div><dt></dt><dd></dd></div>');
+            row.firstChild.textContent = label;
+            row.lastChild.textContent = value;
+            $('.kv', body).append(row);
+        }
+
+        return confirmDialog({ title, body, confirmLabel });
+    }
+
+    let busy = false; // an update or upload is running: everything stays disabled
+
     function disableAllButtons() {
+        busy = true;
         $('#refreshButton', root).disabled = true;
         $('#updateButton', root).disabled = true;
-        $('#firmwareFile', root).readOnly = true;
         $('#uploadButton', root).disabled = true;
     }
 
     function resetButtons() {
-        const refreshButton = $('#refreshButton', root);
-        refreshButton.innerHTML = 'Refresh';
-        refreshButton.disabled = false;
+        busy = false;
+        $('#refreshButton', root).disabled = false;
+        $('#uploadButton', root).disabled = false;
 
-        const installedVersion = $('[data-k="installed_version"]', root).textContent;
         const latestVersion = $('[data-k="latest_version"]', root).textContent;
         const updateButton = $('#updateButton', root);
-        if (compareVersions(latestVersion, installedVersion) > 0) {
-            updateButton.disabled = false;
-            updateButton.innerHTML = 'Update';
-        } else {
-            updateButton.disabled = true;
-            updateButton.innerHTML = latestVersion ? 'Up to date' : 'Update';
-        }
+        updateButton.hidden = !isNewer();
+        updateButton.disabled = !isNewer();
+        updateButton.textContent = 'Install ' + latestVersion;
+    }
 
-        const uploadButton = $('#uploadButton', root);
-        uploadButton.innerHTML = 'Upload Firmware';
-        uploadButton.disabled = false;
-        $('#firmwareFile', root).readOnly = false;
+    // a newer version than the installed one is available
+    function isNewer() {
+        const installedVersion = $('[data-k="installed_version"]', root).textContent;
+        const latestVersion = $('[data-k="latest_version"]', root).textContent;
+        return !!latestVersion && compareVersions(latestVersion, installedVersion) > 0;
+    }
+
+    // Headline of the update card: "WBase 2.16.0" + "Released 4 Nov 2026 · installed 2.15.3" when newer,
+    // "WBase 2.15.3" + "Up to date" otherwise
+    function showHeadline(releaseDate) {
+        const installed = $('[data-k="installed_version"]', root).textContent;
+        const latest = $('[data-k="latest_version"]', root).textContent;
+        if (isNewer()) {
+            $('#headline', root).textContent = `${model} ${latest}`;
+            $('#meta', root).textContent = `Released ${releaseDate} · installed ${installed}`;
+        } else {
+            $('#headline', root).textContent = `${model} ${installed}`;
+            $('#meta', root).textContent = latest ? 'Up to date' : 'Installed version';
+        }
+    }
+
+    // progress: the .progress block of the running update (#onlineProgress or #uploadProgress)
+    function showProgress(progress, text, percent) {
+        progress.hidden = false;
+        $('.txt', progress).textContent = text;
+        $('.pct', progress).textContent = percent + '%';
+        $('.track i', progress).style.width = percent + '%';
+    }
+
+    function hideProgress(progress) {
+        progress.hidden = true;
+    }
+
+    const onlineProgress = $('#onlineProgress', root);
+    const uploadProgress = $('#uploadProgress', root);
+
+    // Release summary: a bullet list when every line is a "- " or "* " item, plain text otherwise
+    function showSummary(text) {
+        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+        const summary = $('#summary', root);
+        if (lines.length && lines.every(line => /^[-*] /.test(line))) {
+            const list = document.createElement('ul');
+            for (const line of lines) list.append(Object.assign(document.createElement('li'), { textContent: line.substring(2) }));
+            summary.replaceChildren(list);
+        } else {
+            summary.textContent = text; // line breaks kept by 'white-space: pre-line' (.sum)
+        }
     }
 
     function getLatestUpdateInfo() {
-
         disableAllButtons();
-
-        const refreshButton = $("#refreshButton", root);
-
-        // Show loading animation
-        refreshButton.innerHTML = '<span class="spinner"></span> Refreshing...';
+        $('#refreshButton', root).textContent = 'Checking...';
+        $('#headline', root).textContent = 'Checking for updates...';
+        $('#meta', root).textContent = '';
+        $('#updateButton', root).hidden = true;
 
         // clear previous values
-        fillStatus(root, { error: '', latest_version: '', title: '', release_date: '', release_summary: '', release_url: '' });
+        fillStatus(root, { error: '', latest_version: '', title: '', release_summary: '', release_url: '' });
+        $('#summary', root).replaceChildren();
         $('[data-k="release_url"]', root).removeAttribute('href');
 
         getJSON('/glui',
             (updateInfo) => {
-                // release summary line breaks are kept by its 'white-space: pre-line' style
                 fillStatus(root, updateInfo);
-                // make the release url a working link
+                // "2026-11-03" -> "3 Nov 2026"
+                const date = new Date(updateInfo.release_date);
+                const releaseDate = isNaN(date) ? (updateInfo.release_date || '') : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                showSummary(updateInfo.release_summary || '');
+                // the link text stays "Release notes on GitHub", the url becomes its target
+                $('[data-k="release_url"]', root).textContent = 'Release notes on GitHub';
                 if (updateInfo.release_url) $('[data-k="release_url"]', root).href = updateInfo.release_url;
-
-                // Update buttons
+                $('#refreshButton', root).textContent = 'Check again';
                 resetButtons();
-
-                fadeOut($("#loadingCurrent", root));
-                fadeOut($("#loadingOnline", root));
-
+                showHeadline(releaseDate);
             },
             () => {
-
+                $('#headline', root).textContent = 'Update check failed';
+                $('#meta', root).textContent = 'The module did not answer';
+                $('#refreshButton', root).textContent = 'Check again';
                 resetButtons();
-                ['#loadingCurrent', '#loadingOnline'].forEach(sel => {
-                    showError($(sel, root));
-                });
             }
         );
     }
     getLatestUpdateInfo();
-    $("#refreshButton", root).addEventListener('click', () => { getLatestUpdateInfo(); });
+    $("#refreshButton", root).addEventListener('click', getLatestUpdateInfo);
 
-    $("#updateButton", root).addEventListener('click', (evt) => {
-        evt.preventDefault();
+    $("#updateButton", root).addEventListener('click', async () => {
+        const version = $('[data-k="latest_version"]', root).textContent;
+        const confirmed = await confirmFlash('Install update', version, [
+            ['Release', $('[data-k="title"]', root).textContent],
+            ['Source', 'GitHub, downloaded by the module'],
+        ], 'Install ' + version);
+        if (!confirmed || busy) return;
         disableAllButtons();
-
-        $('#updateButton', root).innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
+        showProgress(onlineProgress, 'Downloading from GitHub and flashing...', 0);
 
         fetch('/update', {
             method: 'POST',
-            body: $('[data-k="latest_version"]', root).textContent
+            body: version
         })
             .then(response => {
                 if (!response.ok) {
@@ -196,10 +258,10 @@
                 function processChunk({ done, value }) {
                     if (done) {
                         if (success) {
-                            $('#progress', root).innerHTML = 'Rebooting...';
-                            waitForDevice($('#updateResult', root), location.origin, 60000);
+                            waitForDevice(location.origin, 60000, 'Installing ' + version, 'The device is rebooting into the new firmware...');
                         } else {
-                            showError($('#updateResult', root), message);
+                            hideProgress(onlineProgress);
+                            toast('Update failed' + (message ? ': ' + message : ''), true);
                             resetButtons();
                         }
                         return;
@@ -208,7 +270,7 @@
                     const chunks = chunkAccumulator.split('\n');
                     chunkAccumulator = chunks.pop();
                     chunks.forEach(chunk => {
-                        if (chunk.startsWith('p:')) $('#progress', root).innerHTML = `${parseInt(chunk.substring(2))}%`;
+                        if (chunk.startsWith('p:')) showProgress(onlineProgress, 'Downloading from GitHub and flashing...', parseInt(chunk.substring(2)));
                         else if (chunk.startsWith('s:')) success = chunk.substring(2) === 'true';
                         else if (chunk.startsWith('m:')) message = chunk.substring(2);
                     });
@@ -217,38 +279,81 @@
                 reader.read().then(processChunk); // Start reading chunks
             })
             .catch(error => {
-                showError($('#updateResult', root), error.message);
+                hideProgress(onlineProgress);
+                toast('Update failed: ' + error.message, true);
                 resetButtons();
             });
     });
 
-    $("#f", root).addEventListener('submit', (evt) => {
-        evt.preventDefault();
-        if (!isValidFirmwareFile()) return;
-        disableAllButtons();
+    // Manual update: file chosen by click or drag & drop (on the whole group), checked by name, then uploaded
+    const fileInput = $('#firmwareFile', root);
+    const drop = $('#drop', root);
 
-        // Add loading animation to the submit button
-        $('#uploadButton', root).innerHTML = '<span class="spinner"></span> <span id="progress">0%</span>';
+    function pickFile() {
+        const file = fileInput.files[0];
+        $('#fileChip', root).hidden = true;
+        if (!file) return;
+        if (!isValidFirmwareFile(file)) {
+            toast(`${file.name} is not a firmware for ${model} (${model}.1.2.3.bin expected)`, true);
+            fileInput.value = '';
+            return;
+        }
+        $('#fileName', root).textContent = file.name;
+        $('#fileMeta', root).textContent = `${Math.round(file.size / 1024)} KB · ready to flash`;
+        $('#fileChip', root).hidden = false;
+    }
+
+    fileInput.addEventListener('change', pickFile);
+    ['dragenter', 'dragover'].forEach(name => drop.addEventListener(name, evt => {
+        evt.preventDefault();
+        if (!busy) drop.classList.add('over');
+    }));
+    ['dragleave', 'drop'].forEach(name => drop.addEventListener(name, evt => {
+        evt.preventDefault();
+        drop.classList.remove('over');
+    }));
+    drop.addEventListener('drop', evt => {
+        if (busy || !evt.dataTransfer.files.length) return;
+        fileInput.files = evt.dataTransfer.files;
+        pickFile();
+    });
+    // no new file while an update or upload is running
+    $('#pickRow', root).addEventListener('click', evt => { if (busy) evt.preventDefault(); });
+
+    $("#f", root).addEventListener('submit', async (evt) => {
+        evt.preventDefault();
+        const file = fileInput.files[0];
+        if (busy || !file) return;
+        // version and target from the file name: WBase.esp32.1.2.3.bin
+        const version = (/\.(\d+\.\d+\.\d+)/.exec(file.name) || [])[1] || '';
+        const confirmed = await confirmFlash('Flash firmware file', version, [
+            ['File', file.name],
+            ['Size', Math.round(file.size / 1024) + ' KB'],
+            // file name: Model[.esp32].x.y.z[.dev][.debug].bin (see pio_pre_define_PROGNAME.py)
+            ['Build', (/\.esp32/i.test(file.name) ? 'ESP32' : 'ESP8266')
+                + (/\.dev(\.|$)/i.test(file.name) ? ' · developer' : '')
+                + (/\.debug(\.|$)/i.test(file.name) ? ' · debug' : '')],
+        ], 'Flash');
+        if (!confirmed || busy) return;
+        disableAllButtons();
+        showProgress(uploadProgress, 'Uploading firmware...', 0);
 
         post('/fw',
             new FormData($('#f', root)),
             () => {
-                $('#progress', root).innerHTML = 'Rebooting...';
-                waitForDevice($('#uploadResult', root), location.origin, 60000);
+                waitForDevice(location.origin, 60000, 'Flashing firmware', 'Upload complete, the device is rebooting...');
             },
             (responseText) => {
-                showError($('#uploadResult', root), responseText);
+                hideProgress(uploadProgress);
+                toast(responseText || 'Upload failed', true); // firmware message already reads "Update failed: <reason>"
                 $('#f', root).reset();
+                $('#fileChip', root).hidden = true;
                 resetButtons();
             },
             30000,
             function (evt) {
-                if (evt.lengthComputable) {
-                    const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                    $('#progress', root).innerHTML = `${percentComplete}%`;
-                }
+                if (evt.lengthComputable) showProgress(uploadProgress, 'Uploading firmware...', Math.round((evt.loaded / evt.total) * 100));
             }
         );
-    }
-    );
+    });
 </script>

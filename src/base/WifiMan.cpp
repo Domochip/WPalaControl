@@ -259,6 +259,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   {
     json[F("apmode")] = F("on");
     json[F("apip")] = ipToCString(WiFi.softAPIP());
+    json[F("apssid")] = F(DEFAULT_AP_SSID);
   }
   else
     json[F("apmode")] = F("off");
@@ -266,6 +267,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   if (ssid[0])
   {
     json[F("stationmode")] = F("on");
+    json[F("ssid")] = ssid;
     if (WiFi.isConnected())
     {
       json[F("stationip")] = ipToCString(WiFi.localIP());
@@ -304,6 +306,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   }
 
   json[F("mac")] = getMacAddress();
+  json[F("hostname")] = hostname;
   json[F("connectcount")] = _connectionCount;
   json[F("discoreason")] = _lastDiscoReason;
 }
