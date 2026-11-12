@@ -192,17 +192,24 @@
             const result = $('#r', root);
             const loading = $('#l', root);
             const submit = $('input[type=submit]', form);
+            let recoveryMode = false;
 
             form.addEventListener('submit', evt => {
                 evt.preventDefault();
                 // submit is disabled until the config is loaded and while saving: ignore extra submits
                 if (submit.disabled) return;
+                if (recoveryMode && !confirm('Saving leaves Recovery Mode: the module goes back to normal operation (WiFi network connection and web password, if configured). Continue?')) return;
                 submit.disabled = true;
                 options.beforeSubmit?.(form);
                 result.innerHTML = 'Saving Configuration...';
                 post('/sc' + id, formToJson(form),
                     () => {
                         form.style.display = 'none';
+                        if (recoveryMode) {
+                            // the access point this page comes from is going away
+                            result.innerHTML = '<h3><b>Configuration saved <span class="ok">successfully</span>. Recovery Mode left: if a WiFi network is configured, reconnect to it and open the module address.</b></h3>';
+                            return;
+                        }
                         const url = options.redirectUrl?.(form) || location.origin;
                         if (url === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
                         waitForDevice(result, url, 30000, '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>');
@@ -217,6 +224,7 @@
             getJSON('/gc' + id,
                 data => {
                     data ??= {}; // an empty JsonDocument is sent as 'null'
+                    recoveryMode = !!data.recoverymode;
                     fillForm(form, data);
                     options.afterLoad?.(form, data);
                     submit.disabled = false;

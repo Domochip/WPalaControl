@@ -309,10 +309,6 @@ bool WifiMan::appInit(bool reInit /* = false */)
   // let the SDK handle short drops by itself (see appRun, StaState::Lost)
   WiFi.setAutoReconnect(true);
 
-  // saving WiFi config (reInit) leaves Recovery Mode
-  if (reInit)
-    SystemState::recoveryMode = false;
-
   // Configure handlers
   if (!reInit)
   {

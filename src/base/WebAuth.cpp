@@ -84,7 +84,9 @@ void WebAuth::check()
   if (_checked)
     return;
   _checked = true;
-  _authorized = !_password[0] || SystemState::recoveryMode || isAnonymous() || authenticate();
+  // clients of the module's own AP are trusted: phone captive portal windows can't show the login dialog
+  bool fromAP = (WiFi.getMode() & WIFI_AP) && _server.client().localIP() == WiFi.softAPIP();
+  _authorized = !_password[0] || SystemState::recoveryMode || fromAP || isAnonymous() || authenticate();
 }
 
 bool WebAuth::isAnonymous()
@@ -140,7 +142,7 @@ bool WebAuth::handle(WebServer &server, HTTPMethod requestMethod, const String &
 
   if (!_authorized)
   {
-    // any nonce is accepted back, so it doesn't need to be random
+    // any nonce is accepted back
     char authenticate[80];
     snprintf_P(authenticate, sizeof(authenticate), PSTR("Digest realm=\"%s\", qop=\"auth\", nonce=\"%08lx\""), WEB_AUTH_REALM, (unsigned long)micros());
     server.sendHeader(F("WWW-Authenticate"), authenticate);

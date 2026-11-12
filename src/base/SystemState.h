@@ -8,7 +8,7 @@ public:
     static bool shouldReboot;
     // flag to pause custom application Run during Firmware Update
     static bool pauseCustomApp;
-    // Recovery Mode (requested by MultiReset): WiFi station disabled until WiFi config is saved or next reboot
+    // Recovery Mode (requested by MultiReset): WiFi station and web authentication disabled until a config is saved
     static bool recoveryMode;
 };
 

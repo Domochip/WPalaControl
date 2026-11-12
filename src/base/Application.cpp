@@ -635,6 +635,9 @@ void Application::initWebServer(WebServer &server)
               server.sendHeader(F("Cache-Control"), F("no-cache"));
               JsonDocument json;
               fillConfigJSON(json);
+              // lets the page warn that saving leaves Recovery Mode
+              if (SystemState::recoveryMode)
+                json[F("recoverymode")] = true;
               server.setContentLength(measureJson(json));
               server.send(200, F("application/json"), "");
               WiFiClient client = server.client();
@@ -677,6 +680,13 @@ void Application::initWebServer(WebServer &server)
               // Everything went fine, Send client answer
               server.send(200);
               _reInit = true;
+
+              // any save leaves Recovery Mode: authentication is back and WifiMan restarts its station
+              if (SystemState::recoveryMode)
+              {
+                SystemState::recoveryMode = false;
+                _applicationList[WifiManApp]->_reInit = true;
+              }
             });
 
   // Execute Specific Application Web Server initialization
