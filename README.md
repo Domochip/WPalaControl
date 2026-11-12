@@ -322,10 +322,10 @@ Recovery Mode gives you access to the module when you can't reach it normally, w
 - the module can't be reached after a Wi-Fi settings change (wrong SSID, password or static IP)
 - you forgot the **Web Password**
 
-**Enter Recovery Mode**: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
+**Enter Recovery Mode**:
 
-> [!NOTE]
-> Only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode.
+- press the **RST** button (accessible on the side of the box) **3 times in a row**, each press within 5 seconds of the previous one
+- only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode
 
 **In Recovery Mode**:
 
