@@ -10,6 +10,7 @@
 - 🔌 Native HTTP API compatible with existing Palazzetti/Fumis apps and plugins
 - 📡 MQTT with Home Assistant auto-discovery
 - ⬆️ Online firmware update from GitHub (also as a Home Assistant Update entity)
+- 🔒 Optional password protection of the web interface
 
 ## Contents
 
@@ -104,14 +105,26 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 
 ### Recovery Mode
 
-If the module can't be reached anymore (e.g. wrong Wi-Fi settings), you can start it in Recovery Mode: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
+Recovery Mode gives you access to the module when you can't reach it normally, without losing its configuration. Use it when:
 
-In Recovery Mode, the stored configuration is loaded and kept as is (stove communication and MQTT keep working), but the connection to your Wi-Fi network is disabled: the module only creates its own Wi-Fi network (AP mode, see [First boot](#first-boot)), reachable at <http://192.168.4.1>.
+- the module can't be reached after a Wi-Fi settings change (wrong SSID, password or static IP)
+- you forgot the **Web Password**
 
-From there, fix the Wi-Fi settings in **Config** → **WiFi** and save them: the module leaves Recovery Mode and connects to your network immediately. A reboot without saving also leaves Recovery Mode, with the unchanged Wi-Fi settings.
+**Enter Recovery Mode**: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
 
 > [!NOTE]
 > Only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode.
+
+**In Recovery Mode**:
+
+- the module does not connect to your Wi-Fi network: it only starts its own (SSID and password in [First boot](#first-boot)). Connect to it and go to <http://192.168.4.1>
+- the **Web Password** is not requested
+- the stored configuration is loaded but not modified: nothing is erased
+
+**Leave Recovery Mode**:
+
+- save any configuration section (e.g. **Config** → **WiFi** or **Config** → **System**), after a confirmation: the module goes back to normal operation immediately (connection to your Wi-Fi network, **Web Password** if set). Reconnect your device to your Wi-Fi network and open the module address
+- or reboot the module: it starts normally with its stored configuration
 
 ## Web interface
 
@@ -133,6 +146,7 @@ From there, fix the Wi-Fi settings in **Config** → **WiFi** and save them: the
 #### System
 
 - **NTP Timezone**: your timezone, used for the module local time (default: Europe/Paris)
+- **Web Password**: protects the web interface with a password (user: `admin`). Leave empty to disable authentication (default). The password is never requested from devices connected to the module's own Wi-Fi network (AP mode). The HTTP API used by home automation systems stays reachable without password for compatibility reasons (see [HTTP](#http))
 - **Reboot**: restart the module
 - **Reset Configuration**: erase all settings (System, WiFi, PalaControl) and restart the module with its default configuration (after a confirmation). The module then starts its own Wi-Fi network (AP mode, see [First boot](#first-boot)) and is reachable at <http://192.168.4.1>
 
@@ -195,6 +209,8 @@ Send an HTTP GET request to the module:
 ```text
 http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd={command}
 ```
+
+This API never requires the **Web Password**, so existing apps and plugins keep working when it is set.
 
 Example: `http://wpalacontrol.local/cgi-bin/sendmsg.lua?cmd=GET+TMPS` returns:
 
@@ -318,5 +334,6 @@ Values published automatically every "Upload Period":
 | Stove SN never appears on the Status page | Use the provided cable. If you built it yourself, check the cable type: **crossed** for hardware V1.x, **straight** for V2.x. Check also the **Hardware detection** setting |
 | `wpalacontrol.local` does not open | Some devices (e.g. Android, some Windows setups) don't support mDNS: use the module IP address (shown in your router) |
 | Wrong Wi-Fi settings, module unreachable | If it can't connect, the module starts its own access point: connect to it and go to <http://192.168.4.1>. You can also press the RST button 3 times to start in [Recovery Mode](#recovery-mode) |
+| Web Password forgotten | Press the RST button 3 times to start in [Recovery Mode](#recovery-mode): the password is not requested, so you can change it in **Config** → **System** |
 | Online Update fails | The module needs Internet access. If you configured a static IP, make sure Gateway and DNS are set (not needed with DHCP) |
 | Nothing published on MQTT | **Status** page → **Home Automation Status** shows the connection state and the last publish result |
