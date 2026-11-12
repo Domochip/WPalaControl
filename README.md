@@ -21,6 +21,7 @@
   - [Get your adapter](#get-your-adapter)
   - [Connect it to the stove](#connect-it-to-the-stove)
   - [First boot](#first-boot)
+    - [Recovery Mode](#recovery-mode)
   - [Web interface](#web-interface)
     - [Status](#status)
     - [Config](#config)
@@ -101,6 +102,17 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 > [!NOTE]
 > The access point is only started when the module is not connected to your Wi-Fi network (first boot, wrong settings, network down).
 
+### Recovery Mode
+
+If the module can't be reached anymore (e.g. wrong Wi-Fi settings), you can start it in Recovery Mode: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
+
+In Recovery Mode, the stored configuration is loaded and kept as is (stove communication and MQTT keep working), but the connection to your Wi-Fi network is disabled: the module only creates its own Wi-Fi network (AP mode, see [First boot](#first-boot)), reachable at <http://192.168.4.1>.
+
+From there, fix the Wi-Fi settings in **Config** → **WiFi** and save them: the module leaves Recovery Mode and connects to your network immediately. A reboot without saving also leaves Recovery Mode, with the unchanged Wi-Fi settings.
+
+> [!NOTE]
+> Only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode.
+
 ## Web interface
 
 ### Status
@@ -122,7 +134,7 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 
 - **NTP Timezone**: your timezone, used for the module local time (default: Europe/Paris)
 - **Reboot**: restart the module
-- **Reboot in Rescue Mode**: restart the module without loading the stored configuration (it is not erased). The module starts its own Wi-Fi network (AP mode) and is reachable at <http://192.168.4.1>
+- **Reset Configuration**: erase all settings (System, WiFi, PalaControl) and restart the module with its default configuration (after a confirmation). The module then starts its own Wi-Fi network (AP mode, see [First boot](#first-boot)) and is reachable at <http://192.168.4.1>
 
 #### WiFi
 
@@ -305,6 +317,6 @@ Values published automatically every "Upload Period":
 | --- | --- |
 | Stove SN never appears on the Status page | Use the provided cable. If you built it yourself, check the cable type: **crossed** for hardware V1.x, **straight** for V2.x. Check also the **Hardware detection** setting |
 | `wpalacontrol.local` does not open | Some devices (e.g. Android, some Windows setups) don't support mDNS: use the module IP address (shown in your router) |
-| Wrong Wi-Fi settings, module unreachable | If it can't connect, the module starts its own access point: connect to it and go to <http://192.168.4.1>. You can also use **Reboot in Rescue Mode** |
+| Wrong Wi-Fi settings, module unreachable | If it can't connect, the module starts its own access point: connect to it and go to <http://192.168.4.1>. You can also press the RST button 3 times to start in [Recovery Mode](#recovery-mode) |
 | Online Update fails | The module needs Internet access. If you configured a static IP, make sure Gateway and DNS are set (not needed with DHCP) |
 | Nothing published on MQTT | **Status** page → **Home Automation Status** shows the connection state and the last publish result |
