@@ -2664,6 +2664,9 @@ void WPalaControl::appInitWebServer(WebServer &server)
         server.send(200, F("application/json"), "");
         { auto client = server.client(); serializeJson(json, client); } });
 
+  // Palazzetti API is used by clients without authentication
+  allowAnonymous(F("/cgi-bin/sendmsg.lua"));
+
   // register EventSource
   _sse.init(getAppIdChar(), server);
 }
