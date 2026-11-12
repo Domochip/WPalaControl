@@ -84,6 +84,8 @@ protected:
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
   static bool isValidVersion(const char *version);
   static void resetUpdate();
+  // uri reachable without web authentication (any method), to be called from appInitWebServer
+  static void allowAnonymous(const __FlashStringHelper *uri);
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 
 public:

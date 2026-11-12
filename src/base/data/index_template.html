@@ -276,7 +276,8 @@
                         location.assign(url);
                         return;
                     }
-                    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
+                    // no credentials: a 401 (password just set) still means the device is back, without a login popup on each poll
+                    fetch(url, { method: 'HEAD', mode: 'no-cors', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(1500) })
                         .then(() => { clearInterval(displayTimer); clearInterval(pollTimer); location.assign(url); })
                         .catch(() => {});
                 }, 2000);

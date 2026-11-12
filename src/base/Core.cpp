@@ -1,5 +1,6 @@
 #include "Core.h"
 #include "WifiMan.h"
+#include "WebAuth.h"
 #include "../Main.h" //for VERSION define
 #include "Version.h" //for BASE_VERSION define
 
@@ -27,17 +28,24 @@ const char *Core::getSerialNumber()
 void Core::setConfigDefaultValues()
 {
   strcpy_P(ntpTimezone, PSTR("Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3"));
+  webPassword[0] = 0;
 };
 
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   parseField(json["tz"], ntpTimezone);
+  parseSecret(json["wp"], webPassword, fromWebPage);
   return true;
 };
 
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json["tz"] = ntpTimezone;
+  // no placeholder when empty: the page shows that authentication is disabled
+  if (webPassword[0])
+    fillSecret(json, F("wp"), webPassword, forSaveFile);
+  else
+    json["wp"] = "";
 };
 void Core::fillStatusJSON(JsonVariant json)
 {
@@ -91,6 +99,11 @@ bool Core::appInit(bool reInit /* = false */)
   TimeManager::setTimezone(tzToUse);
   return true;
 };
+void Core::initWebAuth(WebServer &server)
+{
+  server.addHandler(new WebAuth(server, webPassword));
+}
+
 void Core::appInitWebServer(WebServer &server)
 {
   // root is index

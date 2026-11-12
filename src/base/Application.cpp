@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "WebAuth.h"
 
 Application *Application::_applicationList[3] = {nullptr, nullptr, nullptr};
 
@@ -112,6 +113,11 @@ bool Application::loadConfig()
   }
 
   return result;
+}
+
+void Application::allowAnonymous(const __FlashStringHelper *uri)
+{
+  WebAuth::allowAnonymous(uri);
 }
 
 void Application::deleteAllConfig()

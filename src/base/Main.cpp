@@ -77,6 +77,7 @@ void setup()
 
   LOG_SERIAL_PRINT(F("Start WebServer : "));
 
+  core.initWebAuth(server);
   core.initWebServer(server);
   wifiMan.initWebServer(server);
   custom.initWebServer(server);
