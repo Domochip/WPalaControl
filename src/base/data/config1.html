@@ -1,56 +1,66 @@
-<h2 class="content-subhead">WiFi<span id="l" class="ld">Loading...</span></h2>
-<form class="pure-form pure-form-aligned" id='f'>
-    <fieldset>
-        <div class="pure-control-group">
-            <label for="s">SSID</label>
-            <input type='text' id='s' name='s' maxlength='32'>
-            <select id="wnl">
-                <option>Searching...</option>
-            </select>
+<div class="card">
+    <div class="card-h"><h2>WiFi<span id="l" class="ld">Loading...</span></h2><span class="sub">Station connection</span></div>
+    <form class="card-b fields" id="f">
+        <div class="field">
+            <span class="lbl">Network</span>
+            <div class="nets" id="wnl"><div class="msg"><span class="spinner"></span>Scanning for networks...</div></div>
         </div>
-        <div class="pure-control-group">
-            <label for="p">Password</label>
-            <input type='password' id='p' name='p' maxlength='64'>
+        <div class="row2">
+            <div class="field">
+                <label for="s">SSID</label>
+                <input type="text" id="s" name="s" maxlength="32">
+            </div>
+            <div class="field">
+                <label for="p">Password</label>
+                <div class="pw">
+                    <input type="password" id="p" name="p" maxlength="64">
+                    <button type="button" title="Show / hide">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="pure-control-group">
+        <div class="field">
             <label for="h">Hostname</label>
-            <input type='text' id='h' name='h' maxlength='24'>
+            <input type="text" id="h" name="h" maxlength="24" class="mono">
+            <div class="help">Name of the device on your network (DHCP, mDNS).</div>
         </div>
-        <div class="pure-control-group">
-            <label for="staticip">Static IP</label>
-            <input id='staticip' name='staticip' type="checkbox">
-        </div>
-        <fieldset id='staticipgroup' disabled style='display:none; padding:0'>
-            <div class="pure-control-group">
-                <label for="ip">IP</label>
-                <input type='text' id='ip' name='ip' required pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
-                <span class="pure-form-message-inline">*</span>
+        <label class="switch">
+            <span class="txt"><b>Static IP</b><span>Use a fixed address instead of DHCP</span></span>
+            <input id="staticip" name="staticip" type="checkbox">
+        </label>
+        <div class="reveal" id="staticipreveal"><div><div class="inner">
+        <fieldset id="staticipgroup" class="fields" disabled>
+            <div class="row2">
+                <div class="field">
+                    <label for="ip">IP address</label>
+                    <input type="text" id="ip" name="ip" class="mono" required pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$">
+                </div>
+                <div class="field">
+                    <label for="mask">Netmask</label>
+                    <input type="text" id="mask" name="mask" class="mono" pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$">
+                </div>
             </div>
-            <div class="pure-control-group">
-                <label for="mask">NetMask</label>
-                <input type='text' id='mask' name='mask' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
+            <div class="row2">
+                <div class="field">
+                    <label for="gw">Gateway</label>
+                    <input type="text" id="gw" name="gw" class="mono" pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$">
+                </div>
+                <div class="field">
+                    <label for="dns1">DNS 1</label>
+                    <input type="text" id="dns1" name="dns1" class="mono" pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$">
+                </div>
             </div>
-            <div class="pure-control-group">
-                <label for="gw">Gateway</label>
-                <input type='text' id='gw' name='gw' pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
-            </div>
-            <div class="pure-control-group">
-                <label for="dns1">DNS 1</label>
-                <input type='text' id='dns1' name='dns1'
-                    pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
-            </div>
-            <div class="pure-control-group">
-                <label for="dns2">DNS 2</label>
-                <input type='text' id='dns2' name='dns2'
-                    pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>
+            <div class="row2">
+                <div class="field">
+                    <label for="dns2">DNS 2</label>
+                    <input type="text" id="dns2" name="dns2" class="mono" pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$">
+                </div>
             </div>
         </fieldset>
-        <div class="pure-controls">
-            <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
-        </div>
-    </fieldset>
-</form>
-<span id='r'></span>
+        </div></div></div>
+    </form>
+</div>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
@@ -59,8 +69,14 @@
 
     $("#staticip", root).addEventListener('change', function () {
         $("#staticipgroup", root).disabled = !this.checked;
-        $("#staticipgroup", root).style.display = this.checked ? '' : 'none';
+        $("#staticipreveal", root).classList.toggle('open', this.checked);
     });
+
+    // highlights the network matching the SSID field
+    function selectNetwork() {
+        root.querySelectorAll('.net').forEach(net => net.classList.toggle('sel', net.dataset.ssid === $('#s', root).value));
+    }
+    $('#s', root).addEventListener('input', selectNetwork);
 
     // scan polling stops when the page is left (see the cleanup function at the end)
     let scanTimer;
@@ -87,23 +103,35 @@
 
             const wnl = $("#wnl", root);
             if (networks.length == 0) {
-                wnl.replaceChildren(new Option('No Network Found'));
+                wnl.innerHTML = '<div class="msg">No network found</div>';
                 return;
             }
-            wnl.replaceChildren(new Option('Choose Your Network'));
+            wnl.replaceChildren();
             for (const network of networks) {
-                const option = new Option(`${network.SSID} (${rssiToQuality(network.RSSI)}%)`, network.SSID);
-                option.style.color = rssiToColor(network.RSSI);
-                option.selected = $("#s", root).value == network.SSID;
-                wnl.appendChild(option);
+                const item = document.createElement('div');
+                item.className = 'net';
+                item.dataset.ssid = network.SSID;
+                item.innerHTML = '<svg class="chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>'
+                    + '<span class="name"></span><span class="q"></span>';
+                $('.name', item).textContent = network.SSID;
+                $('.q', item).textContent = rssiToQuality(network.RSSI) + '%';
+                item.append(signalBars(network.RSSI));
+                item.addEventListener('click', () => {
+                    $('#s', root).value = network.SSID;
+                    triggerEvent($('#s', root), 'input');
+                    $('#p', root).focus();
+                });
+                wnl.append(item);
             }
-            wnl.addEventListener('change', function () { $("#s", root).value = wnl.value });
+            selectNetwork();
+        }, function () {
+            if (!stopped) $("#wnl", root).innerHTML = '<div class="msg">Scan failed</div>';
         });
     }
 
-
     configForm(root, id, {
         afterLoad: loadNetworkList,
+        // applying WiFi settings makes the device reconnect: wait for it where it will come back
         redirectUrl: function (form) {
             // no SSID: device restarts as an access point
             if (!form.s.value) return 'http://192.168.4.1';

@@ -1,166 +1,123 @@
-<h2 class="content-subhead">PalaControl<span id="l" class="ld">Loading...</span></h2>
-<form class="pure-form pure-form-aligned" id='f'>
-    <fieldset>
-
-        <div class="pure-control-group">
-            <label for="hwdetection">Hardware detection</label>
-            <select id='hwdetection' name='hwdetection'>
-                <option value="0">Auto</option>
-                <option value="1">V1.X</option>
-                <option value="2">V2.X</option>
-            </select>
-        </div>
-
-        <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip" data-tip="haidiv">?</span></h3>
-        <div class="infotipdiv" id="haidiv" name="haidiv" style="display:none;">
-            HTTP GET request can be send to this device.<br>
-            Please refer to <a href="https://github.com/Domochip/WPalaControl">documentation</a> for list of
-            supported command.<br>
-            <a href="https://github.com/Domochip/WPalaControl">link</a>
-        </div>
-
-        <div class="pure-control-group">
-            <label for="haproto">Type</label>
-            <select id='haproto' name='haproto'>
-                <option value="0">Disabled</option>
-                <option value="1">MQTT</option>
-            </select>
-        </div>
-
-        <div id='hae' style='display:none'>
-
-            <div class="pure-control-group">
-                <label for="haupperiod">Upload Period</label>
-                <input type='number' id='haupperiod' name='haupperiod' min='15' max='300' placeholder="(in seconds)" required>
+<!-- one form (#f, saved as /sc2) spread over two cards: Stove and Home Automation -->
+<form id="f" style="display:grid;gap:16px">
+    <div class="card">
+        <div class="card-h"><h2>Stove<span id="l" class="ld">Loading...</span></h2><span class="sub">Interface board</span></div>
+        <div class="card-b fields">
+            <div class="field">
+                <label for="hwdetection">Hardware detection</label>
+                <select id="hwdetection" name="hwdetection">
+                    <option value="0">Auto</option>
+                    <option value="1">V1.X</option>
+                    <option value="2">V2.X</option>
+                </select>
+                <div class="help">Keep Auto unless the board version is detected wrongly.</div>
             </div>
-            <div class="pure-control-group">
-                <label for="hahost">Hostname</label>
-                <input type='text' id='hahost' name='hahost' maxlength='64' pattern='[A-Za-z0-9\-.]+' size='50'
-                    placeholder="IP or DNS Name">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-h">
+            <h2>Home Automation</h2>
+            <span class="sub"><a href="https://github.com/Domochip/WPalaControl" target="_blank">Documentation ↗</a></span>
+        </div>
+        <div class="card-b fields">
+            <div class="field">
+                <label for="haproto">Protocol</label>
+                <select id="haproto" name="haproto">
+                    <option value="0">Disabled</option>
+                    <option value="1">MQTT</option>
+                </select>
+                <div class="help">HTTP GET commands are always accepted (see the documentation for the supported commands).</div>
             </div>
 
-            <div id='hame'>
-
-                <div class="pure-control-group">
-                    <label for="hamport">Port</label>
-                    <input type='number' id='hamport' name='hamport' min='1' max='65535'>
-                </div>
-                <div class="pure-control-group">
-                    <label for="hamu">Username</label>
-                    <input type='text' id='hamu' name='hamu' maxlength='32' placeholder="optional">
-                </div>
-                <div class="pure-control-group">
-                    <label for="hamp">Password</label>
-                    <input type='password' id='hamp' name='hamp' maxlength='64' placeholder="optional">
-                </div>
-
-                <div class="pure-control-group">
-                    <label for="hamgbt">Base Topic</label>
-                    <input type='text' id='hamgbt' name='hamgbt' maxlength='64'>
-                    <span id="hamgbti" name="hamgbti" class="infotip" data-tip="hamgbtidiv">?</span>
-                </div>
-                <div class="pure-control-group" id="hamgbtidiv" name="hamgbtidiv" style="display:none;">
-                    <label></label>
-                    <div class="infotipdiv">
-                        Base Topic placeholders : <br>
-                        <b>$sn$</b> : Serial Number of this device<br>
-                        <b>$mac$</b> : WiFi MAC address of this device<br>
-                        <b>$model$</b> : Model of this device<br>
-                        Ex : DomoChip/<b>$sn$</b> or <b>$model$</b>/<b>$mac$</b>
+            <!-- MQTT settings: disabled when MQTT is off (not sent, so the firmware keeps their values) -->
+            <div class="reveal" id="mqttReveal"><div><fieldset class="inner fields" id="mqttFields" disabled>
+                <div class="row2">
+                    <div class="field">
+                        <label for="hahost">Broker</label>
+                        <input type="text" id="hahost" name="hahost" required maxlength="64" pattern="[A-Za-z0-9\-.]+" placeholder="IP or DNS name" class="mono">
+                    </div>
+                    <div class="field">
+                        <label for="hamport">Port</label>
+                        <input type="number" id="hamport" name="hamport" min="1" max="65535" class="mono">
                     </div>
                 </div>
-
-                <div class="pure-control-group">
-                    <label for="hamtype">MQTT Type</label>
-                    <select id='hamtype' name='hamtype'>
+                <div class="row2">
+                    <div class="field">
+                        <label for="hamu">Username</label>
+                        <input type="text" id="hamu" name="hamu" maxlength="32" placeholder="optional">
+                    </div>
+                    <div class="field">
+                        <label for="hamp">Password</label>
+                        <div class="pw">
+                            <input type="password" id="hamp" name="hamp" maxlength="64" placeholder="optional">
+                            <button type="button" title="Show / hide">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row2">
+                    <div class="field">
+                        <label for="hamgbt">Base topic</label>
+                        <input type="text" id="hamgbt" name="hamgbt" required maxlength="64" class="mono">
+                        <div class="help">Placeholders: <b>$sn$</b> serial number, <b>$mac$</b> MAC address, <b>$model$</b> model. Ex: <span class="mono">DomoChip/$sn$</span></div>
+                    </div>
+                    <div class="field">
+                        <label for="haupperiod">Upload period</label>
+                        <input type="number" id="haupperiod" name="haupperiod" required min="15" max="300" placeholder="15 to 300" class="mono">
+                        <div class="help">In seconds.</div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="hamtype">MQTT type</label>
+                    <select id="hamtype" name="hamtype">
                         <option value="0">Generic</option>
                         <option value="1">Generic JSON</option>
                         <option value="2">Generic Categorized</option>
                     </select>
-                    <span id="hamtype0i" name="hamtype0i" class="infotip" data-tip="hamtype0div">?</span>
-                    <span id="hamtype1i" name="hamtype1i" class="infotip" data-tip="hamtype1div" style="display:none;">?</span>
-                    <span id="hamtype2i" name="hamtype2i" class="infotip" data-tip="hamtype2div" style="display:none;">?</span>
+                    <div class="help" id="hamtypeHelp"></div>
                 </div>
-                <div class="pure-control-group" id="hamtype0div" name="hamtype0div" style="display:none;">
-                    <label></label>
-                    <div class="infotipdiv">
-                        Published topics : <br>
-                        <b>/$nameOfValue$</b> : raw values are sent to the root of Base Topic (e.g. /T1, /STATUS)<br>
-                    </div>
-                </div>
-                <div class="pure-control-group" id="hamtype1div" name="hamtype1div" style="display:none;">
-                    <label></label>
-                    <div class="infotipdiv">
-                        Published topics : <br>
-                        <b>/$Category$</b> : a JSON containing values are sent to the Category Topic (e.g. /TMPS,
-                        /STAT)<br>
-                    </div>
-                </div>
-                <div class="pure-control-group" id="hamtype2div" name="hamtype2div" style="display:none;">
-                    <label></label>
-                    <div class="infotipdiv">
-                        Published topics : <br>
-                        <b>/$Category$/$nameOfValue$</b> : raw values are sent to Category SubTopic it belongs (e.g.
-                        /TMPS/T1)<br>
-                    </div>
-                </div>
-
-                <div class="pure-control-group">
-                    <label for="hamhassde">Home Assistant Discovery</label>
-                    <input id='hamhassde' name='hamhassde' type="checkbox">
-                </div>
-                <div class="pure-control-group" id='hamhassfspdiv' style='display:none'>
-                    <label for="hamhassfsp">0.2° SetPoint step</label>
-                    <input id='hamhassfsp' name='hamhassfsp' type="checkbox">
-                </div>
-            </div>
+                <label class="switch">
+                    <span class="txt"><b>Home Assistant discovery</b><span>Announce the stove entities automatically</span></span>
+                    <input id="hamhassde" name="hamhassde" type="checkbox">
+                </label>
+                <label class="switch" id="hamhassfspdiv" hidden>
+                    <span class="txt"><b>0.2° setpoint step</b><span>Finer setpoint in Home Assistant (supported by this stove)</span></span>
+                    <input id="hamhassfsp" name="hamhassfsp" type="checkbox">
+                </label>
+            </fieldset></div></div>
         </div>
-
-        <div class="pure-controls">
-            <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
-        </div>
-    </fieldset>
+    </div>
 </form>
-<span id='r'></span>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('2'), used in API endpoints like '/gc' + id
 
-    // each "?" info tip toggles the help block named by its data-tip attribute
-    root.querySelectorAll('.infotip[data-tip]').forEach(tip => {
-        tip.addEventListener('click', function () {
-            const help = $('#' + tip.dataset.tip, root);
-            help.style.display = (help.style.display == '' ? 'none' : '');
-        });
-    });
-
+    // MQTT settings shown and enabled only with MQTT; broker, base topic and period are then required
+    // (the firmware disables MQTT when the broker or the base topic is missing)
     $("#haproto", root).addEventListener('change', function () {
-        switch ($("#haproto", root).value) {
-            case "0":
-                $("#hae", root).style.display = 'none';
-                break;
-            case "1":
-                $("#hae", root).style.display = '';
-                $("#hame", root).style.display = '';
-                break;
-        }
+        const mqtt = this.value === '1';
+        $('#mqttReveal', root).classList.toggle('open', mqtt);
+        $('#mqttFields', root).disabled = !mqtt;
     });
 
-    // only the info tip of the selected MQTT type is shown; help of other types is closed
+    // help of the selected MQTT type: published topics
+    const mqttTypeHelp = {
+        0: 'Raw values are published at the root of the base topic (e.g. /T1, /STATUS).',
+        1: 'A JSON of values is published per category (e.g. /TMPS, /STAT).',
+        2: 'Raw values are published in their category subtopic (e.g. /TMPS/T1).',
+    };
     $("#hamtype", root).addEventListener('change', function () {
-        for (const type of ['0', '1', '2']) {
-            const selected = (this.value === type);
-            $('#hamtype' + type + 'i', root).style.display = (selected ? '' : 'none');
-            if (!selected) $('#hamtype' + type + 'div', root).style.display = 'none';
-        }
+        $('#hamtypeHelp', root).textContent = 'Published topics: ' + (mqttTypeHelp[this.value] || '');
     });
 
-    // 0.2° SetPoint step checkbox is shown only if the stove supports it and HA Discovery is enabled
+    // 0.2° SetPoint step switch is shown only if the stove supports it and HA Discovery is enabled
     let fineSetPointCapable = false;
     function updateFineSetPointVisibility() {
-        $("#hamhassfspdiv", root).style.display = (fineSetPointCapable && $("#hamhassde", root).checked) ? '' : 'none';
+        $("#hamhassfspdiv", root).hidden = !(fineSetPointCapable && $("#hamhassde", root).checked);
     }
     $("#hamhassde", root).addEventListener('change', updateFineSetPointVisibility);
 

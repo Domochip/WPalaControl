@@ -5,7 +5,6 @@
 #include "Version.h" //for BASE_VERSION define
 
 #include "data/index.html.gz.h"
-#include "data/pure-min.css.gz.h"
 #include "data/base.css.gz.h"
 
 const char *Core::getSerialNumber()
@@ -66,6 +65,14 @@ void Core::fillStatusJSON(JsonVariant json)
   }
   
   json[F("freeheap")] = ESP.getFreeHeap();
+
+  // timezone display name (config format: "DisplayName|POSIX_TZ_STRING")
+  char tzName[sizeof(ntpTimezone)];
+  strlcpy(tzName, ntpTimezone, sizeof(tzName));
+  char *pipe = strchr(tzName, '|');
+  if (pipe)
+    *pipe = '\0';
+  json[F("timezone")] = tzName;
 #ifdef ESP8266
   json[F("freestack")] = ESP.getFreeContStack();
   json[F("flashsize")] = ESP.getFlashChipRealSize();
@@ -75,6 +82,7 @@ void Core::fillStatusJSON(JsonVariant json)
 #else
   json[F("freestack")] = uxTaskGetStackHighWaterMark(nullptr);
   json[F("crashcount")] = 0;
+  json[F("heapsize")] = ESP.getHeapSize();
 #endif
 }
 bool Core::appInit(bool reInit /* = false */)
@@ -121,15 +129,6 @@ void Core::appInitWebServer(WebServer &server)
             });
 
   // Ressources URLs
-  server.on(F("/pure-min.css"), HTTP_GET,
-            [&server]()
-            {
-              SERVER_KEEPALIVE_FALSE()
-              server.sendHeader(F("Content-Encoding"), F("gzip"));
-              server.sendHeader(F("Cache-Control"), F("max-age=604800, public"));
-              server.send_P(200, PSTR("text/css"), puremincssgz, sizeof(puremincssgz));
-            });
-
   server.on(F("/base.css"), HTTP_GET,
             [&server]()
             {

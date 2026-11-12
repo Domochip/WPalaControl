@@ -1,307 +1,1262 @@
-/* Shared Domochip stylesheet (layout, side menu and common UI helpers), loaded after pure-min.css */
+/* Domochip web UI stylesheet (self-contained, no external framework) */
+
+/* -- Tokens ---------------------------------------------------------------- */
 
 :root {
-    --text: #777;
-    --heading: #333;
-    --subhead: #888;
-    --border: #eee;
-    --menu-bg: #191818;
-    --menu-text: #999;
-    --menu-hover: #333;
-    --accent: #1f8dd6;
-    --ok: #1cb841;
-    --warn: #df7514;
-    --err: #ca3c3c;
-    --menu-width: 150px;
+    --bg: #f4f5f7;
+    --surface: #fff;
+    --surface-2: #f0f2f5;
+    --line: #e3e6eb;
+    --text: #1b1f24;
+    --muted: #687080;
+    --faint: #9aa1ad;
+    --accent: #2f6fed;
+    --accent-soft: #e6eefd;
+    --ok: #17a35a;
+    --ok-soft: #e3f6ec;
+    --warn: #d9822b;
+    --warn-soft: #fdf0e2;
+    --err: #d64545;
+    --err-soft: #fbe7e7;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+}
+
+/* dark palette: follows the OS unless the theme button forced a choice (data-theme on <html>) */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme=light]) {
+        --bg: #0f1115; --surface: #171a20; --surface-2: #1e222a; --line: #2a2f39;
+        --text: #e8eaee; --muted: #9aa2b1; --faint: #6b7382;
+        --accent: #5b8cff; --accent-soft: #1d2a47;
+        --ok: #35c27a; --ok-soft: #15301f; --warn: #f0a050; --warn-soft: #352614; --err: #f06464; --err-soft: #3a1a1a;
+        --shadow: none; color-scheme: dark;
+    }
+}
+
+:root[data-theme=dark] {
+    --bg: #0f1115; --surface: #171a20; --surface-2: #1e222a; --line: #2a2f39;
+    --text: #e8eaee; --muted: #9aa2b1; --faint: #6b7382;
+    --accent: #5b8cff; --accent-soft: #1d2a47;
+    --ok: #35c27a; --ok-soft: #15301f; --warn: #f0a050; --warn-soft: #352614; --err: #f06464; --err-soft: #3a1a1a;
+    --shadow: none; color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
 }
 
 body {
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
     color: var(--text);
 }
 
-/* -- Layout ---------------------------------------------------------------- */
-
-#layout,
-#menu,
-.menu-link {
-    transition: all 0.2s ease-out;
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
 }
 
-#layout {
-    position: relative;
-    left: 0;
-    padding-left: 0;
+a {
+    color: var(--accent);
 }
 
-#layout.active #menu {
-    left: var(--menu-width);
-    width: var(--menu-width);
+[hidden] {
+    display: none !important;
 }
 
-#layout.active .menu-link {
-    left: var(--menu-width);
-}
+/* -- Top bar and tabs ------------------------------------------------------ */
 
-.header {
-    margin: 0;
-    color: var(--heading);
-    text-align: center;
-    padding: 2.5em 2em 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.header h1 {
-    margin: 0.2em 0;
-    font-size: 3em;
-    font-weight: 300;
-}
-
-.content {
-    margin: 0 auto 50px;
-    padding: 0 2em;
-    max-width: 800px;
-    line-height: 1.6em;
-}
-
-.content-subhead {
-    margin: 50px 0 20px 0;
-    font-weight: 300;
-    color: var(--subhead);
-}
-
-/* -- Side menu ------------------------------------------------------------- */
-
-#menu {
-    margin-left: calc(-1 * var(--menu-width));
-    width: var(--menu-width);
-    position: fixed;
+.top {
+    position: sticky;
     top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 1000;
-    background: var(--menu-bg);
-    overflow-y: auto;
-    overflow-x: hidden;
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
 }
 
-#menu a {
-    color: var(--menu-text);
-    border: none;
-    padding: 0.6em 0.8em;
+.top-in,
+.banner,
+main {
+    max-width: 1080px;
+    margin: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.top-in {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #7a5af8);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    flex: none;
+}
+
+.ident {
+    min-width: 0;
+}
+
+.ident b {
+    display: block;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.ident span {
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-2);
+    padding: 4px;
+    border-radius: 12px;
+    margin-left: auto;
+}
+
+.tab {
+    border: 0;
+    background: none;
+    padding: 7px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 500;
+    display: flex;
+    gap: 7px;
+    align-items: center;
+}
+
+.tab svg {
+    width: 17px;
+    height: 17px;
+}
+
+.tab[aria-selected=true] {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+}
+
+.icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.icon-btn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    flex: none;
+}
+
+/* -- Access point banner --------------------------------------------------- */
+
+.banner {
+    margin-top: 16px;
+}
+
+.banner > div {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.banner svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+}
+
+.banner .btn {
+    margin-left: auto;
+}
+
+/* -- Page layout ----------------------------------------------------------- */
+
+main {
+    padding-top: 20px;
+    padding-bottom: 120px;
+}
+
+#content {
+    display: grid;
+    gap: 16px;
+}
+
+/* page change animation (class re-added by showPage) */
+#content.in {
+    animation: in .25s ease;
+}
+
+@keyframes in {
+    from { opacity: 0; transform: translateY(6px); }
+}
+
+/* Overview: blocks of all parts share one grid, placed by type:
+   stat tiles (1), alert (2), "Device" title (5), .dev cards (6), "Application" title (7), application cards (8).
+   .half makes a card half width (full width on phones), in any section */
+#content.overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+#content.overview > [data-part]:not(.legacy) {
+    display: contents;
+}
+
+#content.overview > [data-part] > *,
+#content.overview > [data-part].legacy {
+    grid-column: 1 / -1;
+    order: 8;
+}
+
+#content.overview .stat { grid-column: auto; order: 1; }
+#content.overview .alert { order: 2; }
+#content.overview .section-title.app { order: 7; }
+#content.overview .section-title.dev { order: 5; }
+#content.overview .dev { order: 6; }
+#content.overview .half { grid-column: span 2; }
+
+.section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--faint);
+    font-weight: 600;
+    margin: 12px 2px -4px;
+}
+
+/* each part (status0.html, config1.html...) stacks its own blocks */
+[data-part] {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* Settings: section list on the left, built from the cards (see buildRail) */
+#content.has-rail {
+    grid-template-columns: 180px minmax(0, 1fr);
+    align-items: start;
+}
+
+#content.has-rail > [data-part] {
+    grid-column: 2;
+}
+
+.rail {
+    grid-column: 1;
+    grid-row: 1 / span 20;
+    position: sticky;
+    top: 84px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rail a {
+    padding: 8px 12px;
+    border-radius: 9px;
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.rail a:hover,
+.rail a.on {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.rail a.on {
+    box-shadow: var(--shadow);
+}
+
+.rail a.danger {
+    color: var(--err);
+}
+
+.rail .sep {
+    height: 1px;
+    background: var(--line);
+    margin: 8px 4px;
+}
+
+/* -- Cards ----------------------------------------------------------------- */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    min-width: 0;
+}
+
+/* scroll target offset, below the sticky top bar */
+.card {
+    scroll-margin-top: 84px;
+}
+
+.card-h {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 16px 18px 0;
+}
+
+.card-h h2 {
+    font-size: 15px;
+    margin: 0;
+    font-weight: 600;
+}
+
+.card-h .sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-left: auto;
+}
+
+.card-b {
+    padding: 14px 18px 18px;
+}
+
+/* parts written for the previous UI (no .card inside): shown as a single card */
+[data-part].legacy {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 4px 18px 18px;
+    display: block;
+}
+
+/* "Loading..." / "Failed" indicator in a card header (#l of loadStatus/configForm) */
+.ld {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--faint);
+    margin-left: 8px;
+}
+
+/* -- Stat tiles ------------------------------------------------------------ */
+
+.stat {
+    padding: 16px 18px;
+}
+
+.stat .lbl {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.stat .val {
+    font-size: 24px;
+    font-weight: 650;
+    letter-spacing: -.3px;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat .val small {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+.meter {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 99px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.meter i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 99px;
+    background: var(--accent);
+    transition: width .6s;
+}
+
+/* -- Key/value list -------------------------------------------------------- */
+
+.kv {
+    margin: 0;
+    font-size: 14px;
+}
+
+.kv {
+    display: grid;
+    gap: 9px;
+}
+
+.kv > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+}
+
+.kv dt {
+    color: var(--muted);
+}
+
+.kv dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+/* -- Pills, signal bars ---------------------------------------------------- */
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font: 600 12.5px system-ui, sans-serif;
+    background: var(--surface-2);
+    color: var(--muted);
     white-space: nowrap;
 }
 
-#menu .pure-menu,
-#menu .pure-menu ul {
-    border: none;
-    background: transparent;
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.err { background: var(--err-soft); color: var(--err); }
+
+.dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
 }
 
-#menu .pure-menu ul {
-    border-top: 1px solid var(--menu-hover);
+.live .dot {
+    animation: pulse 1.6s infinite;
 }
 
-/* no lingering focus background after a mouse click */
-#menu .pure-menu-link:focus:not(:focus-visible) {
-    background: transparent;
+@keyframes pulse {
+    50% { opacity: .25; }
 }
 
-#menu .pure-menu li a:hover,
-#menu .pure-menu li a:focus-visible {
-    background: var(--menu-hover);
+/* <span class="bars" data-l="0..4"><i></i><i></i><i></i><i></i></span> */
+.bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+    vertical-align: -1px;
 }
 
-#menu .pure-menu-selected,
-#menu .pure-menu-heading {
+.bars i {
+    width: 4px;
+    border-radius: 1px;
+    background: var(--line);
+}
+
+.bars i:nth-child(1) { height: 30%; }
+.bars i:nth-child(2) { height: 55%; }
+.bars i:nth-child(3) { height: 78%; }
+.bars i:nth-child(4) { height: 100%; }
+.bars[data-l="1"] i:nth-child(1) { background: var(--err); }
+.bars[data-l="2"] i:nth-child(-n+2) { background: var(--warn); }
+.bars[data-l="3"] i:nth-child(-n+3),
+.bars[data-l="4"] i { background: var(--ok); }
+
+/* -- Live data tiles ------------------------------------------------------- */
+
+.live-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.lv {
+    background: var(--surface-2);
+    border-radius: 11px;
+    padding: 12px 14px;
+    transition: background .8s;
+    min-width: 0;
+}
+
+.lv .k {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.lv .v {
+    font-size: 19px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.lv.flash {
+    background: var(--accent-soft);
+    transition: none;
+}
+
+/* -- Alert card ------------------------------------------------------------ */
+
+.alert {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 14px 18px;
+    background: var(--err-soft);
+    border-color: color-mix(in srgb, var(--err) 35%, var(--line));
+}
+
+.alert .t {
+    flex: 1;
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.alert b {
+    color: var(--err);
+}
+
+/* -- Buttons ------------------------------------------------------------- */
+
+.btn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 550;
+    font-size: 14px;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    line-height: 1.4;
+    transition: filter .15s, opacity .15s;
+}
+
+.btn:hover {
+    filter: brightness(.96);
+}
+
+.btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.btn.danger {
+    color: var(--err);
+}
+
+.btn.danger.solid {
+    background: var(--err);
+    border-color: var(--err);
+    color: #fff;
+}
+
+.btn.ghost {
+    border-color: transparent;
+    background: none;
+    color: var(--muted);
+}
+
+.btn.sm {
+    padding: 5px 10px;
+    font-size: 13px;
+}
+
+/* -- Forms ----------------------------------------------------------------- */
+
+#content input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]),
+#content select,
+#content textarea {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    outline: none;
+    max-width: 100%;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+#content input:focus,
+#content select:focus,
+#content textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+#content input:invalid:not(:placeholder-shown) {
+    border-color: var(--err);
+}
+
+#content fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.fields {
+    display: grid;
+    gap: 18px;
+}
+
+/* block opened by a switch (e.g. static IP fields) */
+.reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .25s;
+}
+
+.reveal > * {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.reveal.open {
+    grid-template-rows: 1fr;
+}
+
+.reveal .inner {
+    padding-top: 14px;
+}
+
+.field label,
+.field .lbl {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 550;
+    margin-bottom: 6px;
+}
+
+.field input,
+.field select {
+    width: 100%;
+}
+
+.mono {
+    font-family: var(--mono);
+}
+
+.help {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 5px;
+}
+
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* password input with a show/hide button */
+.pw {
+    position: relative;
+}
+
+.pw input {
+    padding-right: 44px !important;
+}
+
+.pw button {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+}
+
+/* <label class="switch"><span class="txt"><b>Title</b><span>Description</span></span><input type="checkbox"></label> */
+.switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    cursor: pointer;
+}
+
+.switch .txt b {
+    display: block;
+    font-size: 14px;
+    font-weight: 550;
+}
+
+.switch .txt span {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.switch input {
+    appearance: none;
+    width: 40px;
+    height: 23px;
+    background: var(--line);
+    border-radius: 99px;
+    position: relative;
+    cursor: pointer;
+    flex: none;
+    transition: background .2s;
+    margin: 0;
+}
+
+.switch input::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+}
+
+.switch input:checked {
     background: var(--accent);
 }
 
-/* selected item stays blue on hover/focus (same specificity as above, so must come after it) */
-#menu .pure-menu li.pure-menu-selected a {
-    color: #fff;
-    background: transparent;
+.switch input:checked::after {
+    transform: translateX(17px);
 }
 
-#menu .pure-menu-heading {
-    font-size: 110%;
-    color: #fff;
-    margin: 0;
-    padding-left: 0.5em;
+/* WiFi network picker */
+.nets {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    max-height: 230px;
+    overflow: auto;
 }
 
-#menu .pure-menu-heading + .pure-menu-heading {
+.net {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+}
+
+.net:last-child {
+    border-bottom: 0;
+}
+
+.net:hover {
+    background: var(--surface-2);
+}
+
+.net.sel {
+    background: var(--accent-soft);
+}
+
+.net .name {
+    flex: 1;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.net .chk {
+    width: 18px;
+    flex: none;
+    color: var(--accent);
+    visibility: hidden;
+}
+
+.net.sel .chk {
+    visibility: visible;
+}
+
+.nets .msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nets .msg .spinner {
+    border-color: var(--line);
+    border-left-color: var(--accent);
+}
+
+.net .q,
+.nets .msg {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.nets .msg {
+    padding: 10px 14px;
+}
+
+/* -- Maintenance list ------------------------------------------------------ */
+
+.actions-list > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+}
+
+.actions-list > div:first-child {
+    border-top: 0;
     padding-top: 0;
 }
 
-/* Hamburger toggle, only visible on small screens */
-.menu-link {
+.actions-list .txt {
+    flex: 1;
+    min-width: 200px;
+}
+
+.actions-list b {
+    display: block;
+    font-size: 14px;
+    font-weight: 550;
+}
+
+.actions-list span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* details under an action (e.g. Rescue mode) */
+.actions-list ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.actions-list li + li {
+    margin-top: 4px;
+}
+
+.actions-list li b {
+    display: inline;
+    font-size: inherit;
+    color: var(--text);
+}
+
+/* -- Firmware -------------------------------------------------------------- */
+
+.fw-hero {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    padding: 20px 22px;
+}
+
+.ver .l {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.ver {
+    text-align: center;
+}
+
+.ver .n {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: -1px;
+    min-height: 1.4em;
+}
+
+.fw-hero .act {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.notes {
+    border-top: 1px solid var(--line);
+    padding: 18px 22px 22px;
+    font-size: 15.5px;
+    line-height: 1.6;
+}
+
+.notes h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+
+.notes .meta {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.notes .sum {
+    white-space: pre-line;
+    color: var(--muted);
+}
+
+.notes ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+}
+
+.progress {
+    padding: 0 22px 20px;
+}
+
+.progress .bar {
+    height: 10px;
+    border-radius: 99px;
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+.progress .bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent), #7a5af8);
+    transition: width .2s;
+}
+
+.progress .lbl {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+}
+
+.drop {
+    display: block;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 34px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+}
+
+.drop:hover,
+.drop.over {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.drop svg {
+    width: 34px;
+    height: 34px;
+    color: var(--accent);
+}
+
+.drop b {
+    display: block;
+    margin-top: 8px;
+}
+
+.drop span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.file-chip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+}
+
+.file-chip .nm {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    overflow-wrap: anywhere;
+}
+
+/* -- Save bar, overlay, toasts --------------------------------------------- */
+
+.savebar {
     position: fixed;
-    display: block;
-    top: 0;
-    left: 0;
-    background: rgba(0, 0, 0, 0.7);
-    font-size: 10px;
-    z-index: 10;
-    width: 2em;
-    height: auto;
-    padding: 2.1em 1.6em;
-}
-
-.menu-link:hover,
-.menu-link:focus {
-    background: #000;
-}
-
-.menu-link span {
-    position: relative;
-    display: block;
-}
-
-.menu-link span,
-.menu-link span:before,
-.menu-link span:after {
-    background-color: #fff;
+    left: 50%;
+    bottom: 24px;
+    z-index: 30;
+    transform: translate(-50%, 24px);
+    opacity: 0;
     pointer-events: none;
-    width: 100%;
-    height: 0.2em;
+    background: var(--text);
+    color: var(--bg);
+    padding: 8px 8px 8px 18px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+    transition: transform .3s cubic-bezier(.2, .9, .3, 1.2), opacity .2s;
+    font-size: 14px;
+    white-space: nowrap;
 }
 
-.menu-link span:before,
-.menu-link span:after {
-    position: absolute;
-    margin-top: -0.6em;
-    content: " ";
+.savebar.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
-.menu-link span:after {
-    margin-top: 0.6em;
+.savebar .btn.ghost {
+    color: inherit;
+    opacity: .7;
 }
 
-@media (min-width: 48em) {
-    #layout {
-        padding-left: var(--menu-width);
-    }
-
-    #menu {
-        left: var(--menu-width);
-        width: max-content;
-        min-width: 180px;
-        max-width: 400px;
-    }
-
-    .menu-link {
-        left: var(--menu-width);
-        display: none;
-    }
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    backdrop-filter: blur(6px);
+    display: grid;
+    place-items: center;
+    padding: 16px;
 }
 
-@media (max-width: 48em) {
-    /* avoid extra left padding when the window grows back with the menu open */
-    #layout.active {
-        left: var(--menu-width);
-    }
+.ov-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px 36px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+    max-width: 380px;
 }
 
-/* -- Common UI helpers ----------------------------------------------------- */
-
-/* "Loading..." / "Failed" indicator next to a section title */
-.ld {
-    font-size: 0.6em;
-    font-weight: bold;
-    margin-left: 0.4em;
+.ov-card h3 {
+    margin: 0 0 4px;
 }
+
+.ov-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.ov-card .secs {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--faint);
+    margin-top: 12px;
+}
+
+.ring {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 4px solid var(--surface-2);
+    border-top-color: var(--accent);
+    animation: spin .9s linear infinite;
+    margin: 0 auto 16px;
+}
+
+.toasts {
+    position: fixed;
+    top: 76px;
+    right: 20px;
+    left: 20px;
+    z-index: 60;
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--ok);
+    padding: 10px 14px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+    font-size: 14px;
+    max-width: 420px;
+    animation: in .25s;
+}
+
+.toast.err {
+    border-left-color: var(--err);
+}
+
+/* -- Confirmation dialog (confirmDialog) ----------------------------------- */
+
+.dialog {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px 26px 20px;
+    width: min(460px, calc(100vw - 32px));
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+}
+
+.dialog[open] {
+    animation: in .2s ease;
+}
+
+.dialog::backdrop {
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.dialog h3 {
+    margin: 0 0 14px;
+    font-size: 18px;
+}
+
+#dlgBody {
+    font-size: 14px;
+    display: grid;
+    gap: 14px;
+}
+
+#dlgBody .kv dd {
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.dlg-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+/* firmware flash summary: "2.16.0 -> 2.17.0 [Upgrade]" */
+.vchange {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.vchange .from {
+    color: var(--muted);
+}
+
+.vchange .pill {
+    margin-left: auto;
+}
+
+/* list of warnings before a risky action */
+.warn-box {
+    background: var(--warn-soft);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 16px 12px 34px;
+    margin: 0;
+    font-size: 13.5px;
+}
+
+.warn-box li + li {
+    margin-top: 4px;
+}
+
+.warn-box li::marker {
+    color: var(--warn);
+}
+
+/* -- Small helpers --------------------------------------------------------- */
 
 .ok {
     color: var(--ok);
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .err {
     color: var(--err);
-    font-weight: bold;
-}
-
-.pure-button.btn-ok,
-.pure-button.btn-warn,
-.pure-button.btn-err {
-    color: #fff;
-}
-
-.pure-button.btn-ok {
-    background: var(--ok);
-}
-
-.pure-button.btn-warn {
-    background: var(--warn);
-}
-
-.pure-button.btn-err {
-    background: var(--err);
-}
-
-.pure-button.btn-sm {
-    font-size: 0.75em;
-}
-
-.strong-labels label {
-    font-weight: bold;
-}
-
-.inline-block {
-    display: inline-block;
-}
-
-.align-top {
-    vertical-align: top;
-}
-
-/* "?" badge and the help box it toggles */
-.infotip {
-    background: var(--ok);
-    padding: 0.3em;
-    border-radius: 3px;
-    color: #fff;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.infotipdiv {
-    background: var(--ok);
-    padding: 0.3em 1em;
-    border-radius: 3px;
-    color: #fff;
-    margin-bottom: 0.5em;
-    display: inline-block;
-}
-
-/* Bordered box used to group an expandable section */
-.panel {
-    border: 3px solid var(--ok);
-    padding: 10px;
-    position: relative;
-    top: -10px;
-}
-
-.panel > .content-subhead:first-child {
-    margin-top: 10px;
-}
-
-/* Full-width alert pinned to the top of the page */
-.banner {
-    position: fixed;
-    top: 0;
-    right: 0;
-    padding: 0.5em 1em;
-    text-align: center;
-    color: #fff;
-    background: var(--err);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
+    font-weight: 600;
 }
 
 .spinner {
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-left-color: #fff;
+    border: 2px solid rgba(255, 255, 255, .3);
+    border-left-color: currentColor;
     border-radius: 50%;
     width: 12px;
     height: 12px;
@@ -310,7 +1265,92 @@ body {
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
+    to { transform: rotate(360deg); }
+}
+
+/* -- Small screens: tabs become a bottom bar ------------------------------- */
+
+@media (max-width: 760px) {
+    .top-in,
+    .banner,
+    main {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .top {
+        backdrop-filter: none;
+        background: var(--bg);
+    }
+
+    #content.overview {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    #content.overview .half {
+        grid-column: 1 / -1;
+    }
+
+    #content.has-rail,
+    .row2 {
+        grid-template-columns: 1fr;
+    }
+
+    #content.has-rail > [data-part] {
+        grid-column: 1;
+    }
+
+    .rail {
+        display: none;
+    }
+
+    .tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 0;
+        justify-content: space-around;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        background: var(--surface);
+        border-top: 1px solid var(--line);
+        z-index: 25;
+    }
+
+    .tab {
+        flex-direction: column;
+        gap: 2px;
+        font-size: 11.5px;
+        padding: 6px 12px;
+    }
+
+    .tab svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    .top .icon-btn {
+        margin-left: auto;
+    }
+
+    main {
+        padding-bottom: 140px;
+    }
+
+    .stat .val {
+        font-size: 21px;
+    }
+
+    .fw-hero .act {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .fw-hero .act .btn {
+        flex: 1;
+    }
+
+    .savebar {
+        bottom: 84px;
     }
 }

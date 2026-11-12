@@ -7,42 +7,71 @@
     <meta name="description" content="{{APP_MODEL}}">
     <title>Domochip {{APP_MODEL}}</title>
 
-    <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="base.css">
+    <script>
+        // theme forced by the header button (see below), applied before rendering to avoid a flash
+        try { document.documentElement.dataset.theme = localStorage.getItem('theme') || ''; } catch (e) { }
+    </script>
 </head>
 
 <body>
-    <div id="layout">
-        <!-- Menu toggle -->
-        <a href="#menu" id="menuLink" class="menu-link">
-            <!-- Hamburger icon -->
-            <span></span>
-        </a>
-
-        <div id="menu">
-            <div class="pure-menu">
-                <div class="pure-menu-heading">Domochip</div>
-                <div class="pure-menu-heading" id="menuModel">{{APP_MODEL}}</div>
-
-                <ul class="pure-menu-list">
-                    <li class="pure-menu-item" id="menuStatus"><a href="" class="pure-menu-link">Status</a></li>
-                    <li class="pure-menu-item" id="menuConfig"><a href="" class="pure-menu-link">Config</a></li>
-                    <li class="pure-menu-item" id="menuFirmware"><a href="" class="pure-menu-link">Firmware</a></li>
-                </ul>
-            </div>
+    <header class="top">
+        <div class="top-in">
+            <div class="logo" id="logo"></div>
+            <div class="ident"><b>{{APP_MODEL}}</b><span id="host">Domochip</span></div>
+            <nav class="tabs" role="tablist">
+                <button class="tab" role="tab" id="menuStatus">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</button>
+                <button class="tab" role="tab" id="menuConfig">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Settings</button>
+                <button class="tab" role="tab" id="menuFirmware">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Firmware</button>
+            </nav>
+            <button class="icon-btn" id="theme" title="Light / dark theme">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            </button>
         </div>
+    </header>
 
-        <div id="main">
-            <div class="header">
-                <h1 id="mainHeader"></h1>
-            </div>
-
-            <div class="content" id="content"></div>
-
-            <!-- Outside #content so it stays visible on every page; shown/hidden by the Status page (status1.html) -->
-            <div id="connectedToAP" class="banner" style="display:none">!!! Disconnect devices from Access Point Wifi network to allow reconnection or modify WiFi configuration !!!</div>
+    <!-- Outside #content so it stays visible on every page; shown/hidden by the Overview page (status1.html) -->
+    <div class="banner" id="connectedToAP" hidden>
+        <div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <span>Access point is still active. Disconnect devices from the <b id="apName"></b> network so the module can reconnect to your WiFi.</span>
+            <button class="btn sm ghost" onclick="$('#connectedToAP').hidden = true">Dismiss</button>
         </div>
     </div>
+
+    <main>
+        <div id="content"></div>
+    </main>
+
+    <div class="savebar" id="savebar">
+        <span>Unsaved changes</span>
+        <button class="btn ghost sm" id="discardBtn">Discard</button>
+        <button class="btn primary sm" id="saveBtn">Save &amp; apply</button>
+    </div>
+
+    <div class="overlay" id="overlay" hidden>
+        <div class="ov-card">
+            <div class="ring"></div>
+            <h3 id="ovTitle"></h3>
+            <p id="ovText"></p>
+            <div class="secs">Waiting for device... <span id="cd">0</span>s</div>
+        </div>
+    </div>
+
+    <!-- confirmation dialog, see confirmDialog() -->
+    <dialog class="dialog" id="dialog">
+        <h3 id="dlgTitle"></h3>
+        <div id="dlgBody"></div>
+        <div class="dlg-actions">
+            <button class="btn" id="dlgCancel">Cancel</button>
+            <button class="btn primary" id="dlgOk"></button>
+        </div>
+    </dialog>
+
+    <div class="toasts" id="toasts"></div>
 
     <script>
         function $(selector, el = document) {
@@ -62,9 +91,14 @@
 
         // Loads a page from an embedded <template> element into #content,
         // then calls each part's init function with its own root element.
+        // Empty parts are hidden; parts without any .card (written for the previous UI) are shown as one card.
         function loadPage(templateId) {
             const element = $('#content');
             element.replaceChildren(document.getElementById(templateId).content.cloneNode(true));
+            element.querySelectorAll('[data-part]').forEach(part => {
+                if (!part.firstElementChild) part.hidden = true;
+                else if (!part.querySelector('.card')) part.classList.add('legacy');
+            });
             for (const { id, init } of pageInits[templateId] || []) {
                 const cleanup = init(element.querySelector(`[data-part="${id}"]`), id);
                 if (typeof cleanup === 'function') cleanups.push(cleanup);
@@ -76,7 +110,10 @@
         function unloadPage() {
             cleanups.forEach(cleanup => cleanup());
             cleanups = [];
+            configForms = [];
+            $('#savebar').classList.remove('show');
             $('#content').replaceChildren();
+            $('#content').classList.remove('has-rail', 'overview');
         }
 
         function request(method, url, data, success, fail, timeout, uploadProgress) {
@@ -119,8 +156,10 @@
                 }
                 object[key].push(value);
             });
+            // unchecked checkboxes are sent as 0; disabled ones (also inside a disabled fieldset) are not sent at all,
+            // like other disabled controls, so the firmware keeps their current value
             form.querySelectorAll('input[type=checkbox]').forEach(cb => {
-                object[cb.name] = cb.checked ? 1 : 0;
+                if (!cb.matches(':disabled')) object[cb.name] = cb.checked ? 1 : 0;
             });
             return JSON.stringify(object);
         }
@@ -179,47 +218,46 @@
             }
         }
 
+        // Config forms of the Settings page: { id, form, options, loaded, dirty }
+        let configForms = [];
+
         // Standard config form of a part, using these elements of root:
-        //   #l : "Loading..." indicator, #f : the form, #r : result message
-        // Loads /gc<id> into the form and enables its submit button; on submit, posts the form
-        // as JSON to /sc<id>, then waits for the device to restart and redirects.
+        //   #l : "Loading..." indicator, #f : the form
+        // Loads /gc<id> into the form. Once the user changes a value, the page-wide save bar appears:
+        // "Save & apply" posts every changed form as JSON to /sc<id> (see saveSettings).
+        // The form's own submit button, if any, is hidden: the save bar replaces it.
         // options (all optional):
         //   afterLoad(form, data) : extra setup once the form is filled
         //   beforeSubmit(form)    : adjust values just before posting
-        //   redirectUrl(form)     : where to go once the device is back (default: this page, Config tab)
+        //   redirectUrl(form)     : give it when applying this config makes the device reconnect (WiFi):
+        //                           the page then waits for the device at the returned URL (default: this page)
         function configForm(root, id, options = {}) {
             const form = $('#f', root);
-            const result = $('#r', root);
             const loading = $('#l', root);
-            const submit = $('input[type=submit]', form);
+            const entry = { id, form, options, loaded: false, dirty: false };
+            configForms.push(entry);
 
+            form.querySelectorAll('[type=submit]').forEach(btn => btn.hidden = true);
             form.addEventListener('submit', evt => {
                 evt.preventDefault();
-                // submit is disabled until the config is loaded and while saving: ignore extra submits
-                if (submit.disabled) return;
-                submit.disabled = true;
-                options.beforeSubmit?.(form);
-                result.innerHTML = 'Saving Configuration...';
-                post('/sc' + id, formToJson(form),
-                    () => {
-                        form.style.display = 'none';
-                        const url = options.redirectUrl?.(form) || location.origin;
-                        if (url === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
-                        waitForDevice(result, url, 30000, '<h3><b>Configuration saved <span class="ok">successfully</span>. System is restarting now.</b></h3>');
-                    },
-                    () => {
-                        result.innerHTML = '<h3><b>Configuration <span class="err">error</span>.</b></h3>';
-                        submit.disabled = false;
-                    }
-                );
+                saveSettings();
             });
+
+            // values set while loading (fillForm, afterLoad) are not user changes
+            const markDirty = () => {
+                if (!entry.loaded) return;
+                entry.dirty = true;
+                $('#savebar').classList.add('show');
+            };
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
 
             getJSON('/gc' + id,
                 data => {
                     data ??= {}; // an empty JsonDocument is sent as 'null'
                     fillForm(form, data);
                     options.afterLoad?.(form, data);
-                    submit.disabled = false;
+                    entry.loaded = true;
                     fadeOut(loading);
                 },
                 () => {
@@ -228,12 +266,68 @@
             );
         }
 
+        // Saves every changed config form, one after the other (the device handles one request at a time).
+        // Forms whose config makes the device reconnect (redirectUrl option) are saved last,
+        // then the page waits for the device to come back.
+        let saving = false;
+        function saveSettings() {
+            const pending = configForms.filter(entry => entry.dirty);
+            if (saving || !pending.length) return;
+            if (!checkValidity(pending.map(entry => entry.form))) return;
+            pending.sort((a, b) => !!a.options.redirectUrl - !!b.options.redirectUrl);
+
+            saving = true;
+            $('#saveBtn').disabled = true;
+            let reconnectUrl = null;
+
+            const done = () => {
+                saving = false;
+                $('#saveBtn').disabled = false;
+            };
+            const saveNext = () => {
+                const entry = pending.shift();
+                if (!entry) {
+                    done();
+                    $('#savebar').classList.remove('show');
+                    if (reconnectUrl) {
+                        if (reconnectUrl === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
+                        waitForDevice(reconnectUrl, 30000, 'Applying settings', 'The device is reconnecting to WiFi...');
+                    } else {
+                        toast('Settings saved and applied');
+                    }
+                    return;
+                }
+                entry.options.beforeSubmit?.(entry.form);
+                post('/sc' + entry.id, formToJson(entry.form),
+                    () => {
+                        entry.dirty = false;
+                        if (entry.options.redirectUrl) reconnectUrl = entry.options.redirectUrl(entry.form) || location.origin;
+                        saveNext();
+                    },
+                    response => {
+                        done();
+                        toast('Configuration error' + (response ? ': ' + response : ''), true);
+                    }
+                );
+            };
+            saveNext();
+        }
+
         function rssiToQuality(rssi) {
             return Math.min(Math.max(2 * (rssi + 100), 0), 100);
         }
 
         function rssiToColor(rssi) {
             return `hsl(${rssiToQuality(rssi) * 1.2}, 100%, 45%)`;
+        }
+
+        // Signal bars element (.bars in base.css) for a RSSI
+        function signalBars(rssi) {
+            const bars = document.createElement('span');
+            bars.className = 'bars';
+            bars.dataset.l = Math.ceil(rssiToQuality(rssi) / 25) || 1;
+            bars.innerHTML = '<i></i><i></i><i></i><i></i>';
+            return bars;
         }
 
         function fadeOut(el) {
@@ -283,10 +377,12 @@
             }, 2000);
         }
 
-        // Shows "Waiting for device... Ns" in el (after an optional message, trusted HTML),
+        // Shows the full-page "Waiting for device... Ns" overlay with a title and a text,
         // then redirects to url once the device answers, or after maxMs
-        function waitForDevice(el, url, maxMs, message = '') {
-            el.innerHTML = message + '<h3>Waiting for device... <span id="cd">0</span>s</h3>';
+        function waitForDevice(url, maxMs, title, text = '') {
+            $('#ovTitle').textContent = title;
+            $('#ovText').textContent = text;
+            $('#overlay').hidden = false;
             redirectWhenReachable(url, maxMs);
         }
 
@@ -296,8 +392,149 @@
             if (detail) el.append(` (${detail})`);
         }
 
+        // Shows a short message in the top right corner (red when isError)
+        function toast(message, isError) {
+            const el = document.createElement('div');
+            el.className = 'toast' + (isError ? ' err' : '');
+            el.textContent = message;
+            $('#toasts').append(el);
+            setTimeout(() => el.remove(), isError ? 6000 : 3000);
+        }
+
         function triggerEvent(el, eventName) {
             el.dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true }));
+        }
+
+        // Returns true when every field of forms is valid. Otherwise brings the first invalid field into view,
+        // shows the browser message on it and a toast naming it (the field may be in a part scrolled out of view).
+        function checkValidity(forms) {
+            for (const form of forms) {
+                const field = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+                if (!field) continue;
+                const label = (field.id && form.querySelector(`label[for="${field.id}"]`)?.textContent.trim()) || field.name;
+                field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => field.reportValidity(), 400); // once scrolled, so the message shows next to it
+                toast(`${label}: ${field.validationMessage}`, true);
+                return false;
+            }
+            return true;
+        }
+
+        // Modal confirmation dialog. options:
+        //   title, confirmLabel : texts
+        //   body                : a DOM node (build untrusted text with textContent), or plain text
+        //   danger              : red confirm button
+        // Returns a Promise resolved with true when confirmed, false when cancelled (Cancel, Esc)
+        function confirmDialog({ title, body, confirmLabel = 'Confirm', danger = false }) {
+            const dialog = $('#dialog');
+            $('#dlgTitle').textContent = title;
+            $('#dlgBody').replaceChildren(body instanceof Node ? body : document.createTextNode(body || ''));
+            $('#dlgOk').textContent = confirmLabel;
+            $('#dlgOk').className = 'btn ' + (danger ? 'danger solid' : 'primary');
+            dialog.showModal();
+            $('#dlgOk').focus();
+            // answered by the buttons or Esc (handlers replaced on each call, so they never pile up)
+            return new Promise(resolve => {
+                const answer = confirmed => evt => {
+                    evt.preventDefault();
+                    dialog.close();
+                    resolve(confirmed);
+                };
+                $('#dlgOk').onclick = answer(true);
+                $('#dlgCancel').onclick = answer(false);
+                dialog.oncancel = answer(false);
+            });
+        }
+
+        // Builds an element from trusted HTML (fixed markup), to fill its parts with textContent afterwards
+        function html(markup) {
+            const template = document.createElement('template');
+            template.innerHTML = markup.trim();
+            return template.content.firstElementChild;
+        }
+
+        // Password fields: the button of a .pw block shows / hides its input
+        document.addEventListener('click', evt => {
+            const button = evt.target.closest('.pw button');
+            if (!button) return;
+            const input = button.parentElement.querySelector('input');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        // -- Live data helpers (status parts) --------------------------------------
+
+        // Shows values as tiles in grid (a .live-grid element): one tile per key, created on first sight,
+        // a tile flashes when its value changes
+        function updateTiles(grid, values) {
+            for (const [key, value] of Object.entries(values)) {
+                let tile = [...grid.children].find(el => el.dataset.key === key);
+                if (!tile) {
+                    tile = document.createElement('div');
+                    tile.className = 'lv';
+                    tile.dataset.key = key;
+                    tile.innerHTML = '<div class="k"></div><div class="v"></div>';
+                    tile.firstChild.textContent = key;
+                    grid.append(tile);
+                }
+                const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                if (tile.lastChild.textContent !== text) {
+                    tile.lastChild.textContent = text;
+                    tile.classList.add('flash');
+                    requestAnimationFrame(() => requestAnimationFrame(() => tile.classList.remove('flash')));
+                }
+            }
+        }
+
+        // "updated just now" / "updated 12s ago" in el, refreshed every second.
+        // Returns { touch() : call on each update, stop() : call when leaving the page }
+        function ageLabel(el) {
+            let last = 0;
+            const show = () => {
+                if (!last) return;
+                const seconds = Math.floor((Date.now() - last) / 1000);
+                el.textContent = seconds < 2 ? 'updated just now' : `updated ${seconds}s ago`;
+            };
+            const timer = setInterval(show, 1000);
+            return {
+                touch() { last = Date.now(); show(); },
+                stop() { clearInterval(timer); },
+            };
+        }
+
+        // Live / Paused pill: <span class="pill"><span class="dot"></span><span>Waiting</span></span>
+        function setLiveState(pill, isLive) {
+            pill.lastElementChild.textContent = isLive ? 'Live' : 'Paused';
+            pill.className = 'pill' + (isLive ? ' ok live' : '');
+        }
+
+        // Receives the server-sent events of part id (/statusEvt<id>) as parsed JSON, while the browser tab is visible.
+        // livePill (optional) shows the connection state. Returns the cleanup function to return from the part.
+        function connectEvents(id, onMessage, livePill) {
+            let source;
+            const setState = isLive => { if (livePill) setLiveState(livePill, isLive); };
+            const close = () => {
+                if (source && source.readyState !== EventSource.CLOSED) source.close();
+                setState(false);
+            };
+            const connect = () => {
+                if (!window.EventSource || document.hidden) return;
+                if (source && source.readyState !== EventSource.CLOSED) return;
+                source = new EventSource('/statusEvt' + id);
+                source.addEventListener('open', () => setState(true));
+                source.addEventListener('error', () => setState(false));
+                source.addEventListener('message', evt => {
+                    setState(true);
+                    onMessage(JSON.parse(evt.data));
+                });
+            };
+            const onVisibilityChange = () => document.hidden ? close() : connect();
+
+            document.addEventListener('visibilitychange', onVisibilityChange);
+            connect();
+            return () => {
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+                close();
+            };
         }
     </script>
 
@@ -305,36 +542,109 @@
 <!-- PAGES -->
 
     <script>
-        // Side menu toggle (small screens): hamburger opens/closes it, clicking the page closes it
-        function toggleMenu(evt) {
-            evt.preventDefault();
-            $('#layout').classList.toggle('active');
+        // Header: logo initials from the model name (capitals, e.g. WBase -> WB), and the address used to reach the device
+        const model = document.querySelector("meta[name='description']").content;
+        $('#logo').textContent = (model.match(/[A-Z0-9]/g) || [model[0]]).slice(0, 2).join('').toUpperCase();
+        $('#host').textContent = location.host;
+
+        // Header subtitle: "hostname · IP" from the WiFi status (/gs1)
+        function setIdentity(wifiStatus) {
+            const ip = wifiStatus.stationip || wifiStatus.apip;
+            $('#host').textContent = [wifiStatus.hostname, ip].filter(Boolean).join(' · ') || location.host;
         }
-        $('#menuLink').addEventListener('click', toggleMenu);
-        $('#main').addEventListener('click', (evt) => {
-            if ($('#layout').classList.contains('active')) toggleMenu(evt);
+
+        // Theme: follows the OS until the button forces light or dark (remembered by this browser, applied in <head>)
+        $('#theme').addEventListener('click', () => {
+            const root = document.documentElement;
+            const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+            root.dataset.theme = dark ? 'light' : 'dark';
+            try { localStorage.setItem('theme', root.dataset.theme); } catch (e) { }
         });
 
-        function handleMenuClick(menuId, headerText, loadFn) {
-            const menuElement = $(menuId);
-            menuElement.addEventListener("click", (evt) => {
-                evt.preventDefault();
-                unloadPage();
-                document.querySelectorAll('#menu .pure-menu-item').forEach(item => item.classList.remove('pure-menu-selected'));
-                $('#layout').classList.remove('active');
-                menuElement.classList.add("pure-menu-selected");
-                $("#mainHeader").textContent = headerText;
-                loadFn();
+        // Settings section list: one link per card title of the page, the clicked one highlighted;
+        // cards with class "danger" (Maintenance) come after a separator, in red
+        function buildRail() {
+            const content = $('#content');
+            const rail = document.createElement('nav');
+            rail.className = 'rail';
+            content.querySelectorAll('.card, [data-part].legacy').forEach((card, i) => {
+                const title = card.querySelector('h2');
+                if (!title || card.closest('[hidden]')) return;
+                card.id ||= 'section' + i;
+                const link = document.createElement('a');
+                link.href = '#' + card.id;
+                link.textContent = title.firstChild.textContent.trim();
+                link.addEventListener('click', evt => {
+                    evt.preventDefault();
+                    rail.querySelectorAll('a').forEach(a => a.classList.toggle('on', a === link));
+                    card.scrollIntoView({ behavior: 'smooth' });
+                });
+                if (card.classList.contains('danger')) {
+                    link.classList.add('danger');
+                    rail.append(Object.assign(document.createElement('div'), { className: 'sep' }));
+                }
+                rail.append(link);
+            });
+            rail.querySelector('a')?.classList.add('on');
+            content.prepend(rail);
+            content.classList.add('has-rail');
+        }
+
+        const pages = {
+            '#menuStatus': () => { $('#content').classList.add('overview'); loadPage('tpl-status'); },
+            '#menuConfig': () => { loadPage('tpl-config'); buildRail(); },
+            '#menuFirmware': () => loadPage('tpl-fw'),
+        };
+
+        function showPage(tabId) {
+            unloadPage();
+            document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', '#' + tab.id === tabId));
+            scrollTo(0, 0);
+            pages[tabId]();
+            // replay the page fade-in
+            const content = $('#content');
+            content.classList.remove('in');
+            void content.offsetWidth;
+            content.classList.add('in');
+        }
+
+        // Leaving Settings with unsaved changes: names the changed sections (title of each changed form's card)
+        function confirmDiscard() {
+            const sections = configForms.filter(entry => entry.dirty)
+                .map(entry => (entry.form.closest('.card') || entry.form).querySelector('h2')?.firstChild.textContent.trim())
+                .filter(Boolean);
+            const body = html('<div>Changes in <b></b> have not been saved and will be lost.</div>');
+            $('b', body).textContent = sections.join(', ') || 'Settings';
+            return confirmDialog({ title: 'Discard unsaved changes?', body, confirmLabel: 'Discard', danger: true });
+        }
+
+        for (const tabId in pages) {
+            $(tabId).addEventListener('click', async () => {
+                if (configForms.some(entry => entry.dirty) && !await confirmDiscard()) return;
+                showPage(tabId);
             });
         }
 
-        handleMenuClick("#menuStatus", "Status", () => loadPage('tpl-status'));
-        handleMenuClick("#menuConfig", "Config", () => loadPage('tpl-config'));
-        handleMenuClick("#menuFirmware", "Firmware", () => loadPage('tpl-fw'));
+        $('#saveBtn').addEventListener('click', saveSettings);
+        $('#discardBtn').addEventListener('click', () => showPage('#menuConfig'));
 
         const savedTab = sessionStorage.getItem('activeTab');
         sessionStorage.removeItem('activeTab');
-        triggerEvent($(savedTab) || $('#menuStatus'), 'click');
+        if (pages[savedTab]) {
+            // back after a save or a restart: same page as before
+            showPage(savedTab);
+            getJSON('/gs1', setIdentity);
+        } else {
+            // landing page: Settings when the module runs its access point (nothing configured, rescue mode,
+            // WiFi unreachable...), Overview otherwise
+            getJSON('/gs1',
+                wifiStatus => {
+                    setIdentity(wifiStatus);
+                    showPage(wifiStatus.apmode === 'on' ? '#menuConfig' : '#menuStatus');
+                },
+                () => showPage('#menuStatus')
+            );
+        }
     </script>
 </body>
 

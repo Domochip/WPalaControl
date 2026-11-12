@@ -1,17 +1,38 @@
-<h2 class="content-subhead">System<span id="l" class="ld">Loading...</span></h2>
+<!-- Overview blocks are placed by type, whatever the part they come from (see #content.overview in base.css) -->
+<div class="card stat">
+    <div class="lbl">Uptime</div>
+    <div class="val" data-k="uptime">-</div>
+</div>
+<div class="card stat">
+    <div class="lbl">Free heap</div>
+    <div class="val"><span data-k="freeheap">-</span><small id="heapTotal">KB</small></div>
+    <div class="meter" id="heapMeter"><i></i></div>
+</div>
+<div class="card stat">
+    <div class="lbl">Local time</div>
+    <div class="val" id="time">-</div>
+</div>
 
-SN : <span data-k="sn"></span><br>
-Version : <span data-k="version"></span><br>
-UpTime : <span data-k="uptime"></span><br>
-Local Time : <span data-k="localtime"></span><br>
-FreeHeap : <span data-k="freeheap"></span><br>
+<div class="card alert" id="crashes" hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--err)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+    <div class="t"><b data-k="crashcount"></b> since last clear. Download the crash files to analyse the stack trace.</div>
+    <a href="/crashdl" class="btn sm">Download</a>
+    <button class="btn sm danger" id="clrCrashes">Clear</button>
+</div>
 
-<div id="crashes" style="display:none">
-Crash logged : <span data-k="crashcount"></span><br>
-Crash files :
-&nbsp;<a href="/crashdl" class="pure-button pure-button-primary btn-sm">Download</a>
-&nbsp;<button class="pure-button pure-button-primary btn-sm btn-err" id="clrCrashes">Clear</button>
-&nbsp;<span id="clrResult"></span>
+<div class="section-title app" id="appTitle">Application</div>
+<div class="section-title dev">Device</div>
+
+<div class="card half dev">
+    <div class="card-h"><h2>System<span id="l" class="ld">Loading...</span></h2></div>
+    <div class="card-b">
+        <dl class="kv">
+            <div><dt>Serial number</dt><dd data-k="sn"></dd></div>
+            <div><dt>Firmware</dt><dd data-k="version"></dd></div>
+            <div data-show="timezone"><dt>Timezone</dt><dd data-k="timezone"></dd></div>
+            <div><dt>Free stack</dt><dd data-k="freestack"></dd></div>
+        </dl>
+    </div>
 </div>
 
 <script>
@@ -19,18 +40,42 @@ Crash files :
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('0'), used in API endpoints like '/gs' + id
 
+    // "Application" title only when an application part (other than 0 and 1) has content
+    $('#appTitle', root).hidden = ![...document.querySelectorAll('#content [data-part]')]
+        .some(part => !['0', '1'].includes(part.dataset.part) && !part.hidden);
+
     loadStatus(root, id, {
+        formats: {
+            // "12d4h7m" -> "12d 04:07"
+            uptime: v => v.replace(/^(\d+)d(\d+)h(\d+)m$/, (_, d, h, m) => `${d}d ${h.padStart(2, '0')}:${m.padStart(2, '0')}`),
+            crashcount: v => v + (v > 1 ? ' crashes' : ' crash') + ' logged',
+            freeheap: v => (v / 1024).toFixed(1),
+            freestack: v => v + ' bytes',
+        },
         afterLoad: function (status) {
-            if (status.crashcount > 0) $('#crashes', root).style.display = '';
+            $('#crashes', root).hidden = !(status.crashcount > 0);
+
+            // tile: time only ("2026-11-11 22:51:03 CET" -> "22:51:03"), full value as tooltip
+            const time = /\d\d:\d\d:\d\d/.exec(status.localtime);
+            $('#time', root).textContent = time ? time[0] : 'Not synced';
+            $('#time', root).title = status.localtime;
+
+            // heap gauge: only when the firmware knows the heap size (ESP32)
+            if (status.heapsize) {
+                $('#heapTotal', root).textContent = `KB / ${Math.round(status.heapsize / 1024)} KB`;
+                $('#heapMeter i', root).style.width = (100 * status.freeheap / status.heapsize) + '%';
+            } else {
+                $('#heapMeter', root).style.visibility = 'hidden';
+            }
         },
     });
 
     $('#clrCrashes', root).addEventListener('click', function () {
-        $('#clrResult', root).textContent = '';
         post('/crashclr', null, function () {
-            $('#crashes', root).style.display = 'none';
+            $('#crashes', root).hidden = true;
+            toast('Crash logs cleared');
         }, function () {
-            showError($('#clrResult', root));
+            toast('Failed to clear crash logs', true);
         });
     });
 </script>

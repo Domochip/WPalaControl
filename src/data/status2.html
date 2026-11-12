@@ -1,52 +1,79 @@
-<h2 class="content-subhead">WPalaControl<span id="l" class="ld">Loading...</span></h2>
-Hardware Version: <span data-k="hwversion"></span> (<span data-k="hwdetection"></span>)<br>
-<h3 class="content-subhead">Stove infos (<span id="lastRefresh">AutoRefresh if HA configured</span>)</h3>
-<dl id="liveData"></dl>
-<h3 class="content-subhead">Home Automation Status</h3>
-Protocol: <span id="haproto"></span><br>
-<span data-show="hamqttstatus">
-    Connection State: <span data-k="hamqttstatus"></span><br>
-    Last Publish : <span data-k="hamqttlastpublish"></span><br>
-</span>
+<div class="card">
+    <div class="card-h">
+        <h2>Stove<span id="l" class="ld">Loading...</span></h2>
+        <span class="pill" id="liveState"><span class="dot"></span><span>Waiting</span></span>
+        <span class="sub" id="lastRefresh"></span>
+    </div>
+    <div class="card-b">
+        <div class="alert" id="stoveError" hidden style="margin-bottom:14px">
+            <div class="t"><b>Stove not answering</b> <span id="stoveErrorMsg"></span></div>
+        </div>
+        <div class="live-grid" id="liveData"></div>
+        <div class="help" id="liveHint">Values refresh automatically when Home Automation is configured.</div>
+    </div>
+</div>
+
+<div class="card half">
+    <div class="card-h"><h2>Stove interface</h2></div>
+    <div class="card-b">
+        <dl class="kv">
+            <div><dt>Hardware version</dt><dd data-k="hwversion"></dd></div>
+            <div><dt>Detection</dt><dd data-k="hwdetection"></dd></div>
+        </dl>
+    </div>
+</div>
+
+<div class="card half">
+    <div class="card-h">
+        <h2>Home Automation</h2>
+        <span class="pill" id="mqttState" data-show="hamqttstatus" style="margin-left:auto"><span class="dot"></span><span data-k="hamqttstatus"></span></span>
+    </div>
+    <div class="card-b">
+        <dl class="kv">
+            <div><dt>Protocol</dt><dd id="haproto">-</dd></div>
+            <div data-show="hamqttlastpublish"><dt>Last publish</dt><dd><span class="pill" id="lastPublish" data-k="hamqttlastpublish"></span></dd></div>
+            <div data-show="mqttconnectcount"><dt>Connections</dt><dd data-k="mqttconnectcount"></dd></div>
+        </dl>
+    </div>
+</div>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
     //   root : this part's <div data-part> element, query it with $('#x', root)
     //   id   : this part's id ('2'), used in API endpoints like '/gs' + id
 
-    // Displays stove values (from GET SERN or an SSE event) in #liveData:
-    // one <dd> per value, a value is shown in bold when it changed since the last update
+    const age = ageLabel($('#lastRefresh', root));
+
+    // Displays stove values (from GET SERN or an SSE event) as tiles (see the live data helpers in index_template.html).
+    // A failed command shows its message instead.
     function parseLiveData(response) {
-        const liveData = response.SUCCESS === true ? response.DATA : { MSG: response.INFO.MSG };
-        for (const [key, value] of Object.entries(liveData)) {
-            // element id must start with a letter and contain no space
-            const keyForId = (/[^a-zA-Z]/.test(key[0]) ? 'a' : '') + key.replace(/ /g, '_');
-            const text = String(value);
-            let valueElement = $('#' + keyForId + 'Value', root);
-            if (valueElement) {
-                valueElement.style.fontWeight = (valueElement.textContent != text ? 'bold' : 'normal');
-                valueElement.textContent = text;
-            }
-            else {
-                valueElement = document.createElement('span');
-                valueElement.id = keyForId + 'Value';
-                valueElement.textContent = text;
-                const row = document.createElement('dd');
-                row.id = keyForId;
-                row.append(key + ' : ', valueElement);
-                $('#liveData', root).appendChild(row);
-            }
+        if (response.SUCCESS !== true) {
+            $('#stoveError', root).hidden = false;
+            $('#stoveErrorMsg', root).textContent = response.INFO?.MSG ? '(' + response.INFO.MSG + ')' : '';
+            return;
         }
-        $('#lastRefresh', root).textContent = (new Date()).toLocaleString();
+        $('#stoveError', root).hidden = true;
+        updateTiles($('#liveData', root), response.DATA || {});
+        age.touch();
+    }
+
+    // MQTT state and last publish pills: green when OK, orange/red otherwise
+    function colorPills(status) {
+        if ('hamqttstatus' in status)
+            $('#mqttState', root).className = 'pill ' + (/^connected$/i.test(status.hamqttstatus) ? 'ok' : 'warn');
+        if ('hamqttlastpublish' in status)
+            $('#lastPublish', root).className = 'pill ' + (status.hamqttlastpublish === 'OK' ? 'ok' : 'err');
     }
 
     // status values (/gs2 or SSE event, both send the full status) are displayed with data-k / data-show
-    loadStatus(root, id);
+    loadStatus(root, id, { afterLoad: colorPills });
 
     // protocol name comes from the configuration (0:Disabled, 1:MQTT)
     getJSON("/gc" + id,
-        function (GC) {
-            $("#haproto", root).textContent = ["Disabled", "MQTT"][GC["haproto"]] ?? GC["haproto"];
+        function (config) {
+            config ??= {};
+            $("#haproto", root).textContent = ["Disabled", "MQTT"][config.haproto] ?? config.haproto;
+            $('#liveHint', root).hidden = config.haproto > 0;
         },
         function () {
             showError($("#haproto", root));
@@ -56,43 +83,22 @@ Protocol: <span id="haproto"></span><br>
     getJSON("/cgi-bin/sendmsg.lua?cmd=GET+SERN",
         parseLiveData,
         function () {
-            showError($("#lastRefresh", root));
+            parseLiveData({ SUCCESS: false, INFO: { MSG: 'request failed' } });
         }
     );
 
-    var statusEventSource;
-
-    function closeStatusEventSource() {
-        if (statusEventSource != undefined && statusEventSource.readyState !== 2) {
-            statusEventSource.close();
+    // live updates while the page is shown: status update (no SUCCESS key) or stove values
+    const stopEvents = connectEvents(id, msg => {
+        if (!('SUCCESS' in msg)) {
+            fillStatus(root, msg);
+            colorPills(msg);
         }
-    }
-
-    function connectStatusEventSource() {
-        if (!window.EventSource || document.hidden) return;
-        if (statusEventSource != undefined && statusEventSource.readyState !== 2) return;
-
-        statusEventSource = new EventSource('/statusEvt' + id);
-        statusEventSource.addEventListener('message', function (e) {
-            console.log('statusEvt' + id + ' : ' + e.data);
-            const msg = JSON.parse(e.data);
-            if (!('SUCCESS' in msg)) fillStatus(root, msg);
-            else parseLiveData(msg);
-        });
-    }
-
-    function onVisibilityChange() {
-        if (document.hidden) closeStatusEventSource();
-        else connectStatusEventSource();
-    }
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    connectStatusEventSource();
+        else parseLiveData(msg);
+    }, $('#liveState', root));
 
     // cleanup called by unloadPage() when leaving this page
     return function () {
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-        closeStatusEventSource();
+        stopEvents();
+        age.stop();
     };
 </script>

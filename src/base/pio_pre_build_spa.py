@@ -6,7 +6,7 @@ import re
 # other files get an empty part id.
 PAGES = {
     'tpl-status': ['src/base/data/status0.html', 'src/base/data/status1.html', 'src/data/status2.html'],
-    'tpl-config': ['src/base/data/config0.html', 'src/base/data/config1.html', 'src/data/config2.html'],
+    'tpl-config': ['src/base/data/config1.html', 'src/base/data/config0.html', 'src/data/config2.html', 'src/base/data/maintenance.html'],
     'tpl-fw':     ['src/base/data/fw.html'],
 }
 
