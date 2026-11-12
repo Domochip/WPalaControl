@@ -44,13 +44,6 @@ void setup()
   LOG_SERIAL.flush();
 #endif
 
-#ifdef STATUS_LED_SETUP
-  STATUS_LED_SETUP
-#endif
-#ifdef STATUS_LED_ERROR
-  STATUS_LED_ERROR
-#endif
-
   LOG_SERIAL_PRINTLN(F(CUSTOM_APP_MANUFACTURER " " CUSTOM_APP_MODEL " " VERSION));
   LOG_SERIAL_PRINTLN(F("---Booting---"));
 
