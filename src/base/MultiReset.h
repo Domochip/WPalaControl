@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-// Requests Rescue Mode when the reset button is pressed several times in a row
+// Requests Recovery Mode when the reset button is pressed several times in a row
 class MultiReset
 {
 public:

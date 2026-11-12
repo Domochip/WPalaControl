@@ -49,6 +49,7 @@ private:
   uint16_t _connectionCount = 0;         // count of successful WiFi connections
   volatile uint8_t _lastDiscoReason = 0; // last WiFi disconnection reason code (written from WiFi event)
 
+  bool staEnabled() { return ssid[0] && !SystemState::recoveryMode; }
   bool enableAP();
   void setStaState(StaState state);
   void startConnect();

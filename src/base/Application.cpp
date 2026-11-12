@@ -587,16 +587,13 @@ bool Application::mqttPublishUpdate(MQTTMan &mqttMan)
   return mqttMan.publish(topic.c_str(), updateInfo, true);
 }
 
-void Application::init(bool skipExistingConfig)
+void Application::init()
 {
-  bool result = true;
-
   LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), (const char *)getAppIdName());
 
   setConfigDefaultValues();
 
-  if (!skipExistingConfig)
-    result = loadConfig();
+  bool result = loadConfig();
 
   // Execute specific Application Init Code
   result = appInit() && result;

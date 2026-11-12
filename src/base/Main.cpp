@@ -47,13 +47,10 @@ void setup()
   LOG_SERIAL_PRINTLN(F(CUSTOM_APP_MANUFACTURER " " CUSTOM_APP_MODEL " " VERSION));
   LOG_SERIAL_PRINTLN(F("---Booting---"));
 
-  bool skipExistingConfig = MultiReset::check();
+  SystemState::recoveryMode = MultiReset::check();
+  if (SystemState::recoveryMode)
+    LOG_SERIAL_PRINTLN(F("-> RECOVERY MODE : WiFi station disabled, AP only"));
 
-  if (skipExistingConfig)
-  {
-    LOG_SERIAL_PRINTLN(F("-> RESCUE MODE : Stored configuration won't be loaded."));
-  }
-  
 #ifdef ESP8266
   if (!LittleFS.begin())
 #else
@@ -70,13 +67,13 @@ void setup()
 #endif
 
   // Init Core
-  core.init(skipExistingConfig);
+  core.init();
 
   // Init WiFi
-  wifiMan.init(skipExistingConfig);
+  wifiMan.init();
 
   // Init Custom Application
-  custom.init(skipExistingConfig);
+  custom.init();
 
   LOG_SERIAL_PRINT(F("Start WebServer : "));
 

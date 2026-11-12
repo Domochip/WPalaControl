@@ -91,7 +91,7 @@ public:
 
   void mqttPublishStatus(MQTTMan &mqttMan);
   bool mqttPublishUpdate(MQTTMan &mqttMan);
-  void init(bool skipExistingConfig);
+  void init();
   void initWebServer(WebServer &server);
   void run();
 

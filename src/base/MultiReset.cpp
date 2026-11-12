@@ -78,7 +78,7 @@ bool MultiReset::check()
   if (count >= MULTI_RESET_COUNT)
   {
     writeCounter(0);
-    LOG_SERIAL_PRINTF_P(PSTR("Reset pressed %d times -> Rescue Mode requested\n"), count);
+    LOG_SERIAL_PRINTF_P(PSTR("Reset pressed %d times -> Recovery Mode requested\n"), count);
     return true;
   }
 
@@ -86,7 +86,7 @@ bool MultiReset::check()
   if (count)
   {
     _pending = true;
-    LOG_SERIAL_PRINTF_P(PSTR("Reset pressed %d/%d times (press again within %ds for Rescue Mode)\n"), count, MULTI_RESET_COUNT, MULTI_RESET_WINDOW);
+    LOG_SERIAL_PRINTF_P(PSTR("Reset pressed %d/%d times (press again within %ds for Recovery Mode)\n"), count, MULTI_RESET_COUNT, MULTI_RESET_WINDOW);
   }
   return false;
 }
