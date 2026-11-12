@@ -22,7 +22,6 @@
   - [Get your adapter](#get-your-adapter)
   - [Connect it to the stove](#connect-it-to-the-stove)
   - [First boot](#first-boot)
-    - [Recovery Mode](#recovery-mode)
   - [Web interface](#web-interface)
     - [Status](#status)
     - [Config](#config)
@@ -37,6 +36,7 @@
   - [Command list](#command-list)
   - [Published MQTT values](#published-mqtt-values)
   - [Troubleshooting](#troubleshooting)
+  - [Recovery Mode](#recovery-mode)
 
 ## Quick start
 
@@ -102,29 +102,6 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 
 > [!NOTE]
 > The access point is only started when the module is not connected to your Wi-Fi network (first boot, wrong settings, network down).
-
-### Recovery Mode
-
-Recovery Mode gives you access to the module when you can't reach it normally, without losing its configuration. Use it when:
-
-- the module can't be reached after a Wi-Fi settings change (wrong SSID, password or static IP)
-- you forgot the **Web Password**
-
-**Enter Recovery Mode**: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
-
-> [!NOTE]
-> Only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode.
-
-**In Recovery Mode**:
-
-- the module does not connect to your Wi-Fi network: it only starts its own (SSID and password in [First boot](#first-boot)). Connect to it and go to <http://192.168.4.1>
-- the **Web Password** is not requested
-- the stored configuration is loaded but not modified: nothing is erased
-
-**Leave Recovery Mode**:
-
-- save any configuration section (e.g. **Config** → **WiFi** or **Config** → **System**), after a confirmation: the module goes back to normal operation immediately (connection to your Wi-Fi network, **Web Password** if set). Reconnect your device to your Wi-Fi network and open the module address
-- or reboot the module: it starts normally with its stored configuration
 
 ## Web interface
 
@@ -337,3 +314,26 @@ Values published automatically every "Upload Period":
 | Web Password forgotten | Press the RST button 3 times to start in [Recovery Mode](#recovery-mode): the password is not requested, so you can change it in **Config** → **System** |
 | Online Update fails | The module needs Internet access. If you configured a static IP, make sure Gateway and DNS are set (not needed with DHCP) |
 | Nothing published on MQTT | **Status** page → **Home Automation Status** shows the connection state and the last publish result |
+
+## Recovery Mode
+
+Recovery Mode gives you access to the module when you can't reach it normally, without losing its configuration. Use it when:
+
+- the module can't be reached after a Wi-Fi settings change (wrong SSID, password or static IP)
+- you forgot the **Web Password**
+
+**Enter Recovery Mode**: press the **RST** button of the D1 Mini **3 times in a row**, each press within 5 seconds of the previous one.
+
+> [!NOTE]
+> Only presses of the RST button are counted: unplugging/replugging the module does not trigger Recovery Mode.
+
+**In Recovery Mode**:
+
+- the module does not connect to your Wi-Fi network: it only starts its own (SSID and password in [First boot](#first-boot)). Connect to it and go to <http://192.168.4.1>
+- the **Web Password** is not requested
+- the stored configuration is loaded but not modified: nothing is erased
+
+**Leave Recovery Mode**:
+
+- save any configuration section (e.g. **Config** → **WiFi** or **Config** → **System**), after a confirmation: the module goes back to normal operation immediately (connection to your Wi-Fi network, **Web Password** if set). Reconnect your device to your Wi-Fi network and open the module address
+- or reboot the module: it starts normally with its stored configuration
