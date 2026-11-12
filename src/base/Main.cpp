@@ -6,7 +6,6 @@ using WebServer = ESP8266WebServer;
 #include <WiFi.h>
 #include <WebServer.h>
 #endif
-#include <EEPROM.h>
 #include <LittleFS.h>
 #include <FS.h>
 
@@ -16,6 +15,7 @@ using WebServer = ESP8266WebServer;
 #include "Application.h"
 #include "Core.h"
 #include "WifiMan.h"
+#include "MultiReset.h"
 
 // include Custom Application header file
 #include CUSTOM_APP_HEADER
@@ -47,34 +47,7 @@ void setup()
   LOG_SERIAL_PRINTLN(F(CUSTOM_APP_MANUFACTURER " " CUSTOM_APP_MODEL " " VERSION));
   LOG_SERIAL_PRINTLN(F("---Booting---"));
 
-#ifndef RESCUE_BUTTON_WAIT
-#define RESCUE_BUTTON_WAIT 3
-#endif
-
-  bool skipExistingConfig = false;
-
-  // look into EEPROM for Rescue mode flag
-  EEPROM.begin(4);
-  skipExistingConfig = EEPROM.read(0) != 0;
-  if (skipExistingConfig)
-    EEPROM.write(0, 0);
-  EEPROM.end();
-
-#ifdef RESCUE_BTN_PIN
-  // if config already skipped, don't wait for rescue button
-  if (!skipExistingConfig)
-  {
-    LOG_SERIAL_PRINTF_P(PSTR("Wait Rescue button for %d seconds\n"), RESCUE_BUTTON_WAIT);
-
-    pinMode(RESCUE_BTN_PIN, (RESCUE_BTN_PIN != 16) ? INPUT_PULLUP : INPUT);
-    for (int i = 0; i < 100 && skipExistingConfig == false; i++)
-    {
-      if (digitalRead(RESCUE_BTN_PIN) == LOW)
-        skipExistingConfig = true;
-      delay(RESCUE_BUTTON_WAIT * 10);
-    }
-  }
-#endif
+  bool skipExistingConfig = MultiReset::check();
 
   if (skipExistingConfig)
   {
@@ -127,6 +100,8 @@ void loop(void)
   server.handleClient();
 
   core.run();
+
+  MultiReset::run();
 
   if (!SystemState::pauseCustomApp && !SystemState::shouldReboot)
     custom.run();

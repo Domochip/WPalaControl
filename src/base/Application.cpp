@@ -61,10 +61,15 @@ const __FlashStringHelper *Application::getMqttTopicSuffix()
   return F("/App");
 }
 
+void Application::getConfigPath(char (&path)[32])
+{
+  snprintf_P(path, sizeof(path), PSTR("/%s.json"), (const char *)getAppIdName());
+}
+
 bool Application::saveConfig()
 {
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
+  getConfigPath(configPath);
   File configFile = LittleFS.open(configPath, "w");
   if (!configFile)
   {
@@ -83,7 +88,7 @@ bool Application::loadConfig()
 {
   bool result = true; // missing file is not an error: default values are already set
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
+  getConfigPath(configPath);
   File configFile = LittleFS.open(configPath, "r");
   if (configFile)
   {
@@ -107,6 +112,19 @@ bool Application::loadConfig()
   }
 
   return result;
+}
+
+void Application::deleteAllConfig()
+{
+  char configPath[32];
+  for (Application *app : _applicationList)
+  {
+    if (!app)
+      continue;
+    app->getConfigPath(configPath);
+    if (LittleFS.exists(configPath))
+      LittleFS.remove(configPath);
+  }
 }
 
 // Writes a secret field: real value when saving to file, predefined placeholder when sending to web page

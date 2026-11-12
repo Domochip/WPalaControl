@@ -22,11 +22,10 @@
         </div>
     </fieldset>
 </form>
-<form class="pure-form pure-form-aligned" id='rescueForm'>
+<form class="pure-form pure-form-aligned" id='resetForm'>
     <fieldset>
         <div class="pure-controls">
-            <input type='submit' id='subRbtRsc' value='Reboot in Rescue Mode'
-                class="pure-button pure-button-primary btn-err">
+            <input type='submit' id='subRst' value='Reset Configuration' class="pure-button pure-button-primary btn-err">
         </div>
     </fieldset>
 </form>
@@ -101,29 +100,28 @@
     populateTimezones();
     configForm(root, id);
 
-    function rebootFailed() {
-        showError($('#r', root));
-        $('#rebootForm', root).reset();
-        $('#rescueForm', root).reset();
-        $('#subRbt', root).disabled = false;
-        $('#subRbtRsc', root).disabled = false;
-    }
-
-    function reboot(event, url, successMessage, targetUrl) {
-        event.preventDefault();
+    function reboot(url, successMessage, targetUrl) {
         $('#subRbt', root).disabled = true;
-        $('#subRbtRsc', root).disabled = true;
+        $('#subRst', root).disabled = true;
 
         post(url, null, function () {
             waitForDevice($('#r', root), targetUrl, 30000, `<h3><span class="ok">Done</span> ${successMessage}</h3>`);
-        }, rebootFailed);
+        }, function () {
+            showError($('#r', root));
+            $('#subRbt', root).disabled = false;
+            $('#subRst', root).disabled = false;
+        });
     }
 
     $("#rebootForm", root).addEventListener('submit', function (evt) {
-        reboot(evt, '/rbt', 'System will reboot shortly.', location.origin);
+        evt.preventDefault();
+        reboot('/rbt', 'System will reboot shortly.', location.origin);
     });
 
-    $("#rescueForm", root).addEventListener('submit', function (evt) {
-        reboot(evt, '/rbt?rescue=true', 'System will reboot shortly in RESCUE MODE. You\'ll need to connect to module WiFi.', 'http://192.168.4.1');
+    $("#resetForm", root).addEventListener('submit', function (evt) {
+        evt.preventDefault();
+        if (!confirm('All settings will be erased and the module will restart with its default configuration. Continue?'))
+            return;
+        reboot('/rstcfg', "Configuration erased. System will reboot shortly. You'll need to connect to module WiFi.", 'http://192.168.4.1');
     });
 </script>

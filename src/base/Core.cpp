@@ -1,6 +1,5 @@
 #include "Core.h"
 #include "WifiMan.h"
-#include <EEPROM.h>
 #include "../Main.h" //for VERSION define
 #include "Version.h" //for BASE_VERSION define
 
@@ -275,15 +274,18 @@ void Core::appInitWebServer(WebServer &server)
   server.on(F("/rbt"), HTTP_POST,
             [&server]()
             {
-              if (server.hasArg(F("rescue")))
-              {
-                // Set EEPROM for Rescue mode flag
-                EEPROM.begin(4);
-                EEPROM.write(0, 1);
-                EEPROM.end();
-              }
               SERVER_KEEPALIVE_FALSE()
               server.send_P(200, PSTR("text/html"), PSTR("Reboot command received"));
+              SystemState::shouldReboot = true;
+            });
+
+  // reset configuration POST -------------------------------------------------
+  server.on(F("/rstcfg"), HTTP_POST,
+            [&server]()
+            {
+              deleteAllConfig();
+              SERVER_KEEPALIVE_FALSE()
+              server.send_P(200, PSTR("text/html"), PSTR("Configuration reset"));
               SystemState::shouldReboot = true;
             });
 

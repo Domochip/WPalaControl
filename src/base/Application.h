@@ -39,8 +39,10 @@ protected:
   bool _reInit = false;
 
   // already built methods
+  void getConfigPath(char (&path)[32]);
   bool saveConfig();
   bool loadConfig();
+  static void deleteAllConfig();
 
   char getAppIdChar();
   const __FlashStringHelper *getAppIdName();
