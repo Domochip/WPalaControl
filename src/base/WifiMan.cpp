@@ -130,9 +130,6 @@ void WifiMan::onConnected()
   }
   // disable AP
   WiFi.enableAP(false);
-#ifdef STATUS_LED_GOOD
-  STATUS_LED_GOOD
-#endif
   _connectionCount++;
 
   // Init TimeManager for NTP synchronization when WiFi is connected
@@ -179,19 +176,8 @@ void WifiMan::initialConnect()
   }
   else // else if AP is configured
   {
-    // AP is the normal mode here: LED good if it started (if not, appRun retries periodically)
-    if (enableAP())
-    {
-#ifdef STATUS_LED_GOOD
-      STATUS_LED_GOOD
-#endif
-    }
-    else
-    {
-#ifdef STATUS_LED_WARNING
-      STATUS_LED_WARNING
-#endif
-    }
+    // AP is the normal mode here (if it fails to start, appRun retries periodically)
+    enableAP();
   }
 }
 
@@ -400,12 +386,7 @@ void WifiMan::appRun()
     if (!(WiFi.getMode() & WIFI_AP) && elapsed >= _refreshPeriod * 1000UL)
     {
       setStaState(StaState::Off); // restart the retry delay
-      if (enableAP())
-      {
-#ifdef STATUS_LED_GOOD
-        STATUS_LED_GOOD
-#endif
-      }
+      enableAP();
     }
     break;
 
@@ -414,9 +395,6 @@ void WifiMan::appRun()
     if (!WiFi.isConnected())
     {
       LOG_SERIAL_PRINTF_P(PSTR("WiFi disconnected (reason: %u)\n"), _lastDiscoReason);
-#ifdef STATUS_LED_WARNING
-      STATUS_LED_WARNING
-#endif
       setStaState(StaState::Lost);
     }
     break;
