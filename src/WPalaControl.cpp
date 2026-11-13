@@ -1594,7 +1594,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["plzbridge"] = F("2.2.1 2024-11-06 15:47:08");
       data["SYSTEM"] = F("2.5.4 2024-11-06 15:50:16 (37ef0a2)");
 
-      data["CLOUD_ENABLED"] = true;
+      data["CLOUD_ENABLED"] = false;
 
       // ----- Values from stove -----
       data["SN"] = staticData.SN;
