@@ -1262,6 +1262,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       if (allStatusData.isMFSTATUSValid)
         data["MFSTATUS"] = allStatusData.MFSTATUS;
       addFloat(data, "SETP", allStatusData.SETP);
+      addFloat(data, "SECO", allStatusData.SECO);
+      data["BECO"] = allStatusData.BECO;
       data["PUMP"] = allStatusData.PUMP;
       data["PQT"] = allStatusData.PQT;
       data["F1V"] = allStatusData.F1V;
