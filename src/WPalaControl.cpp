@@ -1018,7 +1018,8 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   char paramBuf[40] = {};
 
   // if cmd length means there is parameters
-  if (cmd.length() > 9 && cmd[8] == ' ')
+  // (except for SET LABL, which takes free text)
+  if (cmd.length() > 9 && cmd[8] == ' ' && !cmd.startsWith(F("SET LABL ")))
   {
     // check parameters length before copying to a temporary buffer
     const char *rawParams = cmd.c_str() + 9;
@@ -2170,6 +2171,15 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
         data["STOVE_WDAY"] = dateTimeData.STOVE_WDAY;
       }
     }
+  }
+  else if (cmd == F("SET LABL") || cmd.startsWith(F("SET LABL ")))
+  {
+    // return success without actually changing the label
+    cmdProcessed = true;
+    palaCategory = F("LABL");
+    cmdSuccess = Palazzetti::CommandResult::OK;
+
+    data["LABEL"] = WiFi.getHostname();
   }
 
   return cmdSuccess;
