@@ -2730,7 +2730,13 @@ void WPalaControl::appRun()
 // Constructor
 WPalaControl::WPalaControl() : Application(CustomApp)
 {
-  // TX/GPIO15 is pulled down and so block the stove bus by default...
-  pinMode(15, OUTPUT); // set TX PIN to OUTPUT HIGH to unlock bus during WiFi connection
+  // TX pin is pulled down and so block the stove bus by default...
+  // set TX PIN to OUTPUT HIGH to unlock bus during WiFi connection
+#ifdef ESP8266
+  pinMode(15, OUTPUT);
   digitalWrite(15, HIGH);
+#else
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+#endif
 }
