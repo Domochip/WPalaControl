@@ -114,8 +114,28 @@ void WifiMan::setStaState(StaState state)
 // Start a connection attempt
 void WifiMan::startConnect()
 {
+  int32_t channel = 0;
+  uint8_t bssid[6];
+  int32_t bestRssi = INT32_MIN;
+
+  // find best network in case mesh is used
+  int n = WiFi.scanNetworks(); // (listing networks anyway helps the SDK to connect)
+  for (int i = 0; i < n; i++)
+  {
+    if (WiFi.RSSI(i) > bestRssi && WiFi.SSID(i) == ssid)
+    {
+      bestRssi = WiFi.RSSI(i);
+      channel = WiFi.channel(i);
+      memcpy(bssid, WiFi.BSSID(i), sizeof(bssid));
+    }
+  }
+  WiFi.scanDelete();
+
   WiFi.config(ip, gw, mask, dns1, dns2);
-  WiFi.begin(ssid, password);
+  if (channel)
+    WiFi.begin(ssid, password, channel, bssid);
+  else
+    WiFi.begin(ssid, password);
   setStaState(StaState::Connecting);
 }
 
@@ -154,7 +174,7 @@ void WifiMan::onConnectFailed()
 // Initial connection, blocking (used by appInit only: state is Off and STA disconnected)
 void WifiMan::initialConnect()
 {
-  if (ssid[0]) // if STA configured
+  if (staEnabled())
   {
     LOG_SERIAL_PRINT(F("Connect"));
 
@@ -250,7 +270,7 @@ void WifiMan::fillStatusJSON(JsonVariant json)
   else
     json[F("apmode")] = F("off");
 
-  if (ssid[0])
+  if (staEnabled())
   {
     json[F("stationmode")] = F("on");
     json[F("ssid")] = ssid;
@@ -335,7 +355,7 @@ bool WifiMan::appInit(bool reInit /* = false */)
     MDNS.end();
   MDNS.begin(CUSTOM_APP_MODEL);
 
-  return (ssid[0] ? WiFi.isConnected() : true);
+  return (staEnabled() ? WiFi.isConnected() : true);
 }
 
 void WifiMan::appInitWebServer(WebServer &server)

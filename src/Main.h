@@ -11,7 +11,7 @@
 #define CUSTOM_APP_MANUFACTURER "Domochip"
 #define CUSTOM_APP_MODEL "WPalaControl"
 #define CUSTOM_APP_CLASS WPalaControl
-#define VERSION_NUMBER "3.7.6"
+#define VERSION_NUMBER "3.8.0"
 
 #define CUSTOM_APP_HEADER TOSTRING(CUSTOM_APP_CLASS.h) // calculated header file "{CUSTOM_APP_CLASS}.h"
 #define DEFAULT_AP_SSID CUSTOM_APP_MODEL               // Default Access Point SSID "{CUSTOM_APP_MODEL}"
@@ -46,12 +46,6 @@
 #define LOG_SERIAL_PRINTF(...)
 #define LOG_SERIAL_PRINTF_P(...)
 #endif
-
-// Choose Pin used to boot in Rescue Mode
-// #define RESCUE_BTN_PIN 2
-
-// Define time to wait for Rescue press (in s)
-// #define RESCUE_BUTTON_WAIT 3
 
 // construct Version text
 #if DEVELOPPER_MODE

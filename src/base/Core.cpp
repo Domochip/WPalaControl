@@ -1,6 +1,6 @@
 #include "Core.h"
 #include "WifiMan.h"
-#include <EEPROM.h>
+#include "WebAuth.h"
 #include "../Main.h" //for VERSION define
 #include "Version.h" //for BASE_VERSION define
 
@@ -27,25 +27,32 @@ const char *Core::getSerialNumber()
 void Core::setConfigDefaultValues()
 {
   strcpy_P(ntpTimezone, PSTR("Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3"));
+  webPassword[0] = 0;
 };
 
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   parseField(json["tz"], ntpTimezone);
+  parseSecret(json["wp"], webPassword, fromWebPage);
   return true;
 };
 
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json["tz"] = ntpTimezone;
+  // no placeholder when empty: the page shows that authentication is disabled
+  if (webPassword[0])
+    fillSecret(json, F("wp"), webPassword, forSaveFile);
+  else
+    json["wp"] = "";
 };
 void Core::fillStatusJSON(JsonVariant json)
 {
   // 64-bit time since boot: millis() is 32-bit and wraps after ~49.7 days
 #ifdef ESP8266
-  uint32_t minutes = micros64() / 60000000ULL;
+  uint32_t uptime = micros64() / 1000000ULL;
 #else
-  uint32_t minutes = esp_timer_get_time() / 60000000ULL;
+  uint32_t uptime = esp_timer_get_time() / 1000000ULL;
 #endif
 
   json[F("manufacturer")] = CUSTOM_APP_MANUFACTURER;
@@ -53,9 +60,7 @@ void Core::fillStatusJSON(JsonVariant json)
   json[F("sn")] = getSerialNumber();
   json[F("baseversion")] = BASE_VERSION;
   json[F("version")] = VERSION;
-  char uptime[20];
-  snprintf_P(uptime, sizeof(uptime), PSTR("%ud%uh%um"), (unsigned)(minutes / 1440), (unsigned)(minutes / 60 % 24), (unsigned)(minutes % 60));
-  json[F("uptime")] = uptime;
+  json[F("uptime")] = uptime; // seconds since boot, formatted by the web page
   
   char localtimeBuf[24];
   if (TimeManager::getLocalTime(localtimeBuf, sizeof(localtimeBuf)) > 0) {
@@ -100,6 +105,11 @@ bool Core::appInit(bool reInit /* = false */)
   TimeManager::setTimezone(tzToUse);
   return true;
 };
+void Core::initWebAuth(WebServer &server)
+{
+  server.addHandler(new WebAuth(server, webPassword));
+}
+
 void Core::appInitWebServer(WebServer &server)
 {
   // root is index
@@ -274,15 +284,18 @@ void Core::appInitWebServer(WebServer &server)
   server.on(F("/rbt"), HTTP_POST,
             [&server]()
             {
-              if (server.hasArg(F("rescue")))
-              {
-                // Set EEPROM for Rescue mode flag
-                EEPROM.begin(4);
-                EEPROM.write(0, 1);
-                EEPROM.end();
-              }
               SERVER_KEEPALIVE_FALSE()
               server.send_P(200, PSTR("text/html"), PSTR("Reboot command received"));
+              SystemState::shouldReboot = true;
+            });
+
+  // reset configuration POST -------------------------------------------------
+  server.on(F("/rstcfg"), HTTP_POST,
+            [&server]()
+            {
+              deleteAllConfig();
+              SERVER_KEEPALIVE_FALSE()
+              server.send_P(200, PSTR("text/html"), PSTR("Configuration reset"));
               SystemState::shouldReboot = true;
             });
 

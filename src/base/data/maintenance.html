@@ -7,15 +7,21 @@
         </div>
         <div>
             <div class="txt">
-                <b>Rescue mode</b>
-                <span>Restart once with default settings, to recover a module you can't reach anymore (wrong WiFi settings, faulty configuration).</span>
+                <b>Recovery Mode</b>
+                <span>To reach a module you can't open anymore (wrong WiFi settings, forgotten web password), without losing its settings.</span>
                 <ul>
-                    <li>On this restart only, the saved settings are not loaded: the module opens its own WiFi network <b class="mono" id="rescueSsid"></b> (default access point password) and answers at <span class="mono">192.168.4.1</span>.</li>
-                    <li>Saved settings are not erased: the next normal restart brings them back, unless you save new settings while in rescue mode.</li>
-                    <li>Without this page, press the rescue button in the first seconds after powering on the module to get the same result (on devices that have one).</li>
+                    <li>Press the module's reset button several times in a row (3 times by default, each within 5 seconds).</li>
+                    <li>The module then only opens its own WiFi network <b class="mono" id="recoverySsid"></b> and answers at <span class="mono">192.168.4.1</span>, without asking for the web password.</li>
+                    <li>Fix the settings and save them: the module goes back to normal operation. A restart without saving does the same.</li>
                 </ul>
             </div>
-            <button class="btn danger solid" id="rescueBtn">Reboot to rescue mode</button>
+        </div>
+        <div>
+            <div class="txt">
+                <b>Reset configuration</b>
+                <span>Erase all settings and restart with the default configuration.</span>
+            </div>
+            <button class="btn danger solid" id="resetBtn">Reset configuration</button>
         </div>
     </div>
 </div>
@@ -27,18 +33,18 @@
 
     // the access point SSID is the model name (DEFAULT_AP_SSID)
     const apSsid = document.querySelector("meta[name='description']").content;
-    $('#rescueSsid', root).textContent = apSsid;
+    $('#recoverySsid', root).textContent = apSsid;
 
     function reboot(url, title, text, targetUrl) {
         $('#rebootBtn', root).disabled = true;
-        $('#rescueBtn', root).disabled = true;
+        $('#resetBtn', root).disabled = true;
 
         post(url, null, function () {
             waitForDevice(targetUrl, 30000, title, text);
         }, function () {
-            toast('Reboot request failed', true);
+            toast('Request failed', true);
             $('#rebootBtn', root).disabled = false;
-            $('#rescueBtn', root).disabled = false;
+            $('#resetBtn', root).disabled = false;
         });
     }
 
@@ -46,17 +52,17 @@
         reboot('/rbt', 'Restarting', 'The device is rebooting...', location.origin);
     });
 
-    $('#rescueBtn', root).addEventListener('click', async function () {
+    $('#resetBtn', root).addEventListener('click', async function () {
         const body = html(`<div style="display:grid;gap:14px">
-            <div>The module restarts once with default settings and stops being reachable on your network.</div>
+            <div>All settings are erased (WiFi, web password, application settings) and the module restarts with its default configuration. This can't be undone.</div>
             <ol class="warn-box">
                 <li>Connect your phone or computer to the WiFi network <b class="mono"></b> (default access point password).</li>
                 <li>Open <b class="mono">192.168.4.1</b>: this page goes there by itself once you are connected.</li>
-                <li>Fix the settings, or restart the module to get the saved settings back.</li>
+                <li>Set the module up again.</li>
             </ol>
         </div>`);
         $('.warn-box b', body).textContent = apSsid;
-        if (!await confirmDialog({ title: 'Reboot to rescue mode', body, confirmLabel: 'Reboot to rescue mode', danger: true })) return;
-        reboot('/rbt?rescue=true', 'Rescue mode', `Connect to the ${apSsid} WiFi network: this page will then open 192.168.4.1.`, 'http://192.168.4.1');
+        if (!await confirmDialog({ title: 'Reset configuration', body, confirmLabel: 'Erase & restart', danger: true })) return;
+        reboot('/rstcfg', 'Configuration erased', `Connect to the ${apSsid} WiFi network: this page will then open 192.168.4.1.`, 'http://192.168.4.1');
     });
 </script>

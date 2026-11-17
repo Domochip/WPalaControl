@@ -39,8 +39,10 @@ protected:
   bool _reInit = false;
 
   // already built methods
+  void getConfigPath(char (&path)[32]);
   bool saveConfig();
   bool loadConfig();
+  static void deleteAllConfig();
 
   char getAppIdChar();
   const __FlashStringHelper *getAppIdName();
@@ -82,6 +84,8 @@ protected:
   static void fillLatestUpdateInfoJson(JsonVariant json, bool forWebPage = false);
   static bool isValidVersion(const char *version);
   static void resetUpdate();
+  // uri reachable without web authentication (any method), to be called from appInitWebServer
+  static void allowAnonymous(const __FlashStringHelper *uri);
   static bool updateFirmware(const char *version, String &retMsg, std::function<void(size_t, size_t)> progressCallback = nullptr);
 
 public:
@@ -89,7 +93,7 @@ public:
 
   void mqttPublishStatus(MQTTMan &mqttMan);
   bool mqttPublishUpdate(MQTTMan &mqttMan);
-  void init(bool skipExistingConfig);
+  void init();
   void initWebServer(WebServer &server);
   void run();
 

@@ -7,6 +7,8 @@
     <meta name="description" content="{{APP_MODEL}}">
     <title>Domochip {{APP_MODEL}}</title>
 
+    <!-- favicon: the header logo, set by the script at the bottom (data: here so browsers don't request /favicon.ico) -->
+    <link rel="icon" id="favicon" href="data:,">
     <link rel="stylesheet" href="base.css">
     <script>
         // theme forced by the header button (see below), applied before rendering to avoid a flash
@@ -17,7 +19,8 @@
 <body>
     <header class="top">
         <div class="top-in">
-            <div class="logo" id="logo"></div>
+            <!-- Domochip logo, also used as favicon -->
+            <div class="logo" id="logo"><svg role="img" aria-label="Domochip" xmlns="http://www.w3.org/2000/svg" viewBox="211 200 640 640"><defs><linearGradient id="dclogo-bg" x2="1" y2="1"><stop offset="0" stop-color="#2f6fed"/><stop offset="1" stop-color="#7a5af8"/></linearGradient></defs><rect x="211" y="200" width="640" height="640" rx="80" fill="url(#dclogo-bg)"/><g fill="none" stroke="#f4f4ee"><path stroke-width="32" d="M314 405V254h231a269 269 0 0 1 0 538H314V640"/><path stroke-width="28" d="M575 330a198 198 0 0 1 0 386"/><rect stroke-width="32" x="461" y="448" width="136" height="148" rx="14"/><path stroke-width="16" d="M256 440h66M256 492h66M256 545h66M256 598h66M378 322v83M378 718v-78"/></g><g fill="#f4f4ee"><circle cx="386" cy="322" r="22"/><circle cx="494" cy="322" r="25"/><circle cx="386" cy="718" r="22"/><circle cx="494" cy="718" r="25"/><circle cx="252" cy="440" r="16"/><circle cx="252" cy="492" r="16"/><circle cx="252" cy="545" r="16"/><circle cx="252" cy="598" r="16"/><circle cx="748" cy="252" r="18"/><path d="M420 380h20v20h-20zM390 432h20v20h-20zM390 485h20v20h-20zM390 537h20v20h-20zM390 590h20v20h-20zM420 642h20v20h-20z"/></g><path fill="#f4f4ee" fill-opacity=".5" d="M465 380h20v20h-20zM508 380h20v20h-20zM550 380h20v20h-20zM590 380h20v20h-20zM465 642h20v20h-20zM508 642h20v20h-20zM550 642h20v20h-20zM590 642h20v20h-20zM345 432h20v20h-20zM345 485h20v20h-20zM345 537h20v20h-20zM345 590h20v20h-20zM640 490h20v20h-20zM640 542h20v20h-20z"/></svg></div>
             <div class="ident"><b>{{APP_MODEL}}</b><span id="host">Domochip</span></div>
             <nav class="tabs" role="tablist">
                 <button class="tab" role="tab" id="menuStatus">
@@ -39,6 +42,14 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
             <span>Access point is still active. Disconnect devices from the <b id="apName"></b> network so the module can reconnect to your WiFi.</span>
             <button class="btn sm ghost" onclick="$('#connectedToAP').hidden = true">Dismiss</button>
+        </div>
+    </div>
+
+    <!-- shown when a config answer says the module is in Recovery Mode (see configForm) -->
+    <div class="banner" id="recoveryBanner" hidden>
+        <div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <span><b>Recovery Mode:</b> the WiFi network connection and the web password are off. Saving settings brings the module back to normal operation.</span>
         </div>
     </div>
 
@@ -220,6 +231,8 @@
 
         // Config forms of the Settings page: { id, form, options, loaded, dirty }
         let configForms = [];
+        // the module is in Recovery Mode (reported by /gc<id>): saving leaves it
+        let recoveryMode = false;
 
         // Standard config form of a part, using these elements of root:
         //   #l : "Loading..." indicator, #f : the form
@@ -255,6 +268,10 @@
             getJSON('/gc' + id,
                 data => {
                     data ??= {}; // an empty JsonDocument is sent as 'null'
+                    if (data.recoverymode) {
+                        recoveryMode = true;
+                        $('#recoveryBanner').hidden = false;
+                    }
                     fillForm(form, data);
                     options.afterLoad?.(form, data);
                     entry.loaded = true;
@@ -269,12 +286,31 @@
         // Saves every changed config form, one after the other (the device handles one request at a time).
         // Forms whose config makes the device reconnect (redirectUrl option) are saved last,
         // then the page waits for the device to come back.
+        // In Recovery Mode, saving leaves it: the user confirms first, and the page can't follow the device back to its WiFi.
         let saving = false;
-        function saveSettings() {
+        async function saveSettings() {
             const pending = configForms.filter(entry => entry.dirty);
             if (saving || !pending.length) return;
             if (!checkValidity(pending.map(entry => entry.form))) return;
             pending.sort((a, b) => !!a.options.redirectUrl - !!b.options.redirectUrl);
+
+            const leavingRecovery = recoveryMode;
+            if (leavingRecovery) {
+                saving = true; // no second save while the dialog is open
+                const confirmed = await confirmDialog({
+                    title: 'Leave Recovery Mode',
+                    body: html(`<div style="display:grid;gap:14px">
+                        <div>Saving brings the module back to normal operation:</div>
+                        <ul class="warn-box">
+                            <li>it connects again to the configured WiFi network, and this access point may close;</li>
+                            <li>the web password, if one is set, is asked again.</li>
+                        </ul>
+                    </div>`),
+                    confirmLabel: 'Save & leave',
+                });
+                saving = false;
+                if (!confirmed) return;
+            }
 
             saving = true;
             $('#saveBtn').disabled = true;
@@ -289,7 +325,11 @@
                 if (!entry) {
                     done();
                     $('#savebar').classList.remove('show');
-                    if (reconnectUrl) {
+                    if (leavingRecovery) {
+                        recoveryMode = false;
+                        $('#recoveryBanner').hidden = true;
+                        notice('Recovery Mode left', 'Settings saved. If a WiFi network is configured, connect back to it and open the module address.');
+                    } else if (reconnectUrl) {
                         if (reconnectUrl === location.origin) sessionStorage.setItem('activeTab', '#menuConfig');
                         waitForDevice(reconnectUrl, 30000, 'Applying settings', 'The device is reconnecting to WiFi...');
                     } else {
@@ -370,7 +410,8 @@
                         location.assign(url);
                         return;
                     }
-                    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
+                    // no credentials: a 401 (password just set) still means the device is back, without a login popup on each poll
+                    fetch(url, { method: 'HEAD', mode: 'no-cors', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(1500) })
                         .then(() => { clearInterval(displayTimer); clearInterval(pollTimer); location.assign(url); })
                         .catch(() => {});
                 }, 2000);
@@ -382,8 +423,17 @@
         function waitForDevice(url, maxMs, title, text = '') {
             $('#ovTitle').textContent = title;
             $('#ovText').textContent = text;
+            $('#overlay').classList.remove('notice');
             $('#overlay').hidden = false;
             redirectWhenReachable(url, maxMs);
+        }
+
+        // Shows the full-page overlay with a message only (no spinner, no waiting): the page can't go further
+        function notice(title, text) {
+            $('#ovTitle').textContent = title;
+            $('#ovText').textContent = text;
+            $('#overlay').classList.add('notice');
+            $('#overlay').hidden = false;
         }
 
         // Shows a red "Failed" in el, followed by "(detail)" as plain text when a detail is given
@@ -542,9 +592,8 @@
 <!-- PAGES -->
 
     <script>
-        // Header: logo initials from the model name (capitals, e.g. WBase -> WB), and the address used to reach the device
-        const model = document.querySelector("meta[name='description']").content;
-        $('#logo').textContent = (model.match(/[A-Z0-9]/g) || [model[0]]).slice(0, 2).join('').toUpperCase();
+        // Header: the logo doubles as favicon, and the address used to reach the device
+        $('#favicon').href = 'data:image/svg+xml,' + encodeURIComponent($('#logo').innerHTML);
         $('#host').textContent = location.host;
 
         // Header subtitle: "hostname · IP" from the WiFi status (/gs1)
@@ -635,7 +684,7 @@
             showPage(savedTab);
             getJSON('/gs1', setIdentity);
         } else {
-            // landing page: Settings when the module runs its access point (nothing configured, rescue mode,
+            // landing page: Settings when the module runs its access point (nothing configured, Recovery Mode,
             // WiFi unreachable...), Overview otherwise
             getJSON('/gs1',
                 wifiStatus => {

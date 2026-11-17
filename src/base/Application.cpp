@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "WebAuth.h"
 
 Application *Application::_applicationList[3] = {nullptr, nullptr, nullptr};
 
@@ -61,10 +62,15 @@ const __FlashStringHelper *Application::getMqttTopicSuffix()
   return F("/App");
 }
 
+void Application::getConfigPath(char (&path)[32])
+{
+  snprintf_P(path, sizeof(path), PSTR("/%s.json"), (const char *)getAppIdName());
+}
+
 bool Application::saveConfig()
 {
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
+  getConfigPath(configPath);
   File configFile = LittleFS.open(configPath, "w");
   if (!configFile)
   {
@@ -83,7 +89,7 @@ bool Application::loadConfig()
 {
   bool result = true; // missing file is not an error: default values are already set
   char configPath[32];
-  snprintf_P(configPath, sizeof(configPath), PSTR("/%s.json"), (const char *)getAppIdName());
+  getConfigPath(configPath);
   File configFile = LittleFS.open(configPath, "r");
   if (configFile)
   {
@@ -107,6 +113,24 @@ bool Application::loadConfig()
   }
 
   return result;
+}
+
+void Application::allowAnonymous(const __FlashStringHelper *uri)
+{
+  WebAuth::allowAnonymous(uri);
+}
+
+void Application::deleteAllConfig()
+{
+  char configPath[32];
+  for (Application *app : _applicationList)
+  {
+    if (!app)
+      continue;
+    app->getConfigPath(configPath);
+    if (LittleFS.exists(configPath))
+      LittleFS.remove(configPath);
+  }
 }
 
 // Writes a secret field: real value when saving to file, predefined placeholder when sending to web page
@@ -569,16 +593,13 @@ bool Application::mqttPublishUpdate(MQTTMan &mqttMan)
   return mqttMan.publish(topic.c_str(), updateInfo, true);
 }
 
-void Application::init(bool skipExistingConfig)
+void Application::init()
 {
-  bool result = true;
-
   LOG_SERIAL_PRINTF_P(PSTR("Start %s : "), (const char *)getAppIdName());
 
   setConfigDefaultValues();
 
-  if (!skipExistingConfig)
-    result = loadConfig();
+  bool result = loadConfig();
 
   // Execute specific Application Init Code
   result = appInit() && result;
@@ -614,6 +635,9 @@ void Application::initWebServer(WebServer &server)
               server.sendHeader(F("Cache-Control"), F("no-cache"));
               JsonDocument json;
               fillConfigJSON(json);
+              // lets the page warn that saving leaves Recovery Mode
+              if (SystemState::recoveryMode)
+                json[F("recoverymode")] = true;
               server.setContentLength(measureJson(json));
               server.send(200, F("application/json"), "");
               WiFiClient client = server.client();
@@ -656,6 +680,13 @@ void Application::initWebServer(WebServer &server)
               // Everything went fine, Send client answer
               server.send(200);
               _reInit = true;
+
+              // any save leaves Recovery Mode: authentication is back and WifiMan restarts its station
+              if (SystemState::recoveryMode)
+              {
+                SystemState::recoveryMode = false;
+                _applicationList[WifiManApp]->_reInit = true;
+              }
             });
 
   // Execute Specific Application Web Server initialization

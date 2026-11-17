@@ -1018,7 +1018,8 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   char paramBuf[40] = {};
 
   // if cmd length means there is parameters
-  if (cmd.length() > 9 && cmd[8] == ' ')
+  // (except for SET LABL, which takes free text)
+  if (cmd.length() > 9 && cmd[8] == ' ' && !cmd.startsWith(F("SET LABL ")))
   {
     // check parameters length before copying to a temporary buffer
     const char *rawParams = cmd.c_str() + 9;
@@ -1262,6 +1263,8 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       if (allStatusData.isMFSTATUSValid)
         data["MFSTATUS"] = allStatusData.MFSTATUS;
       addFloat(data, "SETP", allStatusData.SETP);
+      addFloat(data, "SECO", allStatusData.SECO);
+      data["BECO"] = allStatusData.BECO;
       data["PUMP"] = allStatusData.PUMP;
       data["PQT"] = allStatusData.PQT;
       data["F1V"] = allStatusData.F1V;
@@ -1591,7 +1594,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
       data["plzbridge"] = F("2.2.1 2024-11-06 15:47:08");
       data["SYSTEM"] = F("2.5.4 2024-11-06 15:50:16 (37ef0a2)");
 
-      data["CLOUD_ENABLED"] = true;
+      data["CLOUD_ENABLED"] = false;
 
       // ----- Values from stove -----
       data["SN"] = staticData.SN;
@@ -2169,6 +2172,15 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
       }
     }
   }
+  else if (cmd == F("SET LABL") || cmd.startsWith(F("SET LABL ")))
+  {
+    // return success without actually changing the label
+    cmdProcessed = true;
+    palaCategory = F("LABL");
+    cmdSuccess = Palazzetti::CommandResult::OK;
+
+    data["LABEL"] = WiFi.getHostname();
+  }
 
   return cmdSuccess;
 }
@@ -2664,6 +2676,9 @@ void WPalaControl::appInitWebServer(WebServer &server)
         server.send(200, F("application/json"), "");
         { auto client = server.client(); serializeJson(json, client); } });
 
+  // Palazzetti API is used by clients without authentication
+  allowAnonymous(F("/cgi-bin/sendmsg.lua"));
+
   // register EventSource
   _sse.init(getAppIdChar(), server);
 }
@@ -2715,7 +2730,13 @@ void WPalaControl::appRun()
 // Constructor
 WPalaControl::WPalaControl() : Application(CustomApp)
 {
-  // TX/GPIO15 is pulled down and so block the stove bus by default...
-  pinMode(15, OUTPUT); // set TX PIN to OUTPUT HIGH to unlock bus during WiFi connection
+  // TX pin is pulled down and so block the stove bus by default...
+  // set TX PIN to OUTPUT HIGH to unlock bus during WiFi connection
+#ifdef ESP8266
+  pinMode(15, OUTPUT);
   digitalWrite(15, HIGH);
+#else
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+#endif
 }

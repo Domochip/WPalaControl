@@ -1,12 +1,12 @@
 <!-- Overview blocks are placed by type, whatever the part they come from (see #content.overview in base.css) -->
 <div class="card stat">
-    <div class="lbl">Uptime</div>
-    <div class="val" data-k="uptime">-</div>
-</div>
-<div class="card stat">
     <div class="lbl">Free heap</div>
     <div class="val"><span data-k="freeheap">-</span><small id="heapTotal">KB</small></div>
     <div class="meter" id="heapMeter"><i></i></div>
+</div>
+<div class="card stat">
+    <div class="lbl">Uptime</div>
+    <div class="val" data-k="uptime">-</div>
 </div>
 <div class="card stat">
     <div class="lbl">Local time</div>
@@ -46,8 +46,14 @@
 
     loadStatus(root, id, {
         formats: {
-            // "12d4h7m" -> "12d 04:07"
-            uptime: v => v.replace(/^(\d+)d(\d+)h(\d+)m$/, (_, d, h, m) => `${d}d ${h.padStart(2, '0')}:${m.padStart(2, '0')}`),
+            // seconds since boot -> "42s", "7m", "4h 07m", "12d 4h 07m"
+            uptime: function (v) {
+                const d = Math.floor(v / 86400), h = Math.floor(v / 3600) % 24, m = Math.floor(v / 60) % 60;
+                const mm = String(m).padStart(2, '0') + 'm';
+                if (d) return `${d}d ${h}h ${mm}`;
+                if (h) return `${h}h ${mm}`;
+                return v < 60 ? v + 's' : m + 'm';
+            },
             crashcount: v => v + (v > 1 ? ' crashes' : ' crash') + ' logged',
             freeheap: v => (v / 1024).toFixed(1),
             freestack: v => v + ' bytes',
