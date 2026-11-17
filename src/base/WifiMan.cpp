@@ -114,8 +114,28 @@ void WifiMan::setStaState(StaState state)
 // Start a connection attempt
 void WifiMan::startConnect()
 {
+  int32_t channel = 0;
+  uint8_t bssid[6];
+  int32_t bestRssi = INT32_MIN;
+
+  // find best network in case mesh is used
+  int n = WiFi.scanNetworks(); // (listing networks anyway helps the SDK to connect)
+  for (int i = 0; i < n; i++)
+  {
+    if (WiFi.RSSI(i) > bestRssi && WiFi.SSID(i) == ssid)
+    {
+      bestRssi = WiFi.RSSI(i);
+      channel = WiFi.channel(i);
+      memcpy(bssid, WiFi.BSSID(i), sizeof(bssid));
+    }
+  }
+  WiFi.scanDelete();
+
   WiFi.config(ip, gw, mask, dns1, dns2);
-  WiFi.begin(ssid, password);
+  if (channel)
+    WiFi.begin(ssid, password, channel, bssid);
+  else
+    WiFi.begin(ssid, password);
   setStaState(StaState::Connecting);
 }
 
