@@ -24,19 +24,6 @@ private:
     Disabled = 0,
     Mqtt = 1
   };
-  enum HwDetection : uint8_t
-  {
-    AutoDetect = 0,
-    ForcedV1 = 1,
-    ForcedV2 = 2
-  };
-  enum HwVersion : uint8_t
-  {
-    Unknown = 0,
-    V1 = 1,
-    V2 = 2
-  };
-
   struct MQTT
   {
     HaMqttType type;
@@ -59,9 +46,6 @@ private:
     uint16_t uploadPeriod;
     MQTT mqtt;
   };
-
-  HwDetection _hwDetection;
-  HwVersion _detectedHwVersion = HwVersion::Unknown;
 
   HomeAutomation _ha;
   int _haSendResult = 0;

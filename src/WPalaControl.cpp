@@ -2307,8 +2307,6 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 // Used to initialize configuration properties to default values
 void WPalaControl::setConfigDefaultValues()
 {
-  _hwDetection = HwDetection::AutoDetect;
-
   _ha.protocol = HaProtocol::Disabled;
   _ha.hostname[0] = 0;
   _ha.uploadPeriod = 60;
@@ -2327,8 +2325,6 @@ void WPalaControl::setConfigDefaultValues()
 // Parse JSON object into configuration properties
 bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  parseField(json[F("hwdetection")], _hwDetection);
-
   // Home Automation common
   parseField(json[F("haproto")], _ha.protocol);
   parseField(json[F("hahost")], _ha.hostname);
@@ -2360,8 +2356,6 @@ void WPalaControl::validateConfig()
 // Generate JSON from configuration properties
 void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
-  json[F("hwdetection")] = _hwDetection;
-
   // Home Automation common
   json[F("haproto")] = _ha.protocol;
   json[F("hahost")] = _ha.hostname;
@@ -2391,8 +2385,9 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 // Generate JSON of application status
 void WPalaControl::fillStatusJSON(JsonVariant json)
 {
-  json[F("hwversion")] = _detectedHwVersion == HwVersion::V1 ? F("V1.x") : (_detectedHwVersion == HwVersion::V2 ? F("V2.x") : F("Unknown"));
-  json[F("hwdetection")] = _hwDetection == HwDetection::AutoDetect ? F("Auto-Detected") : F("Forced");
+  // V1 board: RX receives back what TX sends (loopback), V2 board: it does not
+  Palazzetti::LoopBack loopBack = _Pala.getLoopBack();
+  json[F("hwversion")] = loopBack == Palazzetti::LoopBack::Yes ? F("V1.x") : (loopBack == Palazzetti::LoopBack::No ? F("V2.x") : F("Unknown"));
 
   // Home automation connection status
   if (_ha.protocol == HaProtocol::Mqtt)
@@ -2444,33 +2439,6 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 
   LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
-// Initialize hw version detection
-#ifdef ESP8266
-  uint8_t hwDetectPin = 5;
-#else
-  uint8_t hwDetectPin = 22;
-#endif
-
-  if (_hwDetection == HwDetection::AutoDetect)
-  {
-    pinMode(hwDetectPin, INPUT_PULLUP);
-    delay(2);
-
-    if (digitalRead(hwDetectPin) == HIGH)
-      _detectedHwVersion = HwVersion::V1;
-    else
-      _detectedHwVersion = HwVersion::V2;
-  }
-  else if (_hwDetection == HwDetection::ForcedV1)
-    _detectedHwVersion = HwVersion::V1;
-  else
-    _detectedHwVersion = HwVersion::V2;
-
-  if (_detectedHwVersion == HwVersion::V1)
-    LOG_SERIAL_PRINT(F("HW1..."));
-  else
-    LOG_SERIAL_PRINT(F("HW2..."));
-
   Palazzetti::CommandResult cmdRes;
   Palazzetti::SerialAdapter palaSerialAdapter = {
       .open = [this](uint32_t baudrate)
@@ -2490,11 +2458,13 @@ bool WPalaControl::appInit(bool reInit /* = false */)
       .uSleep = [this](unsigned long usecond)
       { myUSleep(usecond); }};
 
-  cmdRes = _Pala.initialize(palaSerialAdapter, _detectedHwVersion == HwVersion::V1);
+  cmdRes = _Pala.initialize(palaSerialAdapter);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
     LOG_SERIAL_PRINTLN(F("Stove connected"));
+    Palazzetti::LoopBack loopBack = _Pala.getLoopBack();
+    LOG_SERIAL_PRINTLN(loopBack == Palazzetti::LoopBack::Yes ? F("Hardware version: V1.x") : (loopBack == Palazzetti::LoopBack::No ? F("Hardware version: V2.x") : F("Hardware version: Unknown")));
     char SN[28];
     _Pala.getSN(&SN);
     LOG_SERIAL_PRINTF_P(PSTR("Stove Serial Number: %s\n"), SN);
