@@ -7,7 +7,7 @@
 #endif
 
 // Serial management functions -------------
-int WPalaControl::myOpenSerial(uint32_t baudrate)
+void WPalaControl::myOpenSerial(uint32_t baudrate)
 {
 #ifdef ESP8266
   LOG_SERIAL.flush();
@@ -17,7 +17,6 @@ int WPalaControl::myOpenSerial(uint32_t baudrate)
 #else
   PALA_SERIAL.begin(baudrate, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
 #endif
-  return 0;
 }
 void WPalaControl::myCloseSerial()
 {
@@ -31,30 +30,6 @@ void WPalaControl::myCloseSerial()
   digitalWrite(5, HIGH);
 #endif
 }
-int WPalaControl::mySelectSerial(unsigned long timeout)
-{
-  size_t avail;
-  unsigned long startmillis = millis();
-  while ((avail = PALA_SERIAL.available()) == 0 && (millis() - startmillis) < timeout)
-    ;
-
-  return avail;
-}
-ssize_t WPalaControl::myReadSerial(void *buf, size_t count) { return PALA_SERIAL.read((char *)buf, count); }
-ssize_t WPalaControl::myWriteSerial(const void *buf, size_t count) { return PALA_SERIAL.write((const uint8_t *)buf, count); }
-int WPalaControl::myDrainSerial()
-{
-  PALA_SERIAL.flush(); // On ESP, Serial.flush() is drain
-  return 0;
-}
-int WPalaControl::myFlushSerial()
-{
-  PALA_SERIAL.flush();
-  while (PALA_SERIAL.read() != -1)
-    ; // flush RX buffer
-  return 0;
-}
-void WPalaControl::myUSleep(unsigned long usecond) { delayMicroseconds(usecond); }
 
 // broadcast application status (including MQTT connection status and last publish result) to web clients
 void WPalaControl::broadcastMqttStatus()
@@ -2440,25 +2415,12 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
   Palazzetti::CommandResult cmdRes;
-  Palazzetti::SerialAdapter palaSerialAdapter = {
-      .open = [this](uint32_t baudrate)
-      { return myOpenSerial(baudrate); },
-      .close = [this]()
-      { myCloseSerial(); },
-      .select = [this](unsigned long timeout)
-      { return mySelectSerial(timeout); },
-      .read = [this](void *buf, size_t count)
-      { return myReadSerial(buf, count); },
-      .write = [this](const void *buf, size_t count)
-      { return myWriteSerial(buf, count); },
-      .drain = [this]()
-      { return myDrainSerial(); },
-      .flush = [this]()
-      { return myFlushSerial(); },
-      .uSleep = [this](unsigned long usecond)
-      { myUSleep(usecond); }};
-
-  cmdRes = _Pala.initialize(palaSerialAdapter);
+  cmdRes = _Pala.initialize(
+      PALA_SERIAL,
+      [this](uint32_t baudrate)
+      { myOpenSerial(baudrate); },
+      [this]()
+      { myCloseSerial(); });
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
