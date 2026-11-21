@@ -6,31 +6,6 @@
 #define PALA_SERIAL Serial2
 #endif
 
-// Serial management functions -------------
-void WPalaControl::myOpenSerial(uint32_t baudrate)
-{
-#ifdef ESP8266
-  LOG_SERIAL.flush();
-  PALA_SERIAL.begin(baudrate);
-  PALA_SERIAL.pins(15, 13); // swap ESP8266 pins to alternative positions (D7(GPIO13)(RX)/D8(GPIO15)(TX))
-  pinMode(1, INPUT);
-#else
-  PALA_SERIAL.begin(baudrate, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
-#endif
-}
-void WPalaControl::myCloseSerial()
-{
-  PALA_SERIAL.end();
-  // set TX PIN to OUTPUT HIGH to avoid stove bus blocking
-#ifdef ESP8266
-  pinMode(15, OUTPUT);
-  digitalWrite(15, HIGH);
-#else
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH);
-#endif
-}
-
 // broadcast application status (including MQTT connection status and last publish result) to web clients
 void WPalaControl::broadcastMqttStatus()
 {
@@ -2414,13 +2389,21 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 
   LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
+  // open the serial port connected to the stove once, at boot: it stays open across reinitializations
+  if (!reInit)
+  {
+#ifdef ESP8266
+    LOG_SERIAL.flush();
+    PALA_SERIAL.begin(Palazzetti::BAUDRATE);
+    PALA_SERIAL.pins(15, 13); // swap ESP8266 pins to alternative positions (D7(GPIO13)(RX)/D8(GPIO15)(TX))
+    pinMode(1, INPUT);
+#else
+    PALA_SERIAL.begin(Palazzetti::BAUDRATE, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
+#endif
+  }
+
   Palazzetti::CommandResult cmdRes;
-  cmdRes = _Pala.initialize(
-      PALA_SERIAL,
-      [this](uint32_t baudrate)
-      { myOpenSerial(baudrate); },
-      [this]()
-      { myCloseSerial(); });
+  cmdRes = _Pala.initialize(PALA_SERIAL);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
