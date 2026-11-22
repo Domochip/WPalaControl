@@ -469,6 +469,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setTemplateField(F("action_template"), F("STATUS"), F("{% set intSTATUS = ({v} | int(0)) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}"));
 
   json[F("action_topic")] = getStateTopic(F("STAT"), F("STATUS"));
+
+  // burner_status attribute for VTherm Pellet Stove (labels must match VTherm and stay consistent with mode/action)
+  json[F("json_attributes_topic")] = getStateTopic(F("STAT"), F("STATUS"));
+  setTemplateField(F("json_attributes_template"), F("STATUS"), F("{% set s = ({v} | int(-1)) %}{% set b = 'Off' if s == 0 else 'Flame On' if s in [6,7,11] else 'Eco idle' if s in [9,51] else 'Cooling down' if s in [10,12,50] else 'Unknown' %}{{ {'burner_status': b} | tojson }}"));
+
   if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("current_temperature_template")] = String(F("{{ value_json.")) + probeField + F(" }}");
   json[F("current_temperature_topic")] = getStateTopic(F("TMPS"), probeField);
