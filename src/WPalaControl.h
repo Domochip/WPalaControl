@@ -64,15 +64,6 @@ private:
   bool _needPublishUpdate = false;
   unsigned long _lastPublishUpdateMillis = 0;
 
-  int myOpenSerial(uint32_t baudrate);
-  void myCloseSerial();
-  int mySelectSerial(unsigned long timeout);
-  ssize_t myReadSerial(void *buf, size_t count);
-  ssize_t myWriteSerial(const void *buf, size_t count);
-  int myDrainSerial();
-  int myFlushSerial();
-  void myUSleep(unsigned long usecond);
-
   void broadcastMqttStatus();
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
   void mqttDisconnectedCallback();
