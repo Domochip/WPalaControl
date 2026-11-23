@@ -24,19 +24,6 @@ private:
     Disabled = 0,
     Mqtt = 1
   };
-  enum HwDetection : uint8_t
-  {
-    AutoDetect = 0,
-    ForcedV1 = 1,
-    ForcedV2 = 2
-  };
-  enum HwVersion : uint8_t
-  {
-    Unknown = 0,
-    V1 = 1,
-    V2 = 2
-  };
-
   struct MQTT
   {
     HaMqttType type;
@@ -60,9 +47,6 @@ private:
     MQTT mqtt;
   };
 
-  HwDetection _hwDetection;
-  HwVersion _detectedHwVersion = HwVersion::Unknown;
-
   HomeAutomation _ha;
   int _haSendResult = 0;
   WiFiClient _wifiClient;
@@ -80,20 +64,11 @@ private:
   bool _needPublishUpdate = false;
   unsigned long _lastPublishUpdateMillis = 0;
 
-  int myOpenSerial(uint32_t baudrate);
-  void myCloseSerial();
-  int mySelectSerial(unsigned long timeout);
-  ssize_t myReadSerial(void *buf, size_t count);
-  ssize_t myWriteSerial(const void *buf, size_t count);
-  int myDrainSerial();
-  int myFlushSerial();
-  void myUSleep(unsigned long usecond);
-
   void broadcastMqttStatus();
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
   void mqttDisconnectedCallback();
   void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
-  void mqttPublishStoveConnected(bool stoveConnected);
+  void mqttPublishStoveConnected(Palazzetti::CommandResult cmdResult);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   bool mqttPublishHassDiscovery();
   void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx);

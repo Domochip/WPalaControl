@@ -6,56 +6,6 @@
 #define PALA_SERIAL Serial2
 #endif
 
-// Serial management functions -------------
-int WPalaControl::myOpenSerial(uint32_t baudrate)
-{
-#ifdef ESP8266
-  LOG_SERIAL.flush();
-  PALA_SERIAL.begin(baudrate);
-  PALA_SERIAL.pins(15, 13); // swap ESP8266 pins to alternative positions (D7(GPIO13)(RX)/D8(GPIO15)(TX))
-  pinMode(1, INPUT);
-#else
-  PALA_SERIAL.begin(baudrate, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
-#endif
-  return 0;
-}
-void WPalaControl::myCloseSerial()
-{
-  PALA_SERIAL.end();
-  // set TX PIN to OUTPUT HIGH to avoid stove bus blocking
-#ifdef ESP8266
-  pinMode(15, OUTPUT);
-  digitalWrite(15, HIGH);
-#else
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH);
-#endif
-}
-int WPalaControl::mySelectSerial(unsigned long timeout)
-{
-  size_t avail;
-  unsigned long startmillis = millis();
-  while ((avail = PALA_SERIAL.available()) == 0 && (millis() - startmillis) < timeout)
-    ;
-
-  return avail;
-}
-ssize_t WPalaControl::myReadSerial(void *buf, size_t count) { return PALA_SERIAL.read((char *)buf, count); }
-ssize_t WPalaControl::myWriteSerial(const void *buf, size_t count) { return PALA_SERIAL.write((const uint8_t *)buf, count); }
-int WPalaControl::myDrainSerial()
-{
-  PALA_SERIAL.flush(); // On ESP, Serial.flush() is drain
-  return 0;
-}
-int WPalaControl::myFlushSerial()
-{
-  PALA_SERIAL.flush();
-  while (PALA_SERIAL.read() != -1)
-    ; // flush RX buffer
-  return 0;
-}
-void WPalaControl::myUSleep(unsigned long usecond) { delayMicroseconds(usecond); }
-
 // broadcast application status (including MQTT connection status and last publish result) to web clients
 void WPalaControl::broadcastMqttStatus()
 {
@@ -194,8 +144,14 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
   }
 }
 
-void WPalaControl::mqttPublishStoveConnected(bool stoveConnected)
+// Update the connected topic from the result of a stove command
+void WPalaControl::mqttPublishStoveConnected(Palazzetti::CommandResult cmdResult)
 {
+  // ERROR is a refused or invalid command, possibly not even sent to the stove: it says nothing about connectivity
+  if (cmdResult == Palazzetti::CommandResult::ERROR)
+    return;
+
+  bool stoveConnected = (cmdResult == Palazzetti::CommandResult::OK);
   if (_mqttMan.connected() && _publishedStoveConnected != stoveConnected)
   {
     // if Stove is connected, publish 2 to connected topic otherwise fallback to 1
@@ -303,14 +259,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
   if (Palazzetti::CommandResult::OK != _Pala.getStaticData(staticData))
     return false;
 
-  // read all status from stove
-  unsigned long currentMillis = millis();
-  bool refreshStatus = ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL); // refresh AllStatus data if it's 15sec old
-
+  // get all status as already known by the library, without reading the stove:
+  // only SETP (0 when the stove has no setpoint) and FANLMINMAX[2..5] (stove configuration) are used below
   if (Palazzetti::CommandResult::OK != _Pala.getAllStatus(false, allStatusData))
     return false;
-  else if (refreshStatus)
-    _lastAllStatusRefreshMillis = currentMillis;
 
   // ---------- Stove Device ----------
 
@@ -519,6 +471,11 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   setTemplateField(F("action_template"), F("STATUS"), F("{% set intSTATUS = ({v} | int(0)) %}{{ iif((1 < intSTATUS < 9) or intSTATUS == 11, 'heating', iif(intSTATUS > 0, 'idle', 'off')) }}"));
 
   json[F("action_topic")] = getStateTopic(F("STAT"), F("STATUS"));
+
+  // burner_status attribute for VTherm Pellet Stove (labels must match VTherm and stay consistent with mode/action)
+  json[F("json_attributes_topic")] = getStateTopic(F("STAT"), F("STATUS"));
+  setTemplateField(F("json_attributes_template"), F("STATUS"), F("{% set s = ({v} | int(-1)) %}{% set b = 'Off' if s == 0 else 'Flame On' if s in [6,7,11] else 'Eco idle' if s in [9,51] else 'Cooling down' if s in [10,12,50] else 'Unknown' %}{{ {'burner_status': b} | tojson }}"));
+
   if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("current_temperature_template")] = String(F("{{ value_json.")) + probeField + F(" }}");
   json[F("current_temperature_topic")] = getStateTopic(F("TMPS"), probeField);
@@ -1003,8 +960,8 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
 {
-  bool cmdProcessed = false;                                                             // cmd has been processed
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR; // Palazzetti function calls successful
+  bool cmdProcessed = false;                                               // cmd has been processed
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // result of the command: ERROR until a stove call sets it (an invalid command is never sent)
 
   // Prepare answer structure --------------------------------------------------
   jsonDoc.clear();
@@ -1130,10 +1087,9 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   // if command has been processed
   if (cmdProcessed)
   {
-
     // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
     if (_ha.protocol == HaProtocol::Mqtt)
-      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
+      mqttPublishStoveConnected(cmdSuccess);
 
     // if communication with stove was successful
     if (cmdSuccess == Palazzetti::CommandResult::OK)
@@ -1155,14 +1111,19 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
     {
       info["CMD"] = cmd;
 
-      // if there is no MSG in info then stove communication failed
-      if (info["MSG"].isNull())
+      // the stove did not answer
+      if (cmdSuccess == Palazzetti::CommandResult::COMMUNICATION_ERROR)
       {
         info["RSP"] = F("TIMEOUT");
         info["MSG"] = F("Stove communication failed");
       }
+      // invalid parameters (MSG already set), or command rejected by the library or refused by the stove
       else
+      {
         info["RSP"] = F("ERROR");
+        if (info["MSG"].isNull())
+          info["MSG"] = F("Command rejected (invalid value or refused by the stove)");
+      }
 
       jsonDoc["SUCCESS"] = false;
       data["NODATA"] = true;
@@ -1183,7 +1144,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   if (cmd == F("CMD OFF"))
   {
@@ -1221,7 +1182,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
@@ -1692,7 +1653,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
@@ -2187,7 +2148,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   if (cmd.startsWith(F("EXT ADRD")))
   {
@@ -2307,8 +2268,6 @@ void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 // Used to initialize configuration properties to default values
 void WPalaControl::setConfigDefaultValues()
 {
-  _hwDetection = HwDetection::AutoDetect;
-
   _ha.protocol = HaProtocol::Disabled;
   _ha.hostname[0] = 0;
   _ha.uploadPeriod = 60;
@@ -2327,8 +2286,6 @@ void WPalaControl::setConfigDefaultValues()
 // Parse JSON object into configuration properties
 bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
-  parseField(json[F("hwdetection")], _hwDetection);
-
   // Home Automation common
   parseField(json[F("haproto")], _ha.protocol);
   parseField(json[F("hahost")], _ha.hostname);
@@ -2360,8 +2317,6 @@ void WPalaControl::validateConfig()
 // Generate JSON from configuration properties
 void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
-  json[F("hwdetection")] = _hwDetection;
-
   // Home Automation common
   json[F("haproto")] = _ha.protocol;
   json[F("hahost")] = _ha.hostname;
@@ -2391,9 +2346,6 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 // Generate JSON of application status
 void WPalaControl::fillStatusJSON(JsonVariant json)
 {
-  json[F("hwversion")] = _detectedHwVersion == HwVersion::V1 ? F("V1.x") : (_detectedHwVersion == HwVersion::V2 ? F("V2.x") : F("Unknown"));
-  json[F("hwdetection")] = _hwDetection == HwDetection::AutoDetect ? F("Auto-Detected") : F("Forced");
-
   // Home automation connection status
   if (_ha.protocol == HaProtocol::Mqtt)
   {
@@ -2444,53 +2396,21 @@ bool WPalaControl::appInit(bool reInit /* = false */)
 
   LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
-// Initialize hw version detection
-#ifdef ESP8266
-  uint8_t hwDetectPin = 5;
-#else
-  uint8_t hwDetectPin = 22;
-#endif
-
-  if (_hwDetection == HwDetection::AutoDetect)
+  // open the serial port connected to the stove once, at boot: it stays open across reinitializations
+  if (!reInit)
   {
-    pinMode(hwDetectPin, INPUT_PULLUP);
-    delay(2);
-
-    if (digitalRead(hwDetectPin) == HIGH)
-      _detectedHwVersion = HwVersion::V1;
-    else
-      _detectedHwVersion = HwVersion::V2;
+#ifdef ESP8266
+    LOG_SERIAL.flush();
+    PALA_SERIAL.begin(Palazzetti::BAUDRATE);
+    PALA_SERIAL.pins(15, 13); // swap ESP8266 pins to alternative positions (D7(GPIO13)(RX)/D8(GPIO15)(TX))
+    pinMode(1, INPUT);
+#else
+    PALA_SERIAL.begin(Palazzetti::BAUDRATE, SERIAL_8N1, 23, 5); // set ESP32 pins to match hat position (IO23(RX)/IO5(TX))
+#endif
   }
-  else if (_hwDetection == HwDetection::ForcedV1)
-    _detectedHwVersion = HwVersion::V1;
-  else
-    _detectedHwVersion = HwVersion::V2;
-
-  if (_detectedHwVersion == HwVersion::V1)
-    LOG_SERIAL_PRINT(F("HW1..."));
-  else
-    LOG_SERIAL_PRINT(F("HW2..."));
 
   Palazzetti::CommandResult cmdRes;
-  Palazzetti::SerialAdapter palaSerialAdapter = {
-      .open = [this](uint32_t baudrate)
-      { return myOpenSerial(baudrate); },
-      .close = [this]()
-      { myCloseSerial(); },
-      .select = [this](unsigned long timeout)
-      { return mySelectSerial(timeout); },
-      .read = [this](void *buf, size_t count)
-      { return myReadSerial(buf, count); },
-      .write = [this](const void *buf, size_t count)
-      { return myWriteSerial(buf, count); },
-      .drain = [this]()
-      { return myDrainSerial(); },
-      .flush = [this]()
-      { return myFlushSerial(); },
-      .uSleep = [this](unsigned long usecond)
-      { myUSleep(usecond); }};
-
-  cmdRes = _Pala.initialize(palaSerialAdapter, _detectedHwVersion == HwVersion::V1);
+  cmdRes = _Pala.initialize(PALA_SERIAL);
 
   if (cmdRes == Palazzetti::CommandResult::OK)
   {

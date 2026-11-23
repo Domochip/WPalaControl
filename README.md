@@ -27,7 +27,6 @@
     - [Config](#config)
       - [System](#system)
       - [WiFi](#wifi)
-      - [PalaControl](#palacontrol)
       - [PalaControl - Home Automation](#palacontrol---home-automation)
     - [Firmware](#firmware)
   - [Use it](#use-it)
@@ -112,7 +111,6 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 - **System**: module serial number, firmware version, uptime, local time (NTP) and free memory. Logged crashes are listed if any
 - **WiFi**: MAC address, Access Point status (and IP), Station status with connection state, IP, IP source (DHCP or Static IP), BSSID and signal strength (RSSI)
 - **WPalaControl**:
-  - **Hardware Version**: detected (or forced) hardware version of the module
   - **Stove infos**: the stove SN appears first, then all stove values are refreshed live every "Upload Period" (values that changed are shown in bold)
   - **Home Automation Status**: protocol, MQTT connection state and result of the last publish
 
@@ -137,12 +135,6 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 Leave the SSID empty to keep the module in AP mode (reachable at <http://192.168.4.1>).
 
 ![Config page: PalaControl](img/configMQTT.png)
-
-#### PalaControl
-
-- **Hardware detection**: hardware version of the module
-  - **Auto** (default): version is detected automatically at boot
-  - **V1.X** / **V2.X**: force the hardware version if auto-detection fails
 
 #### PalaControl - Home Automation
 
@@ -215,7 +207,7 @@ Other topics published by the module:
 | `{baseTopic}/connected` | `0`: not connected / `1`: connected but no communication with the stove / `2`: module and stove connected |
 | `{baseTopic}/Core` | Module status in JSON (manufacturer, model, sn, version, uptime, localtime, freeheap), refreshed every "Upload Period" |
 | `{baseTopic}/WiFi` | Wi-Fi status in JSON (apmode, stationmode, stationip, bssid, rssi, ...), refreshed every "Upload Period" |
-| `{baseTopic}/App` | WPalaControl status in JSON (hwversion, hwdetection, MQTT status, last publish result, ...), refreshed every "Upload Period" |
+| `{baseTopic}/App` | WPalaControl status in JSON (MQTT status, last publish result, ...), refreshed every "Upload Period" |
 | `{baseTopic}/update` | Latest available firmware update information |
 | `{baseTopic}/update/install` | Command topic to trigger a firmware update (used by Home Assistant) |
 
@@ -308,7 +300,7 @@ Values published automatically every "Upload Period":
 
 | Problem | What to check |
 | --- | --- |
-| Stove SN never appears on the Status page | Use the provided cable. If you built it yourself, check the cable type: **crossed** for hardware V1.x, **straight** for V2.x. Check also the **Hardware detection** setting |
+| Stove SN never appears on the Status page | Use the provided cable. If you built it yourself, check the cable type: **crossed** for hardware V1.x, **straight** for V2.x |
 | `wpalacontrol.local` does not open | Some devices (e.g. Android, some Windows setups) don't support mDNS: use the module IP address (shown in your router) |
 | Wrong Wi-Fi settings, module unreachable | If it can't connect, the module starts its own access point: connect to it and go to <http://192.168.4.1>. You can also press the RST button 3 times to start in [Recovery Mode](#recovery-mode) |
 | Web Password forgotten | Press the RST button 3 times to start in [Recovery Mode](#recovery-mode): the password is not requested, so you can change it in **Config** → **System** |
