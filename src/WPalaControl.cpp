@@ -2345,10 +2345,6 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
 // Generate JSON of application status
 void WPalaControl::fillStatusJSON(JsonVariant json)
 {
-  // V1 board: RX receives back what TX sends (loopback), V2 board: it does not
-  Palazzetti::LoopBack loopBack = _Pala.getLoopBack();
-  json[F("hwversion")] = loopBack == Palazzetti::LoopBack::Yes ? F("V1.x") : (loopBack == Palazzetti::LoopBack::No ? F("V2.x") : F("Unknown"));
-
   // Home automation connection status
   if (_ha.protocol == HaProtocol::Mqtt)
   {
@@ -2418,8 +2414,6 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   if (cmdRes == Palazzetti::CommandResult::OK)
   {
     LOG_SERIAL_PRINTLN(F("Stove connected"));
-    Palazzetti::LoopBack loopBack = _Pala.getLoopBack();
-    LOG_SERIAL_PRINTLN(loopBack == Palazzetti::LoopBack::Yes ? F("Hardware version: V1.x") : (loopBack == Palazzetti::LoopBack::No ? F("Hardware version: V2.x") : F("Hardware version: Unknown")));
     char SN[28];
     _Pala.getSN(&SN);
     LOG_SERIAL_PRINTF_P(PSTR("Stove Serial Number: %s\n"), SN);

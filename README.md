@@ -112,7 +112,6 @@ Once the module is connected to your Wi-Fi network, it is reachable at 👉 <htt
 - **System**: module serial number, firmware version, uptime, local time (NTP) and free memory. Logged crashes are listed if any
 - **WiFi**: MAC address, Access Point status (and IP), Station status with connection state, IP, IP source (DHCP or Static IP), BSSID and signal strength (RSSI)
 - **WPalaControl**:
-  - **Hardware Version**: detected (or forced) hardware version of the module
   - **Stove infos**: the stove SN appears first, then all stove values are refreshed live every "Upload Period" (values that changed are shown in bold)
   - **Home Automation Status**: protocol, MQTT connection state and result of the last publish
 
@@ -215,7 +214,7 @@ Other topics published by the module:
 | `{baseTopic}/connected` | `0`: not connected / `1`: connected but no communication with the stove / `2`: module and stove connected |
 | `{baseTopic}/Core` | Module status in JSON (manufacturer, model, sn, version, uptime, localtime, freeheap), refreshed every "Upload Period" |
 | `{baseTopic}/WiFi` | Wi-Fi status in JSON (apmode, stationmode, stationip, bssid, rssi, ...), refreshed every "Upload Period" |
-| `{baseTopic}/App` | WPalaControl status in JSON (hwversion, hwdetection, MQTT status, last publish result, ...), refreshed every "Upload Period" |
+| `{baseTopic}/App` | WPalaControl status in JSON (MQTT status, last publish result, ...), refreshed every "Upload Period" |
 | `{baseTopic}/update` | Latest available firmware update information |
 | `{baseTopic}/update/install` | Command topic to trigger a firmware update (used by Home Assistant) |
 
