@@ -144,8 +144,14 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
   }
 }
 
-void WPalaControl::mqttPublishStoveConnected(bool stoveConnected)
+// Update the connected topic from the result of a stove command
+void WPalaControl::mqttPublishStoveConnected(Palazzetti::CommandResult cmdResult)
 {
+  // ERROR is a refused or invalid command, possibly not even sent to the stove: it says nothing about connectivity
+  if (cmdResult == Palazzetti::CommandResult::ERROR)
+    return;
+
+  bool stoveConnected = (cmdResult == Palazzetti::CommandResult::OK);
   if (_mqttMan.connected() && _publishedStoveConnected != stoveConnected)
   {
     // if Stove is connected, publish 2 to connected topic otherwise fallback to 1
@@ -1085,10 +1091,9 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
   // if command has been processed
   if (cmdProcessed)
   {
-
     // if MQTT protocol is enabled then update connected topic to reflect stove connectivity
     if (_ha.protocol == HaProtocol::Mqtt)
-      mqttPublishStoveConnected(cmdSuccess == Palazzetti::CommandResult::OK);
+      mqttPublishStoveConnected(cmdSuccess);
 
     // if communication with stove was successful
     if (cmdSuccess == Palazzetti::CommandResult::OK)

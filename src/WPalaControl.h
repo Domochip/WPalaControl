@@ -68,7 +68,7 @@ private:
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
   void mqttDisconnectedCallback();
   void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
-  void mqttPublishStoveConnected(bool stoveConnected);
+  void mqttPublishStoveConnected(Palazzetti::CommandResult cmdResult);
   bool mqttPublishData(const String &baseTopic, const String &palaCategory, const JsonDocument &jsonDoc);
   bool mqttPublishHassDiscovery();
   void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx);
