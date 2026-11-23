@@ -259,14 +259,10 @@ bool WPalaControl::mqttPublishHassDiscovery()
   if (Palazzetti::CommandResult::OK != _Pala.getStaticData(staticData))
     return false;
 
-  // read all status from stove
-  unsigned long currentMillis = millis();
-  bool refreshStatus = ((currentMillis - _lastAllStatusRefreshMillis) > 15000UL); // refresh AllStatus data if it's 15sec old
-
+  // get all status as already known by the library, without reading the stove:
+  // only SETP (0 when the stove has no setpoint) and FANLMINMAX[2..5] (stove configuration) are used below
   if (Palazzetti::CommandResult::OK != _Pala.getAllStatus(false, allStatusData))
     return false;
-  else if (refreshStatus)
-    _lastAllStatusRefreshMillis = currentMillis;
 
   // ---------- Stove Device ----------
 
