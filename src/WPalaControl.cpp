@@ -964,8 +964,8 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
 bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool publish /* = false*/)
 {
-  bool cmdProcessed = false;                                                             // cmd has been processed
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR; // Palazzetti function calls successful
+  bool cmdProcessed = false;                                               // cmd has been processed
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // result of the command: ERROR until a stove call sets it (an invalid command is never sent)
 
   // Prepare answer structure --------------------------------------------------
   jsonDoc.clear();
@@ -1115,14 +1115,19 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
     {
       info["CMD"] = cmd;
 
-      // if there is no MSG in info then stove communication failed
-      if (info["MSG"].isNull())
+      // the stove did not answer
+      if (cmdSuccess == Palazzetti::CommandResult::COMMUNICATION_ERROR)
       {
         info["RSP"] = F("TIMEOUT");
         info["MSG"] = F("Stove communication failed");
       }
+      // invalid parameters (MSG already set), or command rejected by the library or refused by the stove
       else
+      {
         info["RSP"] = F("ERROR");
+        if (info["MSG"].isNull())
+          info["MSG"] = F("Command rejected (invalid value or refused by the stove)");
+      }
 
       jsonDoc["SUCCESS"] = false;
       data["NODATA"] = true;
@@ -1143,7 +1148,7 @@ bool WPalaControl::executePalaCmd(const String &cmd, JsonDocument &jsonDoc, bool
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   if (cmd == F("CMD OFF"))
   {
@@ -1181,7 +1186,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdCmd(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
@@ -1652,7 +1657,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdGet(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   auto addFloat = [](JsonObject &obj, const char *key, float val)
   {
@@ -2147,7 +2152,7 @@ Palazzetti::CommandResult WPalaControl::executePalaCmdSet(const String &cmd, Jso
 
 Palazzetti::CommandResult WPalaControl::executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams)
 {
-  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::COMMUNICATION_ERROR;
+  Palazzetti::CommandResult cmdSuccess = Palazzetti::CommandResult::ERROR; // until a stove call sets it
 
   if (cmd.startsWith(F("EXT ADRD")))
   {
