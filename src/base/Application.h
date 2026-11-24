@@ -43,6 +43,8 @@ protected:
   bool saveConfig();
   bool loadConfig();
   static void deleteAllConfig();
+  static void fillBackupJSON(JsonVariant json);
+  static bool restoreBackupJSON(JsonVariant json, String &errMsg);
 
   char getAppIdChar();
   const __FlashStringHelper *getAppIdName();

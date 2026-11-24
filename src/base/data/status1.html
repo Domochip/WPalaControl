@@ -54,7 +54,7 @@
         205: 'Connection failed'
     };
 
-    loadStatus(root, id, {
+    const statusOptions = {
         formats: {
             stastate: v => (stationStates[v] || [v])[0],
             discoreason: v => (disconnectReasons[Number(v)] || 'Unknown') + ' (' + Number(v) + ')',
@@ -76,6 +76,9 @@
                 $('#bars', root).replaceChildren(signalBars(status.rssi));
             } else {
                 $('#quality', root).textContent = 'No signal';
+                // clear values of a previous refresh
+                $('#signalMeter', root).style.width = '0';
+                $('#bars', root).replaceChildren();
             }
 
             setIdentity(status);
@@ -84,5 +87,9 @@
             $('#apName').textContent = status.apssid || "module's";
             $('#connectedToAP').hidden = !(status.stationmode == 'on' && status.apmode == 'on');
         },
-    });
+    };
+    loadStatus(root, id, statusOptions);
+
+    // WiFi signal and connection state refreshed every 30 s (paused while the tab is hidden)
+    return every(30000, () => loadStatus(root, id, statusOptions));
 </script>

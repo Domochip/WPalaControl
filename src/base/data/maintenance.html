@@ -1,3 +1,18 @@
+<div class="card">
+    <div class="card-h"><h2>Backup &amp; Restore</h2><span class="sub">Settings file, WiFi excluded</span></div>
+    <div class="card-b actions-list">
+        <div>
+            <div class="txt"><b>Backup</b><span>Download the module settings to a file. WiFi settings are not included.</span></div>
+            <button class="btn" id="bkBtn">Download</button>
+        </div>
+        <div>
+            <div class="txt"><b>Restore</b><span>Apply the settings of a backup file and restart. WiFi settings are kept as they are.</span></div>
+            <input type="file" id="rsFile" accept=".json,application/json" hidden>
+            <button class="btn" id="rsBtn">Restore from file</button>
+        </div>
+    </div>
+</div>
+
 <div class="card danger">
     <div class="card-h"><h2>Maintenance</h2></div>
     <div class="card-b actions-list">
@@ -47,6 +62,106 @@
             $('#resetBtn', root).disabled = false;
         });
     }
+
+    // -- Backup & Restore --------------------------------------------------------
+
+    // serial number of this module, used to warn when restoring a backup from another module
+    let deviceSn = '';
+    getJSON('/gs0', status => { deviceSn = status.sn || ''; });
+
+    // Download: the firmware names the file <model>_<sn>_<version>[_YYYYMMDD-HHMM].json
+    $('#bkBtn', root).addEventListener('click', async function () {
+        const body = html(`<div style="display:grid;gap:14px">
+            <div>The file contains passwords in clear text: the web password and application passwords (MQTT server, etc.).</div>
+            <ul class="warn-box">
+                <li>Store it somewhere safe and don't share it.</li>
+                <li>WiFi settings are not included.</li>
+            </ul>
+        </div>`);
+        if (!await confirmDialog({ title: 'Download a backup', body, confirmLabel: 'Download' })) return;
+
+        const btn = this;
+        btn.disabled = true;
+        try {
+            const response = await fetch('/cfgbk');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const match = (response.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+            let name = match ? match[1] : 'config.json';
+            // module time not synchronized (no date in name): use browser date instead
+            if (!/_\d{8}-\d{4}\.json$/.test(name)) {
+                const d = new Date(), p = n => String(n).padStart(2, '0');
+                name = name.replace(/\.json$/, `_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`);
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(await response.blob());
+            a.download = name;
+            document.body.append(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        } catch (error) {
+            toast(`Backup failed (${error.message})`, true);
+        }
+        btn.disabled = false;
+    });
+
+    // Restore: the button opens the file picker, the chosen file is checked and explained before being sent
+    $('#rsBtn', root).addEventListener('click', () => $('#rsFile', root).click());
+
+    $('#rsFile', root).addEventListener('change', async function () {
+        const file = this.files[0];
+        this.value = ''; // choosing the same file again fires change again
+        if (!file) return;
+
+        const text = await file.text();
+        let backup = null;
+        try { backup = JSON.parse(text); } catch (e) { }
+        if (!backup || typeof backup !== 'object' || backup.model !== apSsid) {
+            toast(`This file is not a ${apSsid} configuration backup`, true);
+            return;
+        }
+
+        // what the file is, what it replaces, and the risks (texts set with textContent: the file is untrusted)
+        const body = html(`<div style="display:grid;gap:14px">
+            <div data-from></div>
+            <div>Settings that will be replaced:<ul style="margin:6px 0 0;padding-left:18px" data-list></ul></div>
+            <div>WiFi settings are kept as they are.</div>
+            <ul class="warn-box" data-warn></ul>
+        </div>`);
+        const addItem = (list, text) => list.append(Object.assign(document.createElement('li'), { textContent: text }));
+
+        const from = [`module ${backup.sn || 'unknown'}`];
+        if (backup.version) from.push(`firmware ${backup.version}`);
+        if (backup.date) from.push(`saved ${backup.date}`);
+        $('[data-from]', body).textContent = `Backup of ${from.join(', ')}.`;
+
+        const list = $('[data-list]', body);
+        if (backup.Core) addItem(list, 'System: timezone, web password');
+        if (backup[apSsid]) addItem(list, `${apSsid} settings`);
+
+        const warn = $('[data-warn]', body);
+        if (backup.sn && deviceSn && backup.sn !== deviceSn)
+            addItem(warn, 'This backup was made on another module.');
+        if (backup.Core && typeof backup.Core.wp === 'string')
+            addItem(warn, backup.Core.wp
+                ? 'The web password saved in the backup replaces the current one. Make sure you know it, or you will be locked out of these pages (Recovery Mode gets you back in).'
+                : 'The backup has no web password: these pages will no longer ask for one.');
+        addItem(warn, 'The module restarts to apply the backup.');
+
+        if (!await confirmDialog({ title: 'Restore a backup', body, confirmLabel: 'Restore & restart', danger: true })) return;
+
+        $('#rsBtn', root).disabled = true;
+        $('#bkBtn', root).disabled = true;
+        post('/cfgrs', text,
+            () => waitForDevice(location.origin, 30000, 'Configuration restored', 'The device is rebooting...'),
+            responseText => {
+                toast(`Restore failed${responseText ? ` (${responseText})` : ''}`, true);
+                $('#rsBtn', root).disabled = false;
+                $('#bkBtn', root).disabled = false;
+            });
+    });
+
+    // -- Maintenance --------------------------------------------------------------
 
     $('#rebootBtn', root).addEventListener('click', function () {
         reboot('/rbt', 'Restarting', 'The device is rebooting...', location.origin);

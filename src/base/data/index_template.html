@@ -557,6 +557,25 @@
             pill.className = 'pill' + (isLive ? ' ok live' : '');
         }
 
+        // Calls fn every ms milliseconds while the browser tab is visible: paused when the tab is hidden,
+        // called right away when it shows again. Returns the cleanup function to return from the part.
+        function every(ms, fn) {
+            let timer = null;
+            const start = () => { if (!timer && !document.hidden) timer = setInterval(fn, ms); };
+            const stop = () => { clearInterval(timer); timer = null; };
+            const onVisibilityChange = () => {
+                if (document.hidden) return stop();
+                fn();
+                start();
+            };
+            document.addEventListener('visibilitychange', onVisibilityChange);
+            start();
+            return () => {
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+                stop();
+            };
+        }
+
         // Receives the server-sent events of part id (/statusEvt<id>) as parsed JSON, while the browser tab is visible.
         // livePill (optional) shows the connection state. Returns the cleanup function to return from the part.
         function connectEvents(id, onMessage, livePill) {

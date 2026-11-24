@@ -299,6 +299,69 @@ void Core::appInitWebServer(WebServer &server)
               SystemState::shouldReboot = true;
             });
 
+  // backup configuration GET (WiFi configuration excluded) -------------------
+  server.on(F("/cfgbk"), HTTP_GET,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+              JsonDocument json;
+              json[F("model")] = CUSTOM_APP_MODEL;
+              json[F("version")] = VERSION;
+              json[F("sn")] = getSerialNumber();
+
+              // backup date (only when NTP is synchronized), format "YYYY-MM-DD HH:MM:SS TZ"
+              char dateBuf[24];
+              char fileDate[15] = {0}; // "_YYYYMMDD-HHMM"
+              if (TimeManager::getLocalTime(dateBuf, sizeof(dateBuf)) >= 16)
+              {
+                json[F("date")] = dateBuf;
+                snprintf_P(fileDate, sizeof(fileDate), PSTR("_%.4s%.2s%.2s-%.2s%.2s"), dateBuf, dateBuf + 5, dateBuf + 8, dateBuf + 11, dateBuf + 14);
+              }
+
+              fillBackupJSON(json);
+
+              char contentDisposition[112];
+              snprintf_P(contentDisposition, sizeof(contentDisposition), PSTR("attachment; filename=\"" CUSTOM_APP_MODEL "_%s_" VERSION "%s.json\""), getSerialNumber(), fileDate);
+              server.sendHeader(F("Content-Disposition"), contentDisposition);
+              server.sendHeader(F("Cache-Control"), F("no-cache"));
+              server.setContentLength(measureJson(json));
+              server.send(200, F("application/json"), "");
+              WiFiClient client = server.client();
+              serializeJson(json, client);
+            });
+
+  // restore configuration POST (WiFi configuration untouched) ----------------
+  server.on(F("/cfgrs"), HTTP_POST,
+            [&server]()
+            {
+              SERVER_KEEPALIVE_FALSE()
+
+              JsonDocument json;
+              DeserializationError error = deserializeJson(json, server.arg(F("plain")));
+              if (error || !json.is<JsonObject>())
+              {
+                server.send(400, F("text/html"), F("Malformed JSON"));
+                return;
+              }
+
+              const char *model = json[F("model")];
+              if (!model || strcmp_P(model, PSTR(CUSTOM_APP_MODEL)))
+              {
+                server.send(400, F("text/html"), F("Backup file is not for " CUSTOM_APP_MODEL));
+                return;
+              }
+
+              String errMsg;
+              if (!restoreBackupJSON(json, errMsg))
+              {
+                server.send(400, F("text/html"), errMsg);
+                return;
+              }
+
+              server.send_P(200, PSTR("text/html"), PSTR("Configuration restored"));
+              SystemState::shouldReboot = true;
+            });
+
 #ifdef ESP8266
   // Download all crash logs as text attachment -------------------------------
   server.on(F("/crashdl"), HTTP_GET,

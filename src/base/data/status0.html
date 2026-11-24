@@ -44,16 +44,32 @@
     $('#appTitle', root).hidden = ![...document.querySelectorAll('#content [data-part]')]
         .some(part => !['0', '1'].includes(part.dataset.part) && !part.hidden);
 
-    loadStatus(root, id, {
+    // seconds since boot -> "42s", "7m", "4h 07m", "12d 4h 07m"
+    function formatUptime(v) {
+        const d = Math.floor(v / 86400), h = Math.floor(v / 3600) % 24, m = Math.floor(v / 60) % 60;
+        const mm = String(m).padStart(2, '0') + 'm';
+        if (d) return `${d}d ${h}h ${mm}`;
+        if (h) return `${h}h ${mm}`;
+        return v < 60 ? v + 's' : m + 'm';
+    }
+
+    // Uptime and Local time tick in the browser from the last values received (no request to the module):
+    // value at last load + seconds elapsed since then. Local time is computed as UTC so the module's
+    // timezone (already applied in localtime) is kept whatever the browser's timezone.
+    let clockBase = null; // { at: performance.now() of last load, uptime: s, time: ms or null, tz: ' CET' }
+    function tickClocks() {
+        if (!clockBase) return;
+        const elapsed = Math.floor((performance.now() - clockBase.at) / 1000);
+        $('[data-k="uptime"]', root).textContent = formatUptime(clockBase.uptime + elapsed);
+        if (clockBase.time === null) return;
+        const iso = new Date(clockBase.time + elapsed * 1000).toISOString(); // "2026-11-11T22:51:03.000Z"
+        $('#time', root).textContent = iso.substring(11, 19);
+        $('#time', root).title = iso.substring(0, 10) + ' ' + iso.substring(11, 19) + clockBase.tz;
+    }
+
+    const statusOptions = {
         formats: {
-            // seconds since boot -> "42s", "7m", "4h 07m", "12d 4h 07m"
-            uptime: function (v) {
-                const d = Math.floor(v / 86400), h = Math.floor(v / 3600) % 24, m = Math.floor(v / 60) % 60;
-                const mm = String(m).padStart(2, '0') + 'm';
-                if (d) return `${d}d ${h}h ${mm}`;
-                if (h) return `${h}h ${mm}`;
-                return v < 60 ? v + 's' : m + 'm';
-            },
+            uptime: formatUptime,
             crashcount: v => v + (v > 1 ? ' crashes' : ' crash') + ' logged',
             freeheap: v => (v / 1024).toFixed(1),
             freestack: v => v + ' bytes',
@@ -62,9 +78,18 @@
             $('#crashes', root).hidden = !(status.crashcount > 0);
 
             // tile: time only ("2026-11-11 22:51:03 CET" -> "22:51:03"), full value as tooltip
-            const time = /\d\d:\d\d:\d\d/.exec(status.localtime);
-            $('#time', root).textContent = time ? time[0] : 'Not synced';
-            $('#time', root).title = status.localtime;
+            const t = /(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(.*)/.exec(status.localtime || '');
+            clockBase = {
+                at: performance.now(),
+                uptime: Number(status.uptime) || 0,
+                time: t ? Date.UTC(t[1], t[2] - 1, t[3], t[4], t[5], t[6]) : null,
+                tz: t ? t[7] : '',
+            };
+            if (!t) {
+                $('#time', root).textContent = 'Not synced';
+                $('#time', root).title = status.localtime || '';
+            }
+            tickClocks();
 
             // heap gauge: only when the firmware knows the heap size (ESP32)
             if (status.heapsize) {
@@ -74,7 +99,8 @@
                 $('#heapMeter', root).style.visibility = 'hidden';
             }
         },
-    });
+    };
+    loadStatus(root, id, statusOptions);
 
     $('#clrCrashes', root).addEventListener('click', function () {
         post('/crashclr', null, function () {
@@ -84,4 +110,9 @@
             toast('Failed to clear crash logs', true);
         });
     });
+
+    // clocks tick every second, free heap and the rest are refreshed every 30 s (both paused while the tab is hidden)
+    const stopClocks = every(1000, tickClocks);
+    const stopRefresh = every(30000, () => loadStatus(root, id, statusOptions));
+    return () => { stopClocks(); stopRefresh(); };
 </script>
