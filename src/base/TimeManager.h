@@ -16,9 +16,14 @@ class TimeManager
 public:
     TimeManager() = delete;
 
-    // Initialize time synchronization with NTP server
+    // Set the NTP server (empty or nullptr: pool.ntp.org)
+    // the string is used by SNTP without being copied: it must stay valid (e.g. a configuration field)
+    // if time synchronization is already running, it is restarted with the new server
+    static void setServer(const char *ntpServer);
+
+    // Initialize time synchronization with the NTP server set by setServer()
     // Timezone should be set separately via setTimezone() before calling init()
-    static void init(const char *ntpServer = "pool.ntp.org");
+    static void init();
 
     // Set timezone (POSIX TZ string, e.g., "UTC0", "EST5EDT,M3.2.0,M11.1.0")
     // Can be called at any time, typically during system initialization
@@ -40,6 +45,8 @@ public:
 private:
     static int formatTime(bool utc, char *buf, size_t bufSize);
 
+    static const char *_ntpServer;
+    static bool _started;
     static uint32_t _ntpEpoch;
     static uint32_t _ntpMillis;
 

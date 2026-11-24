@@ -7,6 +7,11 @@
             <div class="help">Local time is synchronised over NTP once WiFi is connected.</div>
         </div>
         <div class="field">
+            <label for="ntps">NTP server</label>
+            <input type="text" id="ntps" name="ntps" maxlength="64" pattern="[A-Za-z0-9\-.]+" placeholder="pool.ntp.org" class="mono">
+            <div class="help">IP address or DNS name. Leave empty to use pool.ntp.org.</div>
+        </div>
+        <div class="field">
             <label for="wp">Web password</label>
             <div class="pw">
                 <input type="password" id="wp" name="wp" maxlength="64" autocomplete="new-password">
