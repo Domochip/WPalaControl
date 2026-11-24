@@ -44,13 +44,13 @@
     $('#appTitle', root).hidden = ![...document.querySelectorAll('#content [data-part]')]
         .some(part => !['0', '1'].includes(part.dataset.part) && !part.hidden);
 
-    // seconds since boot -> "42s", "7m", "4h 07m", "12d 4h 07m"
+    // seconds since boot -> "42s", "7m 05s", "4h 07m 05s", "12d 4h 07m 05s"
     function formatUptime(v) {
-        const d = Math.floor(v / 86400), h = Math.floor(v / 3600) % 24, m = Math.floor(v / 60) % 60;
-        const mm = String(m).padStart(2, '0') + 'm';
-        if (d) return `${d}d ${h}h ${mm}`;
-        if (h) return `${h}h ${mm}`;
-        return v < 60 ? v + 's' : m + 'm';
+        const d = Math.floor(v / 86400), h = Math.floor(v / 3600) % 24, m = Math.floor(v / 60) % 60, s = v % 60;
+        const pad = n => String(n).padStart(2, '0');
+        if (d) return `${d}d ${h}h ${pad(m)}m ${pad(s)}s`;
+        if (h) return `${h}h ${pad(m)}m ${pad(s)}s`;
+        return m ? `${m}m ${pad(s)}s` : `${s}s`;
     }
 
     // Uptime and Local time tick in the browser from the last values received (no request to the module):

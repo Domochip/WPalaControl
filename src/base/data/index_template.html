@@ -629,15 +629,25 @@
             try { localStorage.setItem('theme', root.dataset.theme); } catch (e) { }
         });
 
-        // Settings section list: one link per card title of the page, the clicked one highlighted;
-        // cards with class "danger" (Maintenance) come after a separator, in red
+        // Settings section list: one link per card title of the page, the clicked one highlighted.
+        // Parts are grouped by id: Application (application parts), Device ('0' System, '1' WiFi),
+        // Maintenance ('' maintenance.html); each group gets a title on the page and in the list.
+        // Cards with class "danger" (Maintenance) are listed in red.
         function buildRail() {
             const content = $('#content');
             const rail = document.createElement('nav');
             rail.className = 'rail';
+            const groupOf = id => id === '' ? 'Maintenance' : ['0', '1'].includes(id) ? 'Device' : 'Application';
+            let group = null;
             content.querySelectorAll('.card, [data-part].legacy').forEach((card, i) => {
                 const title = card.querySelector('h2');
                 if (!title || card.closest('[hidden]')) return;
+                const part = card.closest('[data-part]');
+                if (groupOf(part.dataset.part) !== group) {
+                    part.before(Object.assign(document.createElement('div'), { className: group ? 'section-title' : 'section-title first', textContent: groupOf(part.dataset.part) }));
+                    group = groupOf(part.dataset.part);
+                    rail.append(Object.assign(document.createElement('div'), { className: 'grp', textContent: group }));
+                }
                 card.id ||= 'section' + i;
                 const link = document.createElement('a');
                 link.href = '#' + card.id;
@@ -647,10 +657,7 @@
                     rail.querySelectorAll('a').forEach(a => a.classList.toggle('on', a === link));
                     card.scrollIntoView({ behavior: 'smooth' });
                 });
-                if (card.classList.contains('danger')) {
-                    link.classList.add('danger');
-                    rail.append(Object.assign(document.createElement('div'), { className: 'sep' }));
-                }
+                if (card.classList.contains('danger')) link.classList.add('danger');
                 rail.append(link);
             });
             rail.querySelector('a')?.classList.add('on');

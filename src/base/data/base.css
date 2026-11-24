@@ -280,8 +280,13 @@ main {
     align-items: start;
 }
 
-#content.has-rail > [data-part] {
+#content.has-rail > [data-part],
+#content.has-rail > .section-title {
     grid-column: 2;
+}
+
+#content.has-rail > .section-title.first {
+    margin-top: 0;
 }
 
 .rail {
@@ -317,10 +322,18 @@ main {
     color: var(--err);
 }
 
-.rail .sep {
-    height: 1px;
-    background: var(--line);
-    margin: 8px 4px;
+/* group heading (Application, Device, Maintenance) */
+.rail .grp {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--faint);
+    font-weight: 600;
+    padding: 14px 12px 4px;
+}
+
+.rail .grp:first-child {
+    padding-top: 0;
 }
 
 /* -- Cards ----------------------------------------------------------------- */
@@ -1295,7 +1308,8 @@ main {
         grid-template-columns: 1fr;
     }
 
-    #content.has-rail > [data-part] {
+    #content.has-rail > [data-part],
+    #content.has-rail > .section-title {
         grid-column: 1;
     }
 
