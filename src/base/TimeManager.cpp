@@ -1,10 +1,23 @@
 #include "TimeManager.h"
 
+const char *TimeManager::_ntpServer = nullptr;
+bool TimeManager::_started = false;
 uint32_t TimeManager::_ntpEpoch = 0;
 uint32_t TimeManager::_ntpMillis = 0;
 
-void TimeManager::init(const char *ntpServer)
+void TimeManager::setServer(const char *ntpServer)
 {
+    _ntpServer = ntpServer;
+
+    // apply the new server now if synchronization is already running
+    if (_started)
+        init();
+}
+
+void TimeManager::init()
+{
+    const char *ntpServer = (_ntpServer && _ntpServer[0]) ? _ntpServer : "pool.ntp.org";
+
 #ifdef ESP8266
     sntp_stop();
     sntp_setservername(0, ntpServer);
@@ -14,6 +27,7 @@ void TimeManager::init(const char *ntpServer)
     esp_sntp_setservername(0, ntpServer);
     esp_sntp_init();
 #endif
+    _started = true;
 
 #ifdef ESP8266
     settimeofday_cb([]()

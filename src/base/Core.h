@@ -13,6 +13,7 @@ class Core : public Application
 private:
   // Configuration Properties
   char ntpTimezone[64 + 1] = {0};
+  char ntpServer[64 + 1] = {0}; // empty: pool.ntp.org (used by SNTP without copy, see TimeManager::setServer)
   char webPassword[64 + 1] = {0};
 
   void setConfigDefaultValues();

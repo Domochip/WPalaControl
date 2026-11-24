@@ -28,12 +28,14 @@ const char *Core::getSerialNumber()
 void Core::setConfigDefaultValues()
 {
   strcpy_P(ntpTimezone, PSTR("Europe/Paris|CET-1CEST,M3.5.0,M10.5.0/3"));
+  ntpServer[0] = 0;
   webPassword[0] = 0;
 };
 
 bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 {
   parseField(json["tz"], ntpTimezone);
+  parseField(json["ntps"], ntpServer);
   parseSecret(json["wp"], webPassword, fromWebPage);
   return true;
 };
@@ -41,6 +43,7 @@ bool Core::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false */)
 void Core::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false */)
 {
   json["tz"] = ntpTimezone;
+  json["ntps"] = ntpServer;
   // no placeholder when empty: the page shows that authentication is disabled
   if (webPassword[0])
     fillSecret(json, F("wp"), webPassword, forSaveFile);
@@ -97,6 +100,9 @@ bool Core::appInit(bool reInit /* = false */)
   }
   
   TimeManager::setTimezone(tzToUse);
+
+  // NTP server used when WiFi connects (WifiMan calls TimeManager::init), or applied now if already synchronizing
+  TimeManager::setServer(ntpServer);
   return true;
 };
 void Core::initWebAuth(WebServer &server)

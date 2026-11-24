@@ -9,6 +9,11 @@
             <span class="pure-form-message-inline">Select your timezone</span>
         </div>
         <div class="pure-control-group">
+            <label for="ntps">NTP Server</label>
+            <input type='text' id='ntps' name='ntps' maxlength='64' pattern='[A-Za-z0-9\-.]+' placeholder="pool.ntp.org">
+            <span class="pure-form-message-inline">IP or DNS name (empty: pool.ntp.org)</span>
+        </div>
+        <div class="pure-control-group">
             <label for="wp">Web Password</label>
             <input type='password' id='wp' name='wp' maxlength='64'>
             <span class="pure-form-message-inline">User "admin" (empty: no authentication)</span>
