@@ -20,20 +20,34 @@
 </form>
 <span id='r'></span>
 
-<form class="pure-form pure-form-aligned" id='rebootForm'>
+<h2 class="content-subhead">Backup / Restore</h2>
+<form class="pure-form pure-form-aligned" id='backupForm'>
     <fieldset>
-        <div class="pure-controls">
-            <input type='submit' id='subRbt' value='Reboot' class="pure-button pure-button-primary btn-warn">
+        <div class="pure-control-group">
+            <label>Backup</label>
+            <button type='button' id='bkBtn' class="pure-button pure-button-primary">Download</button>
+            <span class="pure-form-message-inline">WiFi settings are not included</span>
+        </div>
+        <div class="pure-control-group">
+            <label for="rsFile">Restore</label>
+            <input type='file' id='rsFile' accept='.json' required>
+            <input type='submit' id='subRs' value='Restore' class="pure-button pure-button-primary btn-warn" disabled>
         </div>
     </fieldset>
 </form>
-<form class="pure-form pure-form-aligned" id='resetForm'>
+<div id='rsResult'></div>
+
+<h2 class="content-subhead">Maintenance</h2>
+<form class="pure-form pure-form-aligned" id='maintForm'>
     <fieldset>
-        <div class="pure-controls">
-            <input type='submit' id='subRst' value='Reset Configuration' class="pure-button pure-button-primary btn-err">
+        <div class="pure-control-group">
+            <label>Module</label>
+            <button type='button' id='subRbt' class="pure-button pure-button-primary btn-warn">Reboot</button>
+            <button type='button' id='subRst' class="pure-button pure-button-primary btn-err">Reset Configuration</button>
         </div>
     </fieldset>
 </form>
+<div id='mResult'></div>
 
 <script>
     // Runs as this part's init function (see registerPart in index_template.html):
@@ -110,22 +124,114 @@
         $('#subRst', root).disabled = true;
 
         post(url, null, function () {
-            waitForDevice($('#r', root), targetUrl, 30000, `<h3><span class="ok">Done</span> ${successMessage}</h3>`);
+            waitForDevice($('#mResult', root), targetUrl, 30000, `<h3><span class="ok">Done</span> ${successMessage}</h3>`);
         }, function () {
-            showError($('#r', root));
+            showError($('#mResult', root));
             $('#subRbt', root).disabled = false;
             $('#subRst', root).disabled = false;
         });
     }
 
-    $("#rebootForm", root).addEventListener('submit', function (evt) {
+    // serial number of this module, used to warn when restoring a backup from another module
+    let deviceSn = '';
+    getJSON('/gs0', (status) => { deviceSn = status.sn || ''; });
+
+    // Download backup: fetched then saved as a file (keeps the name sent by the firmware)
+    $('#bkBtn', root).addEventListener('click', function () {
+        if (!confirm('Download a configuration backup?\n\n⚠ The file contains passwords in clear text: the Web Password and application passwords (MQTT server, etc.). Store it somewhere safe and do not share it.\n\nWiFi settings are not included.'))
+            return;
+        const btn = this;
+        btn.disabled = true;
+        fetch('/cfgbk')
+            .then(response => {
+                if (!response.ok) throw new Error(response.status);
+                const match = (response.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+                let name = match ? match[1] : 'config.json';
+                // module time not synchronized (no date in name): use browser date instead
+                if (!/_\d{8}-\d{4}\.json$/.test(name)) {
+                    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+                    name = name.replace(/\.json$/, `_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`);
+                }
+                return response.blob().then(blob => ({ blob, name }));
+            })
+            .then(({ blob, name }) => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            })
+            .catch(error => showError($('#rsResult', root), error.message))
+            .finally(() => { btn.disabled = false; });
+    });
+
+    // Restore button is enabled only once a file is selected
+    $('#rsFile', root).addEventListener('change', function () {
+        $('#subRs', root).disabled = !this.files.length;
+        $('#rsResult', root).innerHTML = '';
+    });
+
+    // Restore: file is read by the browser then its content is posted to the firmware
+    $("#backupForm", root).addEventListener('submit', function (evt) {
         evt.preventDefault();
+        const file = $('#rsFile', root).files[0];
+        if (!file) return;
+        const model = document.querySelector("meta[name='description']").content;
+
+        file.text().then(text => {
+            let backup;
+            try { backup = JSON.parse(text); } catch (e) { backup = null; }
+            if (!backup || typeof backup !== 'object' || backup.model !== model) {
+                alert(`This file is not a ${model} configuration backup.`);
+                return;
+            }
+
+            // explain what will be restored before going further (⚠ = warning sign)
+            const origin = [`module ${backup.sn || 'unknown'}`];
+            if (backup.version) origin.push(`firmware ${backup.version}`);
+            if (backup.date) origin.push(`saved ${backup.date}`);
+            const lines = ['Restore this configuration backup?', '', `From: ${origin.join(', ')}`];
+            if (backup.sn && deviceSn && backup.sn !== deviceSn)
+                lines.push('⚠ This backup was made on another module.');
+            lines.push('', 'Settings that will be replaced:');
+            if (backup.Core) lines.push('  - System: NTP Timezone, Web Password');
+            if (backup[model]) lines.push(`  - ${model} settings`);
+            lines.push('WiFi settings are kept as they are.');
+            if (backup.Core && typeof backup.Core.wp === 'string') {
+                lines.push('');
+                if (backup.Core.wp)
+                    lines.push('⚠ The Web Password saved in the backup will replace the current one. Make sure you know it, or you will be locked out of this web interface.');
+                else
+                    lines.push('⚠ The backup has no Web Password: this web interface will no longer ask for one.');
+            }
+            lines.push('', 'System will restart to apply the backup.');
+            if (!confirm(lines.join('\n'))) return;
+
+            $('#subRs', root).disabled = true;
+            $('#bkBtn', root).disabled = true;
+            $('#rsResult', root).innerHTML = 'Restoring Configuration...';
+            post('/cfgrs', text,
+                () => {
+                    $('#backupForm', root).style.display = 'none';
+                    sessionStorage.setItem('activeTab', '#menuConfig');
+                    waitForDevice($('#rsResult', root), location.origin, 30000, '<h3><b>Configuration restored <span class="ok">successfully</span>. System is restarting now.</b></h3>');
+                },
+                (responseText) => {
+                    showError($('#rsResult', root), responseText);
+                    $('#subRs', root).disabled = false;
+                    $('#bkBtn', root).disabled = false;
+                });
+        });
+    });
+
+    $("#subRbt", root).addEventListener('click', function () {
         reboot('/rbt', 'System will reboot shortly.', location.origin);
     });
 
-    $("#resetForm", root).addEventListener('submit', function (evt) {
-        evt.preventDefault();
-        if (!confirm('All settings will be erased and the module will restart with its default configuration. Continue?'))
+    $("#subRst", root).addEventListener('click', function () {
+        if (!confirm('All settings will be erased and System will restart with its default configuration. Continue?'))
             return;
         reboot('/rstcfg', "Configuration erased. System will reboot shortly. You'll need to connect to module WiFi.", 'http://192.168.4.1');
     });
