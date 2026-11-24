@@ -2,7 +2,22 @@
 <form class="pure-form pure-form-aligned" id='f'>
     <fieldset>
 
-        <h3 class="content-subhead" style="margin-top:0">Home Automation <span id="hai" name="hai" class="infotip" data-tip="haidiv">?</span></h3>
+        <h3 class="content-subhead" style="margin-top:0">Stove</h3>
+
+        <div class="pure-control-group">
+            <label for="tsync">Clock synchronization</label>
+            <input id='tsync' name='tsync' type="checkbox">
+            <span id="tsynci" name="tsynci" class="infotip" data-tip="tsyncdiv">?</span>
+        </div>
+        <div class="pure-control-group" id="tsyncdiv" name="tsyncdiv" style="display:none;">
+            <label></label>
+            <div class="infotipdiv">
+                Set the stove clock to the local time of this device (NTP),<br>
+                after boot once NTP is synchronized, then once a day
+            </div>
+        </div>
+
+        <h3 class="content-subhead">Home Automation <span id="hai" name="hai" class="infotip" data-tip="haidiv">?</span></h3>
         <div class="infotipdiv" id="haidiv" name="haidiv" style="display:none;">
             HTTP GET request can be send to this device.<br>
             Please refer to <a href="https://github.com/Domochip/WPalaControl">documentation</a> for list of

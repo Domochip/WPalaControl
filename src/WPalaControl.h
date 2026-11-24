@@ -56,6 +56,7 @@ private:
 
   Palazzetti _Pala;
   unsigned long _lastAllStatusRefreshMillis = 0;
+  bool _stoveTimeSync; // set the stove clock from NTP after boot and once a day
 
   bool _needPublish = false;
   unsigned long _lastPublishMillis = 0;
@@ -63,6 +64,8 @@ private:
   bool _needPublishHassDiscovery = false;
   bool _needPublishUpdate = false;
   unsigned long _lastPublishUpdateMillis = 0;
+  unsigned long _lastStoveTimeSyncMillis = 0;
+  unsigned long _stoveTimeSyncInterval = 0; // 0: as soon as NTP is synchronized, then 1 day (1 minute after a failure)
 
   void broadcastMqttStatus();
   void mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection);
@@ -81,6 +84,7 @@ private:
   Palazzetti::CommandResult executePalaCmdExt(const String &cmd, JsonObject &data, JsonObject &info, const __FlashStringHelper *&palaCategory, bool &cmdProcessed, uint8_t cmdParamNumber, const uint16_t *cmdParams);
 
   void publishTick();
+  bool stoveTimeSync();
   void udpRequestHandler(WiFiUDP &udpServer);
 
   void setConfigDefaultValues();
