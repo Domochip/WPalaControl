@@ -124,6 +124,8 @@ void Core::appInitWebServer(WebServer &server)
             {
               SERVER_KEEPALIVE_FALSE()
               server.sendHeader(F("Content-Encoding"), F("gzip"));
+              // always revalidated: a firmware update must be seen at once (it also brings the new base.css?v= URL)
+              server.sendHeader(F("Cache-Control"), F("no-cache"));
               server.send_P(200, PSTR("text/html"), indexhtmlgz, sizeof(indexhtmlgz));
             });
 

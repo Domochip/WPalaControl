@@ -9,7 +9,8 @@
 
     <!-- favicon: the header logo, set by the script at the bottom (data: here so browsers don't request /favicon.ico) -->
     <link rel="icon" id="favicon" href="data:,">
-    <link rel="stylesheet" href="base.css">
+    <!-- ?v= changes with base.css content: a new firmware never uses a stale cached stylesheet -->
+    <link rel="stylesheet" href="base.css?v={{CSS_HASH}}">
     <script>
         // theme forced by the header button (see below), applied before rendering to avoid a flash
         try { document.documentElement.dataset.theme = localStorage.getItem('theme') || ''; } catch (e) { }
