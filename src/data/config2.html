@@ -1,8 +1,17 @@
-<!-- one form (#f, saved as /sc2) in one card: Home Automation -->
+<!-- one form (#f, saved as /sc2) in two cards: Stove, Home Automation -->
 <form id="f" style="display:grid;gap:16px">
     <div class="card">
+        <div class="card-h"><h2>Stove<span id="l" class="ld">Loading...</span></h2></div>
+        <div class="card-b fields">
+            <label class="switch">
+                <span class="txt"><b>Clock synchronization</b><span>Set the stove clock to this module's local time (NTP), after boot once the time is synchronized, then once a day</span></span>
+                <input id="tsync" name="tsync" type="checkbox">
+            </label>
+        </div>
+    </div>
+    <div class="card">
         <div class="card-h">
-            <h2>Home Automation<span id="l" class="ld">Loading...</span></h2>
+            <h2>Home Automation</h2>
             <span class="sub"><a href="https://github.com/Domochip/WPalaControl" target="_blank">Documentation ↗</a></span>
         </div>
         <div class="card-b fields">

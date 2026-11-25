@@ -40,6 +40,10 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
   updateInstalltopic += F("/update/install");
   mqttMan->subscribe(updateInstalltopic.c_str());
 
+  // Subscribe to Home Assistant status topic -----------------
+  if (_ha.mqtt.hassDiscoveryEnabled)
+    mqttSubscribeHassStatus(*mqttMan, _ha.mqtt.hassDiscoveryPrefix);
+
   // raise flag to publish Home Assistant discovery data
   _needPublishHassDiscovery = true;
 
@@ -89,6 +93,14 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     String resTopic = _mqttMan.getBaseTopic();
     resTopic += F("/result");
     _mqttMan.publish(resTopic.c_str(), json);
+    return;
+  }
+
+  // Home Assistant restarted: republish discovery then states (not retained)
+  if (_ha.mqtt.hassDiscoveryEnabled && isHassOnlineMessage(_ha.mqtt.hassDiscoveryPrefix, topic, payload, length))
+  {
+    LOG_SERIAL_PRINTLN(F("Home Assistant online: publish discovery and states"));
+    _needPublishHassDiscovery = true;
     return;
   }
 
@@ -2233,6 +2245,26 @@ void WPalaControl::publishTick()
   broadcastMqttStatus();
 }
 
+//------------------------------------------
+// Set the stove clock to the local time (NTP must be synchronized, stove communication initialized)
+// through SET TIME, so the new stove time is also published (SSE and MQTT)
+bool WPalaControl::stoveTimeSync()
+{
+  time_t now = time(nullptr);
+  struct tm tmInfo;
+  localtime_r(&now, &tmInfo);
+
+  char cmd[sizeof("SET TIME YYYY-MM-DD HH:MM:SS")];
+  snprintf_P(cmd, sizeof(cmd), PSTR("SET TIME %04d-%02d-%02d %02d:%02d:%02d"), tmInfo.tm_year + 1900, tmInfo.tm_mon + 1, tmInfo.tm_mday, tmInfo.tm_hour, tmInfo.tm_min, tmInfo.tm_sec);
+
+  JsonDocument json;
+  bool res = executePalaCmd(cmd, json, true);
+
+  LOG_SERIAL_PRINTF_P(PSTR("Stove clock synchronization %s: %s\n"), res ? "done" : "failed", cmd + 9);
+
+  return res;
+}
+
 void WPalaControl::udpRequestHandler(WiFiUDP &udpServer)
 {
 
@@ -2280,6 +2312,8 @@ void WPalaControl::setConfigDefaultValues()
   _ha.mqtt.hassDiscoveryEnabled = true;
   strcpy_P(_ha.mqtt.hassDiscoveryPrefix, PSTR("homeassistant"));
   _ha.mqtt.hassFineSetPoint = false;
+
+  _stoveTimeSync = false;
 }
 
 //------------------------------------------
@@ -2300,6 +2334,9 @@ bool WPalaControl::parseConfigJSON(JsonVariant json, bool fromWebPage /* = false
   parseField(json[F("hamhassde")], _ha.mqtt.hassDiscoveryEnabled);
   parseField(json[F("hamhassdp")], _ha.mqtt.hassDiscoveryPrefix);
   parseField(json[F("hamhassfsp")], _ha.mqtt.hassFineSetPoint);
+
+  // Stove
+  parseField(json[F("tsync")], _stoveTimeSync);
 
   return true;
 }
@@ -2333,6 +2370,9 @@ void WPalaControl::fillConfigJSON(JsonVariant json, bool forSaveFile /* = false 
   json[F("hamhassde")] = _ha.mqtt.hassDiscoveryEnabled;
   json[F("hamhassdp")] = _ha.mqtt.hassDiscoveryPrefix;
   json[F("hamhassfsp")] = _ha.mqtt.hassFineSetPoint;
+
+  // Stove
+  json[F("tsync")] = _stoveTimeSync;
 
   // web page only: tell if the stove supports 0.2° setpoint (FLUID == 0)
   if (!forSaveFile)
@@ -2431,6 +2471,9 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   // flag to force publish update (init and reinit) and restart the daily period
   _needPublishUpdate = true;
   _lastPublishUpdateMillis = millis();
+
+  // synchronize the stove clock as soon as possible (boot, or the option just enabled)
+  _stoveTimeSyncInterval = 0;
 
   // Start UDP Server
   _udpServer.begin(54549);
@@ -2627,6 +2670,14 @@ void WPalaControl::appRun()
 
     if (_needPublishUpdate && mqttPublishUpdate(_mqttMan))
       _needPublishUpdate = false;
+  }
+
+  // synchronize the stove clock once NTP and the stove communication are both initialized, then once a day (retried every minute on failure)
+  // (if the stove was not connected at boot, the communication is initialized later by publishTick)
+  if (_stoveTimeSync && TimeManager::isNtpSynchronized() && _Pala.isInitialized() && millis() - _lastStoveTimeSyncMillis >= _stoveTimeSyncInterval)
+  {
+    _stoveTimeSyncInterval = stoveTimeSync() ? 86400000UL : 60000UL;
+    _lastStoveTimeSyncMillis = millis();
   }
 
   // request a publish every uploadPeriod seconds

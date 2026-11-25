@@ -30,6 +30,20 @@ void Application::HassDiscoveryCtx::publishEntity(JsonDocument &json, const Stri
   mqttMan.publish(topic.c_str(), json, true);
 }
 
+void Application::mqttSubscribeHassStatus(MQTTMan &mqttMan, const char *hassDiscoveryPrefix)
+{
+  String topic(hassDiscoveryPrefix);
+  topic += F("/status");
+  mqttMan.subscribe(topic.c_str());
+}
+
+bool Application::isHassOnlineMessage(const char *hassDiscoveryPrefix, const char *topic, const uint8_t *payload, unsigned int length)
+{
+  const size_t prefixLen = strlen(hassDiscoveryPrefix);
+  return strncmp(topic, hassDiscoveryPrefix, prefixLen) == 0 && strcmp_P(topic + prefixLen, PSTR("/status")) == 0 &&
+         length == 6 && memcmp_P(payload, PSTR("online"), 6) == 0;
+}
+
 Application::Application(AppId appId) : _appId(appId)
 {
   _applicationList[_appId] = this;
