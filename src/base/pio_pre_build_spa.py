@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 
 # Pages of the web UI: template id -> fragment files, one "part" per file.
 # Files ending with a number get that number as part id ('0', '1', '2'), used in API endpoints;
@@ -20,6 +21,11 @@ def extract_macro_value(file_path, macro_name):
             return match.group(1)
         else:
             raise ValueError(f"{macro_name} not found in {file_path}")
+
+# Returns a short hash of a file content, used to version a resource URL (cache busting)
+def file_hash(file_path):
+    with open(file_path, 'rb') as f:
+        return hashlib.sha1(f.read()).hexdigest()[:8]
 
 # Reads a fragment file and returns (part_id, markup, script):
 #   - part_id : number at the end of the filename ('status1.html' -> '1'), '' if none
@@ -72,6 +78,7 @@ build_spa(
     'src/base/data/index.html',
     placeholders={
         'APP_MODEL': extract_macro_value('./src/Main.h', 'CUSTOM_APP_MODEL'),
+        'CSS_HASH': file_hash('src/base/data/base.css'),
     }
 )
 

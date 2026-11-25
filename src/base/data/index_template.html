@@ -8,7 +8,8 @@
     <title>Domochip {{APP_MODEL}}</title>
 
     <link rel="stylesheet" href="pure-min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="base.css">
+    <!-- ?v= changes with base.css content: a new firmware never uses a stale cached stylesheet -->
+    <link rel="stylesheet" href="base.css?v={{CSS_HASH}}">
 </head>
 
 <body>
