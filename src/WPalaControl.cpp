@@ -455,6 +455,23 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
   ctx.publishEntity(json, F("sensor"), F("STATUS_Text"));
 
   //
+  // Alarm entity
+  //
+
+  // prepare payload for Stove alarm binary sensor: STATUS codes from 239 are alarms
+  deserializeJson(json, F("{"
+                          "\"default_entity_id\":\"binary_sensor.stove_alarm\","
+                          "\"device_class\":\"problem\","
+                          "\"name\":\"Alarm\","
+                          "\"object_id\":\"stove_alarm\""
+                          "}"));
+  json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
+  setTemplateField(F("value_template"), F("STATUS"), F("{{ iif(({v} | int(0)) >= 239, 'ON', 'OFF') }}"));
+
+  // publish
+  ctx.publishEntity(json, F("binary_sensor"), F("Alarm"));
+
+  //
   // Thermostat entity
   //
 
