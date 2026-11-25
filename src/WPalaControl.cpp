@@ -449,7 +449,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
                           "\"object_id\":\"stove_status_text\""
                           "}"));
   json[F("state_topic")] = getStateTopic(F("STAT"), F("STATUS"));
-  setTemplateField(F("value_template"), F("STATUS"), F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm')] %}{% for num,text in statusList %}{% if int({v}) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ {v} }}{% endif %}"));
+  setTemplateField(F("value_template"), F("STATUS"), F("{% set ns = namespace(found=false) %}{% set statusList=[([0],'Off'),([1],'Off Timer'),([2],'Test Fire'),([3,4,5],'Ignition'),([6],'Burning'),([7],'Burning (Modulating)'),([8],'Burning (Flue Gas Limit)'),([9],'Cool'),([10],'Fire Stop'),([11],'Clean Fire'),([12],'Cool'),([17],'Keep Fire'),([239],'MFDoor Alarm'),([240],'Fire Error'),([241],'Chimney Alarm'),([243],'Grate Error'),([244],'NTC2 Alarm'),([245],'NTC3 Alarm'),([246],'TC2 Alarm'),([247],'Door Alarm'),([248],'Pressure Alarm'),([249],'NTC1 Alarm'),([250],'TC1 Alarm'),([252],'Gas Alarm'),([253],'No Pellet Alarm'),([254],'Config Alarm')] %}{% for num,text in statusList %}{% if int({v}) in num %}{{ text }}{% set ns.found = true %}{% break %}{% endif %}{% endfor %}{% if not ns.found %}Unknown STATUS code {{ {v} }}{% endif %}"));
 
   // publish
   ctx.publishEntity(json, F("sensor"), F("STATUS_Text"));
@@ -503,7 +503,7 @@ void WPalaControl::mqttPublishStoveHassDiscovery(HassDiscoveryCtx &ctx, Palazzet
 
   // burner_status attribute for VTherm Pellet Stove (labels must match VTherm and stay consistent with mode/action)
   json[F("json_attributes_topic")] = getStateTopic(F("STAT"), F("STATUS"));
-  setTemplateField(F("json_attributes_template"), F("STATUS"), F("{% set s = ({v} | int(-1)) %}{% set b = 'Off' if s == 0 else 'Flame On' if s in [6,7,11] else 'Eco idle' if s in [9,51] else 'Cooling down' if s in [10,12,50] else 'Unknown' %}{{ {'burner_status': b} | tojson }}"));
+  setTemplateField(F("json_attributes_template"), F("STATUS"), F("{% set s = ({v} | int(-1)) %}{% set b = 'Off' if s == 0 else 'Flame On' if s in [6,7,8,11] else 'Eco idle' if s in [9,17,51] else 'Cooling down' if s in [10,12,50] else 'Unknown' %}{{ {'burner_status': b} | tojson }}"));
 
   if (_ha.mqtt.type == HaMqttType::GenericJson)
     json[F("current_temperature_template")] = String(F("{{ value_json.")) + probeField + F(" }}");
