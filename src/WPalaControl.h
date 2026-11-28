@@ -59,7 +59,8 @@ private:
 
   bool _needPublish = false;
   unsigned long _lastPublishMillis = 0;
-  bool _publishedStoveConnected = false;
+  bool _stoveConnected = false;          // last known stove connection (kept across MQTT reconnections)
+  bool _publishedStoveConnected = false; // stove connection published to the connected topic (reset on MQTT disconnection)
   bool _needPublishHassDiscovery = false;
   MqttUpdate _mqttUpdate;
   unsigned long _lastStoveTimeSyncMillis = 0;

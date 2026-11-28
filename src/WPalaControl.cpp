@@ -114,11 +114,19 @@ void WPalaControl::mqttPublishStoveConnected(Palazzetti::CommandResult cmdResult
     return;
 
   bool stoveConnected = (cmdResult == Palazzetti::CommandResult::OK);
+
+  // stove connection changed: publish Home Assistant discovery data again (stove device and entities)
+  // (not on MQTT reconnection, the connection itself already requests it)
+  if (_stoveConnected != stoveConnected)
+  {
+    _stoveConnected = stoveConnected;
+    _needPublishHassDiscovery = true;
+  }
+
   if (_mqttMan.connected() && _publishedStoveConnected != stoveConnected)
   {
     // if Stove is connected, publish 2 to connected topic otherwise fallback to 1
     _mqttMan.publishToConnectedTopic((stoveConnected ? "2" : "1"));
-    _needPublishHassDiscovery = true; // raise flag to publish Home Assistant discovery data
     _publishedStoveConnected = stoveConnected;
   }
 }
