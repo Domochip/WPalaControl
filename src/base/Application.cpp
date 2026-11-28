@@ -1,7 +1,7 @@
 #include "Application.h"
 #include "WebAuth.h"
 
-Application *Application::_applicationList[3] = {nullptr, nullptr, nullptr};
+Application *Application::_applicationList[AppCount] = {nullptr};
 
 void Application::HassDiscoveryCtx::publishEntity(JsonDocument &json, const String &type, const __FlashStringHelper *uniqueIdSuffix, bool withStandardAvail)
 {
@@ -803,7 +803,7 @@ void Application::initWebServer(WebServer &server)
               if (SystemState::recoveryMode)
               {
                 SystemState::recoveryMode = false;
-                _applicationList[WifiManApp]->_reInit = true;
+                requestReInit(WifiManApp);
               }
             });
 

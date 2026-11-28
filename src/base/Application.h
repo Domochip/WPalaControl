@@ -30,11 +30,16 @@ protected:
   {
     CoreApp = 0,
     WifiManApp = 1,
-    CustomApp = 2
+    CustomApp = 2,
+    AppCount // number of applications
   } AppId;
 
-  static Application *_applicationList[3]; // static list of all applications
+private:
+  static Application *_applicationList[AppCount]; // static list of all applications
 
+  static void requestReInit(AppId appId) { _applicationList[appId]->_reInit = true; }
+
+protected:
   AppId _appId;
   bool _reInit = false;
 
