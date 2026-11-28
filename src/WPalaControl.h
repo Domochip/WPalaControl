@@ -62,8 +62,7 @@ private:
   unsigned long _lastPublishMillis = 0;
   bool _publishedStoveConnected = false;
   bool _needPublishHassDiscovery = false;
-  bool _needPublishUpdate = false;
-  unsigned long _lastPublishUpdateMillis = 0;
+  MqttUpdate _mqttUpdate;
   unsigned long _lastStoveTimeSyncMillis = 0;
   unsigned long _stoveTimeSyncInterval = 0; // 0: as soon as NTP is synchronized, then 1 day (1 minute after a failure)
 

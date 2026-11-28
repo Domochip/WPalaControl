@@ -36,9 +36,7 @@ void WPalaControl::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
   mqttMan->subscribe(cmdTopic.c_str());
 
   // Subscribe to update/install topic -----------------------
-  String updateInstalltopic(_mqttMan.getBaseTopic());
-  updateInstalltopic += F("/update/install");
-  mqttMan->subscribe(updateInstalltopic.c_str());
+  _mqttUpdate.subscribe(*mqttMan);
 
   // Subscribe to Home Assistant status topic -----------------
   if (_ha.mqtt.hassDiscoveryEnabled)
@@ -104,56 +102,8 @@ void WPalaControl::mqttCallback(char *topic, uint8_t *payload, unsigned int leng
     return;
   }
 
-  // if topic ends with "/update/install"
-  const size_t topicLen = strlen(topic);
-  if (topicLen >= 15 && memcmp_P(topic + topicLen - 15, PSTR("/update/install"), 15) == 0)
-  {
-    String version;
-    String retMsg;
-    unsigned long lastProgressPublish = 0;
-
-    // result topic is topic without the last 8 characters ("/install")
-    String resTopic(topic);
-    resTopic.remove(resTopic.length() - 8);
-
-    if (length > 10)
-      retMsg = F("Version is too long");
-    else
-    {
-      // convert payload to String
-      version.concat((char *)payload, length);
-
-      // Define the progress callback function
-      std::function<void(size_t, size_t)> progressCallback = [this, &resTopic, &lastProgressPublish](size_t progress, size_t total)
-      {
-        // if last progress publish is less than 500ms ago then return
-        if (millis() - lastProgressPublish < 500)
-          return;
-        lastProgressPublish = millis();
-
-        uint8_t percent = (progress * 100) / total;
-        LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
-        String payload = String(F("{\"update_percentage\":")) + percent + '}';
-        _mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
-      };
-
-      SystemState::shouldReboot = updateFirmware(version.c_str(), retMsg, progressCallback);
-    }
-
-    if (SystemState::shouldReboot)
-      retMsg = F("{\"update_percentage\":null,\"in_progress\":true}");
-    else
-    {
-      LOG_SERIAL_PRINTF_P(PSTR("Update failed: %s\n"), retMsg.c_str());
-      retMsg = F("{\"in_progress\":false}");
-
-      // mark that we need to publish the update status again
-      _needPublishUpdate = true;
-    }
-
-    // publish result
-    _mqttMan.publish(resTopic.c_str(), retMsg.c_str(), true);
-  }
+  // online firmware update requested on update/install
+  _mqttUpdate.handleMessage(_mqttMan, topic, payload, length);
 }
 
 // Update the connected topic from the result of a stove command
@@ -233,23 +183,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   // ---------- Device ----------
 
-  // prepare unique id prefix
-  uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
-  uniqueIdPrefix += WifiMan::getMacAddress();
-  uniqueIdPrefix.replace(":", "");
-
-  // prepare device JSON
-  deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
-                          "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
-                          "\"model\":\"" CUSTOM_APP_MODEL "\","
-                          "\"sw_version\":\"" VERSION "\""
-                          "}"));
-  json[F("identifiers")][0] = uniqueIdPrefix;
-  json[F("name")] = WiFi.getHostname();
-  serializeJson(json, device); // serialize to device String
-
-  json.clear();
+  hassMainDevice(uniqueIdPrefix, device);
 
   // ----- Generic Entities -----
 
@@ -2480,9 +2414,8 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   // restart the publish period
   _lastPublishMillis = millis();
 
-  // flag to force publish update (init and reinit) and restart the daily period
-  _needPublishUpdate = true;
-  _lastPublishUpdateMillis = millis();
+  // publish update information (init and reinit) and restart the daily period
+  _mqttUpdate.request();
 
   // synchronize the stove clock as soon as possible (boot, or the option just enabled)
   _stoveTimeSyncInterval = 0;
@@ -2673,15 +2606,8 @@ void WPalaControl::appRun()
       _needPublish = true; // force publishTick after discovery
     }
 
-    // request a publish update once a day
-    if (millis() - _lastPublishUpdateMillis >= 86400000UL)
-    {
-      _lastPublishUpdateMillis += 86400000UL;
-      _needPublishUpdate = true;
-    }
-
-    if (_needPublishUpdate && mqttPublishUpdate(_mqttMan))
-      _needPublishUpdate = false;
+    // publish update information when requested and once a day
+    _mqttUpdate.run(_mqttMan);
   }
 
   // synchronize the stove clock once NTP and the stove communication are both initialized, then once a day (retried every minute on failure)
