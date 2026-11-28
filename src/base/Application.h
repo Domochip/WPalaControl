@@ -99,7 +99,7 @@ public:
   Application(AppId appId);
 
   void mqttPublishStatus(MQTTMan &mqttMan);
-  bool mqttPublishUpdate(MQTTMan &mqttMan);
+  static bool mqttPublishUpdate(MQTTMan &mqttMan);
   void init();
   void initWebServer(WebServer &server);
   void run();
@@ -140,6 +140,25 @@ protected:
   // Home Assistant birth message: "online" published to <hassDiscoveryPrefix>/status when HA starts
   static void mqttSubscribeHassStatus(MQTTMan &mqttMan, const char *hassDiscoveryPrefix);
   static bool isHassOnlineMessage(const char *hassDiscoveryPrefix, const char *topic, const uint8_t *payload, unsigned int length);
+
+  // Home Assistant main device (Core, WiFi and custom application entities): unique id prefix (<model>_<mac>) and device JSON
+  static void hassMainDevice(String &uniqueIdPrefix, String &device);
+
+  // Update information (<baseTopic>/update) and online update (<baseTopic>/update/install) on MQTT,
+  // owned by the custom application next to its MQTTMan
+  class MqttUpdate
+  {
+  public:
+    void subscribe(MQTTMan &mqttMan); // subscribe <baseTopic>/update/install, on MQTT connection
+    // install the requested version, false when topic is not <baseTopic>/update/install
+    bool handleMessage(MQTTMan &mqttMan, const char *topic, const uint8_t *payload, unsigned int length);
+    void request();             // publish as soon as possible and restart the daily period, at init and reinit
+    void run(MQTTMan &mqttMan); // publish when requested and once a day, from appRun when MQTT is used
+
+  private:
+    bool _needPublish = false;
+    unsigned long _lastPublishMillis = 0;
+  };
 };
 
 #endif

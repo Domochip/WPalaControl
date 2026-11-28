@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "WebAuth.h"
+#include "WifiMan.h"
 
 Application *Application::_applicationList[AppCount] = {nullptr};
 
@@ -42,6 +43,104 @@ bool Application::isHassOnlineMessage(const char *hassDiscoveryPrefix, const cha
   const size_t prefixLen = strlen(hassDiscoveryPrefix);
   return strncmp(topic, hassDiscoveryPrefix, prefixLen) == 0 && strcmp_P(topic + prefixLen, PSTR("/status")) == 0 &&
          length == 6 && memcmp_P(payload, PSTR("online"), 6) == 0;
+}
+
+void Application::hassMainDevice(String &uniqueIdPrefix, String &device)
+{
+  uniqueIdPrefix = F(CUSTOM_APP_MODEL "_");
+  uniqueIdPrefix += WifiMan::getMacAddress();
+  uniqueIdPrefix.replace(":", "");
+
+  JsonDocument json;
+  deserializeJson(json, F("{"
+                          "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
+                          "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
+                          "\"model\":\"" CUSTOM_APP_MODEL "\","
+                          "\"sw_version\":\"" VERSION "\""
+                          "}"));
+  json[F("identifiers")][0] = uniqueIdPrefix;
+  json[F("name")] = WiFi.getHostname();
+  serializeJson(json, device);
+}
+
+void Application::MqttUpdate::subscribe(MQTTMan &mqttMan)
+{
+  String topic(mqttMan.getBaseTopic());
+  topic += F("/update/install");
+  mqttMan.subscribe(topic.c_str());
+}
+
+bool Application::MqttUpdate::handleMessage(MQTTMan &mqttMan, const char *topic, const uint8_t *payload, unsigned int length)
+{
+  // topic must end with "/update/install"
+  const size_t topicLen = strlen(topic);
+  if (topicLen < 15 || memcmp_P(topic + topicLen - 15, PSTR("/update/install"), 15) != 0)
+    return false;
+
+  String version;
+  String retMsg;
+  unsigned long lastProgressPublish = 0;
+
+  // result topic is topic without the last 8 characters ("/install")
+  String resTopic(topic);
+  resTopic.remove(resTopic.length() - 8);
+
+  if (length > 10)
+    retMsg = F("Version is too long");
+  else
+  {
+    // convert payload to String
+    version.concat((char *)payload, length);
+
+    // publish the progress at most every 500ms
+    std::function<void(size_t, size_t)> progressCallback = [&mqttMan, &resTopic, &lastProgressPublish](size_t progress, size_t total)
+    {
+      if (millis() - lastProgressPublish < 500)
+        return;
+      lastProgressPublish = millis();
+
+      uint8_t percent = (progress * 100) / total;
+      LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
+      String payload = String(F("{\"update_percentage\":")) + percent + '}';
+      mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
+    };
+
+    SystemState::shouldReboot = updateFirmware(version.c_str(), retMsg, progressCallback);
+  }
+
+  if (SystemState::shouldReboot)
+    retMsg = F("{\"update_percentage\":null,\"in_progress\":true}");
+  else
+  {
+    LOG_SERIAL_PRINTF_P(PSTR("Update failed: %s\n"), retMsg.c_str());
+    retMsg = F("{\"in_progress\":false}");
+
+    // publish the update information again
+    _needPublish = true;
+  }
+
+  // publish result
+  mqttMan.publish(resTopic.c_str(), retMsg.c_str(), true);
+  return true;
+}
+
+void Application::MqttUpdate::request()
+{
+  _needPublish = true;
+  _lastPublishMillis = millis();
+}
+
+void Application::MqttUpdate::run(MQTTMan &mqttMan)
+{
+  // request a publish once a day
+  if (millis() - _lastPublishMillis >= 86400000UL)
+  {
+    _lastPublishMillis += 86400000UL;
+    _needPublish = true;
+  }
+
+  if (_needPublish && mqttPublishUpdate(mqttMan))
+    _needPublish = false;
 }
 
 Application::Application(AppId appId) : _appId(appId)
