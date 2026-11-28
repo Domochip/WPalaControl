@@ -128,6 +128,10 @@ public:
   virtual void mqttPublishHassDiscovery(HassDiscoveryCtx &ctx) {};
 
 protected:
+  // MQTT publishing for every application (Core, WiFi then the custom application), to call from the custom application
+  static void mqttPublishAllStatus(MQTTMan &mqttMan);
+  static void mqttPublishAllHassDiscovery(HassDiscoveryCtx &ctx);
+
   // Home Assistant birth message: "online" published to <hassDiscoveryPrefix>/status when HA starts
   static void mqttSubscribeHassStatus(MQTTMan &mqttMan, const char *hassDiscoveryPrefix);
   static bool isHassOnlineMessage(const char *hassDiscoveryPrefix, const char *topic, const uint8_t *payload, unsigned int length);

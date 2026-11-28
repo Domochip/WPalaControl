@@ -683,6 +683,20 @@ void Application::mqttPublishStatus(MQTTMan &mqttMan)
   mqttMan.publish(topic.c_str(), json, true);
 }
 
+void Application::mqttPublishAllStatus(MQTTMan &mqttMan)
+{
+  for (Application *app : _applicationList)
+    if (app)
+      app->mqttPublishStatus(mqttMan);
+}
+
+void Application::mqttPublishAllHassDiscovery(HassDiscoveryCtx &ctx)
+{
+  for (Application *app : _applicationList)
+    if (app)
+      app->mqttPublishHassDiscovery(ctx);
+}
+
 bool Application::mqttPublishUpdate(MQTTMan &mqttMan)
 {
   if (!mqttMan.connected())
