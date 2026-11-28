@@ -255,9 +255,7 @@ bool WPalaControl::mqttPublishHassDiscovery()
 
   HassDiscoveryCtx ctx{_mqttMan, device, uniqueIdPrefix, _ha.mqtt.hassDiscoveryPrefix};
 
-  _applicationList[CoreApp]->mqttPublishHassDiscovery(ctx);
-  _applicationList[WifiManApp]->mqttPublishHassDiscovery(ctx);
-  mqttPublishHassDiscovery(ctx);
+  mqttPublishAllHassDiscovery(ctx);
 
   // ---------- Get Stove Device data ----------
 
@@ -2230,10 +2228,7 @@ void WPalaControl::publishTick()
   // if MQTT protocol is enabled and connected then publish Core, Wifi and WPalaControl status
   if (_ha.protocol == HaProtocol::Mqtt && _mqttMan.connected())
   {
-    // Call each application's mqttPublishStatus method
-    _applicationList[CoreApp]->mqttPublishStatus(_mqttMan);
-    _applicationList[WifiManApp]->mqttPublishStatus(_mqttMan);
-    mqttPublishStatus(_mqttMan);
+    mqttPublishAllStatus(_mqttMan);
   }
 
   // array of commands to execute
