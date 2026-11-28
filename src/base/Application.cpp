@@ -51,16 +51,17 @@ void Application::hassMainDevice(String &uniqueIdPrefix, String &device)
   uniqueIdPrefix += WifiMan::getMacAddress();
   uniqueIdPrefix.replace(":", "");
 
-  JsonDocument json;
-  deserializeJson(json, F("{"
-                          "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
-                          "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
-                          "\"model\":\"" CUSTOM_APP_MODEL "\","
-                          "\"sw_version\":\"" VERSION "\""
-                          "}"));
-  json[F("identifiers")][0] = uniqueIdPrefix;
-  json[F("name")] = WiFi.getHostname();
-  serializeJson(json, device);
+  // built as a string (no ArduinoJson): uniqueIdPrefix and hostname never need escaping
+  device = F("{"
+             "\"configuration_url\":\"http://" CUSTOM_APP_MODEL ".local\","
+             "\"manufacturer\":\"" CUSTOM_APP_MANUFACTURER "\","
+             "\"model\":\"" CUSTOM_APP_MODEL "\","
+             "\"sw_version\":\"" VERSION "\","
+             "\"identifiers\":[\"");
+  device += uniqueIdPrefix;
+  device += F("\"],\"name\":\"");
+  device += WiFi.getHostname();
+  device += F("\"}");
 }
 
 void Application::MqttUpdate::subscribe(MQTTMan &mqttMan)
@@ -93,19 +94,18 @@ bool Application::MqttUpdate::handleMessage(MQTTMan &mqttMan, const char *topic,
     version.concat((char *)payload, length);
 
     // publish the progress at most every 500ms
-    std::function<void(size_t, size_t)> progressCallback = [&mqttMan, &resTopic, &lastProgressPublish](size_t progress, size_t total)
-    {
-      if (millis() - lastProgressPublish < 500)
-        return;
-      lastProgressPublish = millis();
+    SystemState::shouldReboot = updateFirmware(version.c_str(), retMsg,
+                                               [&mqttMan, &resTopic, &lastProgressPublish](size_t progress, size_t total)
+                                               {
+                                                 if (millis() - lastProgressPublish < 500)
+                                                   return;
+                                                 lastProgressPublish = millis();
 
-      uint8_t percent = (progress * 100) / total;
-      LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
-      String payload = String(F("{\"update_percentage\":")) + percent + '}';
-      mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
-    };
-
-    SystemState::shouldReboot = updateFirmware(version.c_str(), retMsg, progressCallback);
+                                                 uint8_t percent = (progress * 100) / total;
+                                                 LOG_SERIAL_PRINTF_P(PSTR("Progress: %d%%\n"), percent);
+                                                 String payload = String(F("{\"update_percentage\":")) + percent + '}';
+                                                 mqttMan.publish(resTopic.c_str(), payload.c_str(), true);
+                                               });
   }
 
   if (SystemState::shouldReboot)
