@@ -167,16 +167,32 @@ MQTTMan &MQTTMan::setConnectedAndWillTopic(const char *topic)
     return *this;
 }
 
-MQTTMan &MQTTMan::setConnectedCallback(ConnectedCallback connectedCallback)
+MQTTMan::MQTTMan()
 {
-    _connectedCallBack = connectedCallback;
-    return *this;
+    setClient(_wifiClient);
+    setSocketTimeout(3); // don't wait more than 3 seconds for a response from the broker
 }
 
-MQTTMan &MQTTMan::setDisconnectedCallback(DisconnectedCallback disconnectedCallback)
+void MQTTMan::begin(bool enabled, const char *hostname, uint16_t port, const char *username, const char *password, const char *baseTopic, uint16_t keepAlive,
+                    ConnectedCallback connectedCallback, MessageCallback messageCallback, DisconnectedCallback disconnectedCallback)
 {
+    disconnect();
+
+    if (!enabled)
+        return;
+
+    // the largest packet that must fully fit in the buffer is the MQTT CONNECT packet
+    // (about 270 bytes worst-case: max baseTopic + max username/password + will topic).
+    // 512 gives a x2 safety margin
+    setBufferSize(512);
+    setKeepAlive(keepAlive);
+    setServer(hostname, port);
+    setBaseTopic(baseTopic);
+    _connectedCallBack = connectedCallback;
     _disconnectedCallBack = disconnectedCallback;
-    return *this;
+    setCallback(messageCallback);
+
+    connect(username, password);
 }
 
 bool MQTTMan::connect(const char *username, const char *password /* = nullptr */)

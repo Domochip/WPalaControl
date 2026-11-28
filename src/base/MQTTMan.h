@@ -15,6 +15,7 @@ class MQTTMan : private PubSubClient
 {
 public:
     using ConnectedCallback = std::function<void(MQTTMan *mqttMan, bool firstConnection)>;
+    using MessageCallback = std::function<void(char *topic, uint8_t *payload, unsigned int length)>;
     using DisconnectedCallback = std::function<void()>;
 
 private:
@@ -27,6 +28,7 @@ private:
         Connected  // connected to the broker
     };
 
+    WiFiClient _wifiClient;
     char _username[32 + 1] = {0};
     char _password[64 + 1] = {0};
     char _connectedAndWillTopic[96] = {0};
@@ -43,23 +45,21 @@ private:
     void setConnState(ConnState state);
     bool tryConnect();
     void scheduleRetry();
+    MQTTMan &setBaseTopic(const char *baseTopicTemplate);
+    MQTTMan &setConnectedAndWillTopic(const char *topic);
+    bool connect(const char *username = nullptr, const char *password = nullptr);
 
 public:
-    MQTTMan() { setSocketTimeout(3); } // don't wait more than 3 seconds for a response from the broker
+    MQTTMan();
 
     static constexpr size_t baseTopicSize = 64 + 4 + 12 - 7 + sizeof(CUSTOM_APP_MODEL) + 1; // usual baseTopic length + one of each placeholder (+4 sn) (+12 mac) (+X model)
     static void prepareTopic(const char *topicTemplate, char *result, size_t resultSize);
-    MQTTMan &setBaseTopic(const char *baseTopicTemplate);
     const char *getBaseTopic() const;
 
-    using PubSubClient::setClient;
-    using PubSubClient::setKeepAlive;
-    using PubSubClient::setServer;
-    MQTTMan &setConnectedAndWillTopic(const char *topic);
-    MQTTMan &setConnectedCallback(ConnectedCallback connectedCallback);
-    MQTTMan &setDisconnectedCallback(DisconnectedCallback disconnectedCallback);
-    using PubSubClient::setCallback;
-    bool connect(const char *username = nullptr, const char *password = nullptr);
+    // (re)start the connection, to call from appInit: disconnect, then when enabled, configure and connect
+    // (connection retried by loop() until disconnect() or the next begin())
+    void begin(bool enabled, const char *hostname, uint16_t port, const char *username, const char *password, const char *baseTopic, uint16_t keepAlive,
+               ConnectedCallback connectedCallback, MessageCallback messageCallback, DisconnectedCallback disconnectedCallback = nullptr);
     using PubSubClient::connected;
     void disconnect();
     using PubSubClient::beginPublish;
@@ -72,8 +72,6 @@ public:
     const __FlashStringHelper *getStateString();
     uint16_t getConnectionCount() const;
     int8_t getLastDiscoState() const;
-    using PubSubClient::getBufferSize;
-    using PubSubClient::setBufferSize;
     using PubSubClient::subscribe;
     bool loop();
 };
