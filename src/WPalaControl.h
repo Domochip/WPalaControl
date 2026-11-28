@@ -49,7 +49,6 @@ private:
 
   HomeAutomation _ha;
   int _haSendResult = 0;
-  WiFiClient _wifiClient;
   MQTTMan _mqttMan;
   SSEServer _sse;
   WiFiUDP _udpServer;

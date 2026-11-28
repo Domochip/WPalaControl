@@ -2355,30 +2355,14 @@ bool WPalaControl::appInit(bool reInit /* = false */)
   // Stop UdpServer
   _udpServer.stop();
 
-  // Stop MQTT
-  _mqttMan.disconnect();
-
-  // if MQTT used so configure it
-  if (_ha.protocol == HaProtocol::Mqtt)
-  {
-    // setup MQTT
-    // the largest packet that must fully fit in the buffer is the MQTT CONNECT packet
-    // (≈267 bytes worst-case: max baseTopic + max username/password + will topic).
-    // 512 gives a ×2 safety margin
-    _mqttMan.setBufferSize(512);
-    _mqttMan.setKeepAlive(_ha.uploadPeriod + 15);
-    _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
-    _mqttMan.setBaseTopic(_ha.mqtt.generic.baseTopic);
-    _mqttMan.setConnectedCallback([this](MQTTMan *mqttMan, bool firstConnection)
-                                  { mqttConnectedCallback(mqttMan, firstConnection); });
-    _mqttMan.setDisconnectedCallback([this]()
-                                     { mqttDisconnectedCallback(); });
-    _mqttMan.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
-                         { mqttCallback(topic, payload, length); });
-
-    // Connect
-    _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
-  }
+  // (re)start MQTT (only stopped if MQTT is not used)
+  _mqttMan.begin(_ha.protocol == HaProtocol::Mqtt, _ha.hostname, _ha.mqtt.port, _ha.mqtt.username, _ha.mqtt.password, _ha.mqtt.generic.baseTopic, _ha.uploadPeriod + 15,
+                 [this](MQTTMan *mqttMan, bool firstConnection)
+                 { mqttConnectedCallback(mqttMan, firstConnection); },
+                 [this](char *topic, uint8_t *payload, unsigned int length)
+                 { mqttCallback(topic, payload, length); },
+                 [this]()
+                 { mqttDisconnectedCallback(); });
 
   LOG_SERIAL_PRINT(F("Connecting to Stove..."));
 
